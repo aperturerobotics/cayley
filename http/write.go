@@ -26,8 +26,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/cayleygraph/cayley/clog"
+	"github.com/cayleygraph/cayley/decompressor"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal/decompressor"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/nquads"
 )

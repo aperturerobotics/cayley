@@ -26,7 +26,7 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/internal/lru"
+	"github.com/cayleygraph/cayley/lru"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/pquads"
 )

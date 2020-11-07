@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cayleygraph/cayley/internal/linkedql/schema"
+	"github.com/cayleygraph/cayley/linkedql/schema"
 )
 
 func NewSchemaCommand() *cobra.Command {

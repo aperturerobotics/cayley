@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/internal/decompressor"
+	"github.com/cayleygraph/cayley/decompressor"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/nquads"
 )

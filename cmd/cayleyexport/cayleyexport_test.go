@@ -9,7 +9,7 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
-	chttp "github.com/cayleygraph/cayley/internal/http"
+	chttp "github.com/cayleygraph/cayley/http"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/jsonld"
 	"github.com/phayes/freeport"

@@ -28,7 +28,7 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	"github.com/cayleygraph/cayley/internal"
+	internal "github.com/cayleygraph/cayley/load"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/gizmo"
 	_ "github.com/cayleygraph/cayley/writer"

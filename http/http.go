@@ -23,8 +23,8 @@ import (
 	"github.com/gobuffalo/packr/v2"
 	"github.com/julienschmidt/httprouter"
 
+	"github.com/cayleygraph/cayley/gephi"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal/gephi"
 	cayleyhttp "github.com/cayleygraph/cayley/server/http"
 )
 

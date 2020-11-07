@@ -15,7 +15,7 @@ import (
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal"
+	internal "github.com/cayleygraph/cayley/load"
 	"github.com/cayleygraph/quad"
 )
 

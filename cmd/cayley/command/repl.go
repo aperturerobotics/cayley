@@ -14,8 +14,8 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/internal/repl"
 	"github.com/cayleygraph/cayley/query"
+	"github.com/cayleygraph/cayley/repl"
 )
 
 const (

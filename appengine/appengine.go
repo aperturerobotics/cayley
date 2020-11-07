@@ -23,7 +23,7 @@ import (
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal/http"
+	"github.com/cayleygraph/cayley/http"
 
 	_ "github.com/cayleygraph/cayley/graph/gaedatastore"
 	_ "github.com/cayleygraph/cayley/writer"

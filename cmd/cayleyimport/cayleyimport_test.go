@@ -10,7 +10,7 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
-	chttp "github.com/cayleygraph/cayley/internal/http"
+	chttp "github.com/cayleygraph/cayley/http"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/require"
 )

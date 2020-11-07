@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cayleygraph/cayley/clog"
-	chttp "github.com/cayleygraph/cayley/internal/http"
+	chttp "github.com/cayleygraph/cayley/http"
 )
 
 func NewHTTPCmd() *cobra.Command {
