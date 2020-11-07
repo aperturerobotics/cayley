@@ -7,7 +7,7 @@ import (
 
 	"github.com/cayleygraph/cayley/query/linkedql"
 	// Steps are imported here so they be registered and documented in the schema
-	_ "github.com/cayleygraph/cayley/query/linkedql/steps"
+	// _ "github.com/cayleygraph/cayley/query/linkedql/steps"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/voc/owl"
 	"github.com/cayleygraph/quad/voc/rdf"
