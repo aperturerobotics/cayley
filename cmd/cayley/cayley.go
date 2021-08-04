@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/cayleygraph/cayley/cmd/cayley/command"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -86,13 +85,6 @@ var (
 				go func() {
 					if err := http.ListenAndServe(host, nil); err != nil {
 						clog.Errorf("failed to run pprof handler: %v", err)
-					}
-				}()
-			}
-			if host, _ := cmd.Flags().GetString("metrics"); host != "" {
-				go func() {
-					if err := http.ListenAndServe(host, promhttp.Handler()); err != nil {
-						clog.Errorf("failed to run metrics handler: %v", err)
 					}
 				}()
 			}
@@ -160,7 +152,6 @@ func init() {
 	rootCmd.PersistentFlags().String("cpuprofile", "", "path to output cpu profile")
 
 	rootCmd.PersistentFlags().String("pprof", "", "host to serve pprof on (disabled by default)")
-	rootCmd.PersistentFlags().String("metrics", "", "host to serve metrics on (disabled by default)")
 
 	// bind flags to config variables
 	viper.BindPFlag(command.KeyBackend, rootCmd.PersistentFlags().Lookup("db"))
