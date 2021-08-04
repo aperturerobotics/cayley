@@ -154,7 +154,6 @@ func (it *quadIteratorNext) ensureTx() bool {
 	if it.err != nil {
 		return false
 	}
-	it.tx = wrapTx(it.tx)
 	return true
 }
 

@@ -35,7 +35,7 @@ func IsNotFound(err error) bool {
 //
 //	type Node struct{
 //		ID quad.IRI `json:"@id"` // or `quad:"@id"`
-// 	}
+//	}
 //
 // Field with an "@id" tag is omitted, but in case of Go->quads mapping new ID will be generated
 // using GenerateID callback, which can be changed to provide a custom mappings.
@@ -45,7 +45,7 @@ func IsNotFound(err error) bool {
 //	type Person struct{
 //		ID quad.IRI `json:"@id"`
 //		Name string `json:"name"`
-// 	}
+//	}
 //	p := Person{"bob","Bob"}
 //	// is equivalent to triple:
 //	// <bob> <name> "Bob"
@@ -60,7 +60,7 @@ func IsNotFound(err error) bool {
 //		ID quad.IRI `json:"@id"`
 //		Type quad.IRI `json:"@type"`
 //		Name string `json:"ex:name"` // will be expanded to http://example.org/name
-// 	}
+//	}
 //	p := Person{"bob",quad.IRI("Person"),"Bob"}
 //	// is equivalent to triples:
 //	// <bob> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <Person>
@@ -68,11 +68,11 @@ func IsNotFound(err error) bool {
 //
 // Predicate link direction can be reversed with a special tag syntax (not available for "json" tag):
 //
-// 	type Person struct{
+//	type Person struct{
 //		ID quad.IRI `json:"@id"`
 //		Name string `json:"name"` // same as `quad:"name"` or `quad:"name > *"`
 //		Parents []quad.IRI `quad:"isParentOf < *"`
-// 	}
+//	}
 //	p := Person{"bob","Bob",[]quad.IRI{"alice","fred"}}
 //	// is equivalent to triples:
 //	// <bob> <name> "Bob"
@@ -88,7 +88,7 @@ func IsNotFound(err error) bool {
 //		Name string `json:"name"` // required field
 //		ThirdName string `quad:"thirdName,optional"` // can be empty
 //		FollowedBy []quad.IRI `quad:"follows"`
-// 	}
+//	}
 func (c *Config) LoadTo(ctx context.Context, qs graph.QuadStore, dst interface{}, ids ...quad.Value) error {
 	return c.LoadToDepth(ctx, qs, dst, -1, ids...)
 }

@@ -90,9 +90,9 @@ func (c *Config) MarshalJSON() ([]byte, error) {
 type duration time.Duration
 
 // UnmarshalJSON unmarshals a duration according to the following scheme:
-//  * If the element is absent the duration is zero.
-//  * If the element is parsable as a time.Duration, the parsed value is kept.
-//  * If the element is parsable as a number, that number of seconds is kept.
+//   - If the element is absent the duration is zero.
+//   - If the element is parsable as a time.Duration, the parsed value is kept.
+//   - If the element is parsable as a number, that number of seconds is kept.
 func (d *duration) UnmarshalJSON(data []byte) error {
 	if len(data) == 0 {
 		*d = 0

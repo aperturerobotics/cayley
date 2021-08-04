@@ -31,9 +31,9 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/pquads"
+	gproto "github.com/golang/protobuf/proto"
 
 	"github.com/hidal-go/hidalgo/kv"
-	"github.com/prometheus/client_golang/prometheus"
 	boom "github.com/tylertreat/BoomFilters"
 )
 
@@ -169,7 +169,6 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 		return nil, err
 	}
 	defer tx.Close()
-	tx = wrapTx(tx)
 	val, err := tx.Get(ctx, keyMetaIndexes)
 	if err == kv.ErrNotFound {
 		return legacyQuadIndexes, nil
@@ -302,7 +301,6 @@ func (qs *QuadStore) incNodesCnt(ctx context.Context, tx kv.Tx, deltas, newDelta
 			if err := tx.Del(k); err != nil {
 				return del, err
 			}
-			mNodesDel.Inc()
 			del = append(del, i)
 			continue
 		}
@@ -311,7 +309,6 @@ func (qs *QuadStore) incNodesCnt(ctx context.Context, tx kv.Tx, deltas, newDelta
 		if err := tx.Put(k, val); err != nil {
 			return del, err
 		}
-		mNodesUpd.Inc()
 	}
 	// create new nodes
 	for _, d := range newDeltas {
@@ -320,7 +317,6 @@ func (qs *QuadStore) incNodesCnt(ctx context.Context, tx kv.Tx, deltas, newDelta
 		if err := tx.Put(bucketKeyForHashRefs(d.Hash), val); err != nil {
 			return nil, err
 		}
-		mNodesNew.Inc()
 	}
 	return del, nil
 }
@@ -438,13 +434,11 @@ func (w *quadWriter) flush() error {
 		w.err = err
 		return err
 	}
-	w.tx = wrapTx(tx)
+	w.tx = tx
 	return nil
 }
 
 func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
-	mApplyBatch.Observe(float64(len(buf)))
-	defer prometheus.NewTimer(mApplySeconds).ObserveDuration()
 
 	if w.tx == nil {
 		w.qs.writer.Lock()
@@ -454,7 +448,7 @@ func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
 			w.err = err
 			return 0, err
 		}
-		w.tx = wrapTx(tx)
+		w.tx = tx
 	}
 	deltas := graphlog.InsertQuads(buf)
 	if _, err := w.qs.applyAddDeltas(w.tx, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
@@ -505,10 +499,10 @@ func (qs *QuadStore) applyAddDeltas(tx kv.Tx, in []graph.Delta, deltas *graphlog
 	}
 	deltas.IncNode = nil
 	// resolve and insert all new quads
-	links := make([]proto.Primitive, 0, len(deltas.QuadAdd))
+	links := make([]*proto.Primitive, 0, len(deltas.QuadAdd))
 	qadd := make(map[[4]uint64]struct{}, len(deltas.QuadAdd))
 	for _, q := range deltas.QuadAdd {
-		var link proto.Primitive
+		link := &proto.Primitive{}
 		mustBeNew := false
 		var qkey [4]uint64
 		for i, dir := range quad.Directions {
@@ -525,7 +519,7 @@ func (qs *QuadStore) applyAddDeltas(tx kv.Tx, in []graph.Delta, deltas *graphlog
 		}
 		qadd[qkey] = struct{}{}
 		if !mustBeNew {
-			p, err := qs.hasPrimitive(ctx, tx, &link, false)
+			p, err := qs.hasPrimitive(ctx, tx, link, false)
 			if err != nil {
 				return nil, err
 			}
@@ -560,9 +554,6 @@ func (qs *QuadStore) applyAddDeltas(tx kv.Tx, in []graph.Delta, deltas *graphlog
 }
 
 func (qs *QuadStore) ApplyDeltas(in []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
-	mApplyBatch.Observe(float64(len(in)))
-	defer prometheus.NewTimer(mApplySeconds).ObserveDuration()
-
 	ctx := context.TODO()
 	qs.writer.Lock()
 	defer qs.writer.Unlock()
@@ -571,7 +562,6 @@ func (qs *QuadStore) ApplyDeltas(in []graph.Delta, ignoreOpts graph.IgnoreOpts) 
 		return err
 	}
 	defer tx.Close()
-	tx = wrapTx(tx)
 
 	deltas := graphlog.SplitDeltas(in)
 	if len(deltas.QuadDel) != 0 || len(deltas.DecNode) != 0 {
@@ -584,7 +574,7 @@ func (qs *QuadStore) ApplyDeltas(in []graph.Delta, ignoreOpts graph.IgnoreOpts) 
 	}
 
 	if len(deltas.QuadDel) != 0 || len(deltas.DecNode) != 0 {
-		links := make([]proto.Primitive, 0, len(deltas.QuadDel))
+		links := make([]*proto.Primitive, 0, len(deltas.QuadDel))
 		// resolve all nodes that will be removed
 		dnodes := make(map[refs.ValueHash]uint64, len(deltas.DecNode))
 		if err := qs.resolveValDeltas(ctx, tx, deltas.DecNode, func(i int, id uint64) {
@@ -596,7 +586,7 @@ func (qs *QuadStore) ApplyDeltas(in []graph.Delta, ignoreOpts graph.IgnoreOpts) 
 		// check for existence and delete quads
 		fixNodes := make(map[refs.ValueHash]int)
 		for _, q := range deltas.QuadDel {
-			var link proto.Primitive
+			link := &proto.Primitive{}
 			exists := true
 			// resolve values of all quad directions
 			// if any of the direction does not exists, the quad does not exists as well
@@ -615,13 +605,13 @@ func (qs *QuadStore) ApplyDeltas(in []graph.Delta, ignoreOpts graph.IgnoreOpts) 
 				link.SetDirection(dir, n.ID)
 			}
 			if exists {
-				p, err := qs.hasPrimitive(ctx, tx, &link, true)
+				p, err := qs.hasPrimitive(ctx, tx, link, true)
 				if err != nil {
 					return err
 				} else if p == nil || p.Deleted {
 					exists = false
 				} else {
-					link = *p
+					link = p.CloneVT()
 				}
 			}
 			if !exists {
@@ -691,9 +681,9 @@ func (qs *QuadStore) indexNode(tx kv.Tx, p *proto.Primitive, val quad.Value) err
 	return qs.addToLog(tx, p)
 }
 
-func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, links []proto.Primitive) error {
+func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, links []*proto.Primitive) error {
 	for _, p := range links {
-		if err := qs.indexLink(tx, &p); err != nil {
+		if err := qs.indexLink(tx, p); err != nil {
 			return err
 		}
 	}
@@ -729,9 +719,9 @@ func (qs *QuadStore) delLog(tx kv.Tx, id uint64) error {
 	return tx.Del(logIndex.Append(uint64KeyBytes(id)))
 }
 
-func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, links []proto.Primitive) error {
+func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, links []*proto.Primitive) error {
 	for _, p := range links {
-		if err := qs.markAsDead(tx, &p); err != nil {
+		if err := qs.markAsDead(tx, p); err != nil {
 			return err
 		}
 	}
@@ -877,10 +867,8 @@ func (qs *QuadStore) bestIndexes(dirs []quad.Direction) []QuadIndex {
 
 func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primitive, get bool) (*proto.Primitive, error) {
 	if !qs.testBloom(p) {
-		mQuadsBloomHit.Inc()
 		return nil, nil
 	}
-	mQuadsBloomMiss.Inc()
 	inds, err := qs.bestUnique()
 	if err != nil {
 		return nil, err
@@ -968,7 +956,6 @@ func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64) error {
 		qs.mapBucket[bucket] = m
 	}
 	m[string(k)] = append(m[string(k)], value)
-	mIndexWriteBufferEntries.WithLabelValues(bucket).Inc()
 	return nil
 }
 
@@ -984,8 +971,6 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 			continue
 		}
 		bloom := qs.mapBloom[bucket]
-		mIndexWriteBufferFlushBatch.WithLabelValues(bucket).Observe(float64(len(m)))
-		entryBytes := mIndexEntrySizeBytes.WithLabelValues(bucket)
 		b := kv.Key{[]byte(bucket)}
 		var (
 			keys    []kv.Key
@@ -1025,7 +1010,6 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 		for i, k := range keys {
 			l := m[string(k[1])]
 			buf := appendIndex(vals[i], l)
-			entryBytes.Observe(float64(len(buf)))
 			err = tx.Put(k, buf)
 			if err != nil {
 				return err
@@ -1034,7 +1018,6 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 				bloom.Add(k[1])
 			}
 		}
-		mIndexWriteBufferEntries.WithLabelValues(bucket).Set(0)
 	}
 	qs.mapBucket = nil
 	return nil
@@ -1045,14 +1028,13 @@ func (qs *QuadStore) indexSchema(tx kv.Tx, p *proto.Primitive) error {
 }
 
 func (qs *QuadStore) addToLog(tx kv.Tx, p *proto.Primitive) error {
-	buf, err := p.Marshal()
+	buf, err := p.MarshalVT()
 	if err != nil {
 		return err
 	}
 	if err := tx.Put(logIndex.Append(uint64KeyBytes(p.ID)), buf); err != nil {
 		return err
 	}
-	mPrimitiveAppend.Inc()
 	return nil
 }
 
@@ -1149,19 +1131,17 @@ func (qs *QuadStore) getPrimitivesFromLog(ctx context.Context, tx kv.Tx, keys []
 	if err != nil {
 		return nil, err
 	}
-	mPrimitiveFetch.Add(float64(len(vals)))
 	out := make([]*proto.Primitive, len(keys))
 	var last error
 	for i, v := range vals {
 		if v == nil {
-			mPrimitiveFetchMiss.Inc()
 			continue
 		}
-		var p proto.Primitive
-		if err = p.Unmarshal(v); err != nil {
+		p := &proto.Primitive{}
+		if err = p.UnmarshalVT(v); err != nil {
 			last = err
 		} else {
-			out[i] = &p
+			out[i] = p
 		}
 	}
 	return out, last
@@ -1184,13 +1164,13 @@ func (qs *QuadStore) initBloomFilter(ctx context.Context) error {
 	qs.exists.buf = make([]byte, 3*8)
 	qs.exists.DeletableBloomFilter = boom.NewDeletableBloomFilter(100*1000*1000, 120, 0.05)
 	return kv.View(qs.db, func(tx kv.Tx) error {
-		p := proto.Primitive{}
+		var p *proto.Primitive
 		it := tx.Scan(logIndex)
 		defer it.Close()
 		for it.Next(ctx) {
 			v := it.Val()
-			p = proto.Primitive{}
-			err := p.Unmarshal(v)
+			p = &proto.Primitive{}
+			err := gproto.Unmarshal(v, p)
 			if err != nil {
 				return err
 			}
@@ -1199,7 +1179,7 @@ func (qs *QuadStore) initBloomFilter(ctx context.Context) error {
 			} else if p.Deleted {
 				continue
 			}
-			writePrimToBuf(&p, qs.exists.buf)
+			writePrimToBuf(p, qs.exists.buf)
 			qs.exists.Add(qs.exists.buf)
 		}
 		return it.Err()

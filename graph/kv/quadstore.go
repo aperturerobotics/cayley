@@ -460,7 +460,6 @@ func (qs *QuadStore) getPrimitives(ctx context.Context, vals []uint64) ([]*proto
 		return nil, err
 	}
 	defer tx.Close()
-	tx = wrapTx(tx)
 	return qs.getPrimitivesFromLog(ctx, tx, vals)
 }
 

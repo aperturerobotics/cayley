@@ -2,20 +2,20 @@
 //
 // RDFS Rules:
 //
-//		1. (x p y) -> (p rdf:type rdf:Property)
-//		2. (p rdfs:domain c), (x p y) -> (x rdf:type c)
-//		3. (p rdfs:range c), (x p y) -> (y rdf:type c)
-//		4a. (x p y) -> (x rdf:type rdfs:Resource)
-//		4b. (x p y) -> (y rdf:type rdfs:Resource)
-//		5. (p rdfs:subPropertyOf q), (q rdfs:subPropertyOf r) -> (p rdfs:subPropertyOf r)
-//		6. (p rdf:type Property) -> (p rdfs:subPropertyOf p)
-//		7. (p rdf:subPropertyOf q), (x p y) -> (x q y)
-//		8. (c rdf:type rdfs:Class) -> (c rdfs:subClassOf rdfs:Resource)
-//		9. (c rdfs:subClassOf d), (x rdf:type c) -> (x rdf:type d)
-//		10. (c rdf:type rdfs:Class) -> (c rdfs:subClassOf c)
-//		11. (c rdfs:subClassOf d), (d rdfs:subClassOf e) -> (c rdfs:subClassOf e)
-//		12. (p rdf:type rdfs:ContainerMembershipProperty) -> (p rdfs:subPropertyOf rdfs:member)
-//		13. (x rdf:type rdfs:Datatype) -> (x rdfs:subClassOf rdfs:Literal)
+//  1. (x p y) -> (p rdf:type rdf:Property)
+//  2. (p rdfs:domain c), (x p y) -> (x rdf:type c)
+//  3. (p rdfs:range c), (x p y) -> (y rdf:type c)
+//     4a. (x p y) -> (x rdf:type rdfs:Resource)
+//     4b. (x p y) -> (y rdf:type rdfs:Resource)
+//  5. (p rdfs:subPropertyOf q), (q rdfs:subPropertyOf r) -> (p rdfs:subPropertyOf r)
+//  6. (p rdf:type Property) -> (p rdfs:subPropertyOf p)
+//  7. (p rdf:subPropertyOf q), (x p y) -> (x q y)
+//  8. (c rdf:type rdfs:Class) -> (c rdfs:subClassOf rdfs:Resource)
+//  9. (c rdfs:subClassOf d), (x rdf:type c) -> (x rdf:type d)
+//  10. (c rdf:type rdfs:Class) -> (c rdfs:subClassOf c)
+//  11. (c rdfs:subClassOf d), (d rdfs:subClassOf e) -> (c rdfs:subClassOf e)
+//  12. (p rdf:type rdfs:ContainerMembershipProperty) -> (p rdfs:subPropertyOf rdfs:member)
+//  13. (x rdf:type rdfs:Datatype) -> (x rdfs:subClassOf rdfs:Literal)
 //
 // Exported from: https://www.researchgate.net/figure/RDF-RDFS-entailment-rules_tbl1_268419911
 //

@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build appengine || appenginevm
 // +build appengine appenginevm
 
 package gaedatastore
@@ -32,17 +33,16 @@ import (
 
 // This is a simple test graph.
 //
-//    +---+                        +---+
-//    | A |-------               ->| F |<--
-//    +---+       \------>+---+-/  +---+   \--+---+
-//                 ------>|#B#|      |        | E |
-//    +---+-------/      >+---+      |        +---+
-//    | C |             /            v
-//    +---+           -/           +---+
-//      ----    +---+/             |#G#|
-//          \-->|#D#|------------->+---+
-//              +---+
-//
+//	+---+                        +---+
+//	| A |-------               ->| F |<--
+//	+---+       \------>+---+-/  +---+   \--+---+
+//	             ------>|#B#|      |        | E |
+//	+---+-------/      >+---+      |        +---+
+//	| C |             /            v
+//	+---+           -/           +---+
+//	  ----    +---+/             |#G#|
+//	      \-->|#D#|------------->+---+
+//	          +---+
 var simpleGraph = graphtest.MakeQuadSet()
 var simpleGraphUpdate = []quad.Quad{
 	quad.MakeRaw("A", "follows", "B", ""),

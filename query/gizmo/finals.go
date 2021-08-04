@@ -66,7 +66,8 @@ func (p *pathObject) toArray(call goja.FunctionCall, withTags bool) goja.Value {
 // ToArray executes a query and returns the results at the end of the query path as an JS array.
 //
 // Example:
-// 	// javascript
+//
+//	// javascript
 //	// bobFollowers contains an Array of followers of bob (alice, charlie, dani).
 //	var bobFollowers = g.V("<bob>").In("<follows>").ToArray()
 func (p *pathObject) ToArray(call goja.FunctionCall) goja.Value {
@@ -76,7 +77,8 @@ func (p *pathObject) ToArray(call goja.FunctionCall) goja.Value {
 // TagArray is the same as ToArray, but instead of a list of top-level nodes, returns an Array of tag-to-string dictionaries, much as All would, except inside the JS environment.
 //
 // Example:
-// 	// javascript
+//
+//	// javascript
 //	// bobTags contains an Array of followers of bob (alice, charlie, dani).
 //	var bobTags = g.V("<bob>").Tag("name").In("<follows>").TagArray()
 //	// nameValue should be the string "<bob>"
@@ -132,7 +134,8 @@ func (p *pathObject) Map(call goja.FunctionCall) goja.Value {
 // * `callback`: A javascript function of the form `function(data)`
 //
 // Example:
-// 	// javascript
+//
+//	// javascript
 //	// Simulate query.All().All()
 //	graph.V("<alice>").ForEach(function(d) { g.Emit(d) } )
 func (p *pathObject) ForEach(call goja.FunctionCall) goja.Value {
@@ -157,6 +160,7 @@ func (p *pathObject) ForEach(call goja.FunctionCall) goja.Value {
 // Count returns a number of results and returns it as a value.
 //
 // Example:
+//
 //	// javascript
 //	// Save count as a variable
 //	var n = g.V().count()

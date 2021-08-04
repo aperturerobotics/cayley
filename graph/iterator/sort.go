@@ -15,7 +15,8 @@ type Sort struct {
 
 // NewSort creates a new Sort iterator.
 // TODO(dennwc): This iterator must not be used inside And: it may be moved to a Contains branch and won't do anything.
-//               We should make And/Intersect account for this.
+//
+//	We should make And/Intersect account for this.
 func NewSort(namer refs.Namer, subIt Shape) *Sort {
 	return &Sort{namer, subIt}
 }

@@ -58,13 +58,17 @@ func NewRegex(sub Shape, re *regexp.Regexp, qs refs.Namer) Shape {
 // your graph structure instead of relying on slow unoptimizable regexp.
 //
 // An example of incorrect usage is to match IRIs:
-// 	<http://example.org/page>
-// 	<http://example.org/page/foo>
+//
+//	<http://example.org/page>
+//	<http://example.org/page/foo>
+//
 // Via regexp like:
+//
 //	http://example.org/page.*
 //
 // The right way is to explicitly link graph nodes and query them by this relation:
-// 	<http://example.org/page/foo> <type> <http://example.org/page>
+//
+//	<http://example.org/page/foo> <type> <http://example.org/page>
 func NewRegexWithRefs(sub Shape, re *regexp.Regexp, qs refs.Namer) Shape {
 	return newRegex(qs, sub, re, true)
 }

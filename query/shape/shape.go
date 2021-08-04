@@ -362,8 +362,8 @@ var _ ValueFilter = Wildcard{}
 
 // Wildcard is a filter for string patterns.
 //
-//   % - zero or more characters
-//   ? - exactly one character
+//	% - zero or more characters
+//	? - exactly one character
 type Wildcard struct {
 	Pattern string // allowed wildcards are: % and ?
 }

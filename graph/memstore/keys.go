@@ -4,13 +4,13 @@
 
 // Package b implements a B+tree.
 //
-// Changelog
+// # Changelog
 //
 // 2014-06-26: Lower GC presure by recycling things.
 //
 // 2014-04-18: Added new method Put.
 //
-// Generic types
+// # Generic types
 //
 // Keys and their associated values are interface{} typed, similar to all of
 // the containers in the standard library.
@@ -637,9 +637,9 @@ func (t *Tree) Set(k int64, v *Primitive) {
 // (whatever, false) if it decides not to create or not to update the value of
 // the KV pair.
 //
-// 	tree.Set(k, v) call conceptually equals calling
+//	tree.Set(k, v) call conceptually equals calling
 //
-// 	tree.Put(k, func(int64, bool){ return v, true })
+//	tree.Put(k, func(int64, bool){ return v, true })
 //
 // modulo the differing return values.
 func (t *Tree) Put(k int64, upd func(oldV *Primitive, exists bool) (newV *Primitive, write bool)) (oldV *Primitive, written bool) {

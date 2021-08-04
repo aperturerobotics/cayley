@@ -310,7 +310,7 @@ func (qs *QuadStore) appendLog(ctx context.Context, deltas []graph.Delta) ([]nos
 	w := qs.batchInsert(colLog)
 	defer w.Close()
 	for _, d := range deltas {
-		data, err := pquads.MakeQuad(d.Quad).Marshal()
+		data, err := pquads.MakeQuad(d.Quad).MarshalVT()
 		if err != nil {
 			return w.Keys(), err
 		}
@@ -466,7 +466,7 @@ func toDocumentValue(opt *Traits, v quad.Value) nosql.Document {
 	var doc nosql.Document
 	encPb := func() {
 		qv := pquads.MakeValue(v)
-		data, err := qv.Marshal()
+		data, err := qv.MarshalVT()
 		if err != nil {
 			panic(err)
 		}
@@ -537,8 +537,8 @@ func toQuadValue(opt *Traits, d nosql.Document) (quad.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		var p pquads.Value
-		if err := p.Unmarshal(b); err != nil {
+		p := &pquads.Value{}
+		if err := p.UnmarshalVT(b); err != nil {
 			return nil, fmt.Errorf("couldn't decode value: %v", err)
 		}
 		return p.ToNative(), nil

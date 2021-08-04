@@ -164,13 +164,17 @@ func (p *Path) Regex(pattern *regexp.Regexp) *Path {
 // your graph structure instead of relying on slow unoptimizable regexp.
 //
 // An example of incorrect usage is to match IRIs:
-// 	<http://example.org/page>
-// 	<http://example.org/page/foo>
+//
+//	<http://example.org/page>
+//	<http://example.org/page/foo>
+//
 // Via regexp like:
+//
 //	http://example.org/page.*
 //
 // The right way is to explicitly link graph nodes and query them by this relation:
-// 	<http://example.org/page/foo> <type> <http://example.org/page>
+//
+//	<http://example.org/page/foo> <type> <http://example.org/page>
 func (p *Path) RegexWithRefs(pattern *regexp.Regexp) *Path {
 	return p.Filters(shape.Regexp{Re: pattern, Refs: true})
 }
@@ -199,11 +203,12 @@ func (p *Path) Tag(tags ...string) *Path {
 // current nodes, via the given outbound predicate.
 //
 // For example:
-//  // Returns the list of nodes that "B" follows.
-//  //
-//  // Will return []string{"F"} if there is a predicate (edge) from "B"
-//  // to "F" labelled "follows".
-//  StartPath(qs, "A").Out("follows")
+//
+//	// Returns the list of nodes that "B" follows.
+//	//
+//	// Will return []string{"F"} if there is a predicate (edge) from "B"
+//	// to "F" labelled "follows".
+//	StartPath(qs, "A").Out("follows")
 func (p *Path) Out(via ...interface{}) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, outMorphism(nil, via...))
@@ -214,11 +219,12 @@ func (p *Path) Out(via ...interface{}) *Path {
 // current nodes, via the given inbound predicate.
 //
 // For example:
-//  // Return the list of nodes that follow "B".
-//  //
-//  // Will return []string{"A", "C", "D"} if there are the appropriate
-//  // edges from those nodes to "B" labelled "follows".
-//  StartPath(qs, "B").In("follows")
+//
+//	// Return the list of nodes that follow "B".
+//	//
+//	// Will return []string{"A", "C", "D"} if there are the appropriate
+//	// edges from those nodes to "B" labelled "follows".
+//	StartPath(qs, "B").In("follows")
 func (p *Path) In(via ...interface{}) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, inMorphism(nil, via...))
@@ -244,11 +250,12 @@ func (p *Path) OutWithTags(tags []string, via ...interface{}) *Path {
 // Both updates this path following both inbound and outbound predicates.
 //
 // For example:
-//  // Return the list of nodes that follow or are followed by "B".
-//  //
-//  // Will return []string{"A", "C", "D", "F} if there are the appropriate
-//  // edges from those nodes to "B" labelled "follows", in either direction.
-//  StartPath(qs, "B").Both("follows")
+//
+//	// Return the list of nodes that follow or are followed by "B".
+//	//
+//	// Will return []string{"A", "C", "D", "F} if there are the appropriate
+//	// edges from those nodes to "B" labelled "follows", in either direction.
+//	StartPath(qs, "B").Both("follows")
 func (p *Path) Both(via ...interface{}) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, bothMorphism(nil, via...))
@@ -275,10 +282,11 @@ func (p *Path) Labels() *Path {
 // predicates from the current nodes.
 //
 // For example:
-//  // Returns a list of predicates valid from "bob"
-//  //
-//  // Will return []string{"follows"} if there are any things that "follow" Bob
-//  StartPath(qs, "bob").InPredicates()
+//
+//	// Returns a list of predicates valid from "bob"
+//	//
+//	// Will return []string{"follows"} if there are any things that "follow" Bob
+//	StartPath(qs, "bob").InPredicates()
 func (p *Path) InPredicates() *Path {
 	np := p.clone()
 	np.stack = append(np.stack, predicatesMorphism(true))
@@ -289,11 +297,12 @@ func (p *Path) InPredicates() *Path {
 // predicates from the current nodes.
 //
 // For example:
-//  // Returns a list of predicates valid from "bob"
-//  //
-//  // Will return []string{"follows", "status"} if there are edges from "bob"
-//  // labelled "follows", and edges from "bob" that describe his "status".
-//  StartPath(qs, "bob").OutPredicates()
+//
+//	// Returns a list of predicates valid from "bob"
+//	//
+//	// Will return []string{"follows", "status"} if there are edges from "bob"
+//	// labelled "follows", and edges from "bob" that describe his "status".
+//	StartPath(qs, "bob").OutPredicates()
 func (p *Path) OutPredicates() *Path {
 	np := p.clone()
 	np.stack = append(np.stack, predicatesMorphism(false))
@@ -335,8 +344,9 @@ func (p *Path) Or(path *Path) *Path {
 // except those in the supplied Path.
 //
 // For example:
-//  // Will return []string{"B"}
-//  StartPath(qs, "A", "B").Except(StartPath(qs, "A"))
+//
+//	// Will return []string{"B"}
+//	StartPath(qs, "A", "B").Except(StartPath(qs, "A"))
 func (p *Path) Except(path *Path) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, exceptMorphism(path))
@@ -405,8 +415,9 @@ func (p *Path) FollowRecursive(via interface{}, maxDepth int, depthTags []string
 // tag, and propagate that to the result set.
 //
 // For example:
-//  // Will return []map[string]string{{"social_status: "cool"}}
-//  StartPath(qs, "B").Save("status", "social_status"
+//
+//	// Will return []map[string]string{{"social_status: "cool"}}
+//	StartPath(qs, "B").Save("status", "social_status"
 func (p *Path) Save(via interface{}, tag string) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, saveMorphism(via, tag))
@@ -485,8 +496,9 @@ func (p *Path) LabelContextWithTags(tags []string, via ...interface{}) *Path {
 // Back returns to a previously tagged place in the path. Any constraints applied after the Tag will remain in effect, but traversal continues from the tagged point instead, not from the end of the chain.
 //
 // For example:
-//  // Will return "bob" iff "bob" is cool
-//  StartPath(qs, "bob").Tag("person_tag").Out("status").Is("cool").Back("person_tag")
+//
+//	// Will return "bob" iff "bob" is cool
+//	StartPath(qs, "bob").Tag("person_tag").Out("status").Is("cool").Back("person_tag")
 func (p *Path) Back(tag string) *Path {
 	newPath := NewPath(p.qs)
 	i := len(p.stack) - 1
