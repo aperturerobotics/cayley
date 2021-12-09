@@ -1,6 +1,6 @@
 module github.com/cayleygraph/cayley
 
-go 1.12
+go 1.16
 
 require (
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
@@ -21,9 +21,8 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.2+incompatible // indirect
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gobuffalo/packr/v2 v2.7.1
-	github.com/gogo/protobuf v1.3.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
-	github.com/google/go-cmp v0.3.0 // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/gopherjs/gopherjs v0.0.0-20190430165422-3e4dfb77656c // indirect
 	github.com/hidal-go/hidalgo v0.0.0-20190814174001-42e03f3b5eaa
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
@@ -37,7 +36,7 @@ require (
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/peterh/liner v0.0.0-20170317030525-88609521dc4b
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
-	github.com/piprate/json-gold v0.3.0
+	github.com/piprate/json-gold v0.4.0
 	github.com/rogpeppe/go-internal v1.5.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24 // indirect
@@ -46,7 +45,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tylertreat/BoomFilters v0.0.0-20181028192813-611b3dbe80e8
 	go.etcd.io/bbolt v1.3.3 // indirect
