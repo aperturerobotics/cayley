@@ -1,3 +1,4 @@
+//go:build appenginevm
 // +build appenginevm
 
 package main

@@ -16,12 +16,6 @@ syntax = "proto3";
 
 package proto;
 
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-//import "google/protobuf/timestamp.proto";
-option (gogoproto.protosizer_all) = true;
-option (gogoproto.marshaler_all) = true;
-option (gogoproto.unmarshaler_all) =  true;
-
 message Primitive {
   uint64 ID = 1;
   uint64 Subject = 2;

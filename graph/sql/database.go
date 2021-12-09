@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/log"
+	graphlog "github.com/cayleygraph/cayley/graph/log"
 	"github.com/cayleygraph/quad"
 )
 
