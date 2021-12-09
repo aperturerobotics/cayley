@@ -31,6 +31,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/pquads"
+	gproto "github.com/golang/protobuf/proto"
 
 	"github.com/hidal-go/hidalgo/kv"
 	boom "github.com/tylertreat/BoomFilters"
@@ -1027,7 +1028,7 @@ func (qs *QuadStore) indexSchema(tx kv.Tx, p *proto.Primitive) error {
 }
 
 func (qs *QuadStore) addToLog(tx kv.Tx, p *proto.Primitive) error {
-	buf, err := p.Marshal()
+	buf, err := gproto.Marshal(p)
 	if err != nil {
 		return err
 	}
@@ -1136,11 +1137,11 @@ func (qs *QuadStore) getPrimitivesFromLog(ctx context.Context, tx kv.Tx, keys []
 		if v == nil {
 			continue
 		}
-		var p proto.Primitive
-		if err = p.Unmarshal(v); err != nil {
+		p := &proto.Primitive{}
+		if err = gproto.Unmarshal(v, p); err != nil {
 			last = err
 		} else {
-			out[i] = &p
+			out[i] = p
 		}
 	}
 	return out, last
@@ -1163,13 +1164,13 @@ func (qs *QuadStore) initBloomFilter(ctx context.Context) error {
 	qs.exists.buf = make([]byte, 3*8)
 	qs.exists.DeletableBloomFilter = boom.NewDeletableBloomFilter(100*1000*1000, 120, 0.05)
 	return kv.View(qs.db, func(tx kv.Tx) error {
-		p := proto.Primitive{}
+		var p *proto.Primitive
 		it := tx.Scan(logIndex)
 		defer it.Close()
 		for it.Next(ctx) {
 			v := it.Val()
-			p = proto.Primitive{}
-			err := p.Unmarshal(v)
+			p = &proto.Primitive{}
+			err := gproto.Unmarshal(v, p)
 			if err != nil {
 				return err
 			}
@@ -1178,7 +1179,7 @@ func (qs *QuadStore) initBloomFilter(ctx context.Context) error {
 			} else if p.Deleted {
 				continue
 			}
-			writePrimToBuf(&p, qs.exists.buf)
+			writePrimToBuf(p, qs.exists.buf)
 			qs.exists.Add(qs.exists.buf)
 		}
 		return it.Err()
