@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 
 	"github.com/cayleygraph/cayley/clog"
@@ -310,7 +311,7 @@ func (qs *QuadStore) appendLog(ctx context.Context, deltas []graph.Delta) ([]nos
 	w := qs.batchInsert(colLog)
 	defer w.Close()
 	for _, d := range deltas {
-		data, err := pquads.MakeQuad(d.Quad).Marshal()
+		data, err := proto.Marshal(pquads.MakeQuad(d.Quad))
 		if err != nil {
 			return w.Keys(), err
 		}
@@ -466,7 +467,7 @@ func toDocumentValue(opt *Traits, v quad.Value) nosql.Document {
 	var doc nosql.Document
 	encPb := func() {
 		qv := pquads.MakeValue(v)
-		data, err := qv.Marshal()
+		data, err := proto.Marshal(qv)
 		if err != nil {
 			panic(err)
 		}
@@ -537,8 +538,8 @@ func toQuadValue(opt *Traits, d nosql.Document) (quad.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		var p pquads.Value
-		if err := p.Unmarshal(b); err != nil {
+		p := &pquads.Value{}
+		if err := proto.Unmarshal(b, p); err != nil {
 			return nil, fmt.Errorf("couldn't decode value: %v", err)
 		}
 		return p.ToNative(), nil
