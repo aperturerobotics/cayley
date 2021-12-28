@@ -241,6 +241,8 @@ github.com/paralin/cayley-quad v1.2.5-0.20211209105351-06050a8e6e25 h1:ZNz9IWlnC
 github.com/paralin/cayley-quad v1.2.5-0.20211209105351-06050a8e6e25/go.mod h1:C/tsfkYhCa2rHV3LbO/Sc1KxueGoZIns4aQiQVqNoco=
 github.com/paralin/cayley-quad v1.2.5-0.20211209105554-5853339c1e60 h1:KP6gWT9ffgfLY9Pmp7pmncLjB43Z9ycduCDgzgQ43YM=
 github.com/paralin/cayley-quad v1.2.5-0.20211209105554-5853339c1e60/go.mod h1:C/tsfkYhCa2rHV3LbO/Sc1KxueGoZIns4aQiQVqNoco=
+github.com/paralin/cayley-quad v1.2.5-0.20211228221228-ebcc3b2464a4 h1:C6KKCAj2ANhtlpNUz7tiS1yZbqsJy8+gHZRoMSvMkv4=
+github.com/paralin/cayley-quad v1.2.5-0.20211228221228-ebcc3b2464a4/go.mod h1:C/tsfkYhCa2rHV3LbO/Sc1KxueGoZIns4aQiQVqNoco=
 github.com/pborman/uuid v1.2.0 h1:J7Q5mO4ysT1dv8hyrUGHb9+ooztCXu1D8MY8DZYsu3g=
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
