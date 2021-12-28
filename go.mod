@@ -2,7 +2,7 @@ module github.com/cayleygraph/cayley
 
 go 1.16
 
-replace github.com/cayleygraph/quad => github.com/paralin/cayley-quad v1.2.5-0.20211209105554-5853339c1e60 // aperture
+replace github.com/cayleygraph/quad => github.com/paralin/cayley-quad v1.2.5-0.20211228221228-ebcc3b2464a4 // aperture
 
 require (
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
