@@ -1,4 +1,4 @@
-FROM golang:1.13 as builder
+FROM golang:1.20 as builder
 
 # Install packr
 RUN go get -u github.com/gobuffalo/packr/v2/packr2
