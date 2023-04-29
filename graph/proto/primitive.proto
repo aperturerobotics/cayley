@@ -23,9 +23,10 @@ message Primitive {
   uint64 Object = 4;
   uint64 Label = 5;
   uint64 Replaces = 6;
-  int64 Timestamp = 7;
   bytes Value = 8;
   bool Deleted = 9;
+
+  // reserved 7
 }
 
 enum PrimitiveType {

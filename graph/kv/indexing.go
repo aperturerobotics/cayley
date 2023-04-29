@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-	"time"
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
@@ -545,7 +544,6 @@ func (qs *QuadStore) applyAddDeltas(tx kv.Tx, in []graph.Delta, deltas *graphlog
 	}
 	for i := range links {
 		links[i].ID = qstart + uint64(i)
-		links[i].Timestamp = time.Now().UnixNano()
 	}
 	if err := qs.indexLinks(ctx, tx, links); err != nil {
 		return nil, err
@@ -1045,7 +1043,6 @@ func createNodePrimitive(v quad.Value) (*proto.Primitive, error) {
 		return p, err
 	}
 	p.Value = b
-	p.Timestamp = time.Now().UnixNano()
 	return p, nil
 }
 
