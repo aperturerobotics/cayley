@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "master", "aperture" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "master", "aperture" ]
+
+# Builds images for target boards.
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.20']
+    timeout-minutes: 10
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@03bee3930647ebbf994244c21ddbc0d4933aab4f # v2.3.0
+        with:
+          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
+
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - name: Setup Go ${{ matrix.go }}
+        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Lint Go
+        run: make lint
+      - name: Test Go
+        run: make test
