@@ -31,7 +31,6 @@ func (m *Primitive) CloneVT() *Primitive {
 		Object:    m.Object,
 		Label:     m.Label,
 		Replaces:  m.Replaces,
-		Timestamp: m.Timestamp,
 		Deleted:   m.Deleted,
 	}
 	if rhs := m.Value; rhs != nil {
@@ -72,9 +71,6 @@ func (this *Primitive) EqualVT(that *Primitive) bool {
 		return false
 	}
 	if this.Replaces != that.Replaces {
-		return false
-	}
-	if this.Timestamp != that.Timestamp {
 		return false
 	}
 	if string(this.Value) != string(that.Value) {
@@ -139,11 +135,6 @@ func (m *Primitive) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i = encodeVarint(dAtA, i, uint64(len(m.Value)))
 		i--
 		dAtA[i] = 0x42
-	}
-	if m.Timestamp != 0 {
-		i = encodeVarint(dAtA, i, uint64(m.Timestamp))
-		i--
-		dAtA[i] = 0x38
 	}
 	if m.Replaces != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.Replaces))
@@ -212,9 +203,6 @@ func (m *Primitive) SizeVT() (n int) {
 	}
 	if m.Replaces != 0 {
 		n += 1 + sov(uint64(m.Replaces))
-	}
-	if m.Timestamp != 0 {
-		n += 1 + sov(uint64(m.Timestamp))
 	}
 	l = len(m.Value)
 	if l > 0 {
@@ -372,25 +360,6 @@ func (m *Primitive) UnmarshalVT(dAtA []byte) error {
 				b := dAtA[iNdEx]
 				iNdEx++
 				m.Replaces |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			m.Timestamp = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflow
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Timestamp |= int64(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
