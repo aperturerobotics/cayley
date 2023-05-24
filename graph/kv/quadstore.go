@@ -152,7 +152,7 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 		if err := qs.initBloomFilter(ctx); err != nil {
 			return nil, err
 		}
-		if sz, err := qs.getSize(); err != nil {
+		if sz, err := qs.getSize(ctx); err != nil {
 			return nil, err
 		} else if sz == 0 {
 			qs.mapBloom = make(map[string]*boom.BloomFilter)
@@ -180,8 +180,8 @@ func (qs *QuadStore) getMetaInt(ctx context.Context, key string) (int64, error) 
 	return v, err
 }
 
-func (qs *QuadStore) getSize() (int64, error) {
-	sz, err := qs.getMetaInt(context.TODO(), "size")
+func (qs *QuadStore) getSize(ctx context.Context) (int64, error) {
+	sz, err := qs.getMetaInt(ctx, "size")
 	if err == ErrNoBucket {
 		return 0, nil
 	}
@@ -189,7 +189,8 @@ func (qs *QuadStore) getSize() (int64, error) {
 }
 
 func (qs *QuadStore) Size() int64 {
-	sz, _ := qs.getSize()
+	ctx := context.TODO()
+	sz, _ := qs.getSize(ctx)
 	return sz
 }
 

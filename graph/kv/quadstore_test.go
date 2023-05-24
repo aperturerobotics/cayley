@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	henc "encoding/hex"
 	"fmt"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,14 +59,24 @@ func be(v ...uint64) []byte {
 	return b
 }
 
+func b64Col(vals ...uint64) []byte {
+	var sb strings.Builder
+	for i, val := range vals {
+		if i != 0 {
+			_, _ = sb.WriteString(":")
+		}
+		var data [8]byte
+		binary.BigEndian.PutUint64(data[:], val)
+		var i big.Int
+		i.SetBytes(data[:])
+		s := i.Text(62)
+		_, _ = sb.WriteString(s)
+	}
+	return []byte(sb.String())
+}
+
 func ukey(n uint64) []byte {
-	const digits = 20 // max digits for a uint64 number
-	s := strconv.FormatUint(n, 10)
-
-	prefix := digits - len(s)
-	leadingZeros := strings.Repeat("0", prefix)
-
-	return []byte(leadingZeros + s)
+	return []byte(strconv.FormatUint(n, 10))
 }
 
 func le(v uint64) []byte {
@@ -142,7 +153,7 @@ func TestApplyDeltas(t *testing.T) {
 	defer qs.Close()
 
 	expect(Ops{
-		{opGet, key(bMeta, []byte("idx")), nil, hkv.ErrNotFound},
+		{opGet, hkv.Key{[]byte("i")}, nil, hkv.ErrNotFound},
 		// {opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 	})
 
@@ -175,10 +186,10 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
-		{opGet, key("ops", be(3, 2, 1)), nil, nil},
-		{opPut, key("ops", be(3, 2, 1)), hex("04"), nil},
-		{opGet, key("sp", be(1, 2)), nil, nil},
-		{opPut, key("sp", be(1, 2)), hex("04"), nil},
+		{opGet, key("ops", b64Col(3, 2, 1)), nil, nil},
+		{opPut, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
+		{opGet, key("sp", b64Col(1, 2)), nil, nil},
+		{opPut, key("sp", b64Col(1, 2)), hex("04"), nil},
 	})
 
 	err = qw.AddQuad(quad.MakeIRI("a", "b", "e", ""))
@@ -206,16 +217,16 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bLog, ukey(6)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(1), nil},
 		{opPut, key(bMeta, []byte("size")), le(2), nil},
-		{opGet, key("ops", be(5, 2, 1)), nil, nil},
-		{opPut, key("ops", be(5, 2, 1)), hex("06"), nil},
-		{opGet, key("sp", be(1, 2)), hex("04"), nil},
-		{opPut, key("sp", be(1, 2)), hex("0406"), nil},
+		{opGet, key("ops", b64Col(5, 2, 1)), nil, nil},
+		{opPut, key("ops", b64Col(5, 2, 1)), hex("06"), nil},
+		{opGet, key("sp", b64Col(1, 2)), hex("04"), nil},
+		{opPut, key("sp", b64Col(1, 2)), hex("0406"), nil},
 	})
 
 	err = qw.RemoveQuad(quad.MakeIRI("a", "b", "c", ""))
 	expect(Ops{
-		{opGet, key("sp", be(1, 2)), hex("0406"), nil},
-		{opGet, key("ops", be(3, 2, 1)), hex("04"), nil},
+		{opGet, key("sp", b64Col(1, 2)), hex("0406"), nil},
+		{opGet, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
 		{opGet, key(bLog, ukey(4)), vAuto, nil},
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(2), nil},

@@ -15,15 +15,16 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
@@ -44,7 +45,7 @@ var (
 	metaBucket = kv.Key{[]byte("m")}
 	logIndex   = kv.Key{[]byte("l")}
 
-	keyMetaIndexes = metaBucket.AppendBytes([]byte("idx"))
+	keyMetaIndexes = []byte("i")
 
 	// List of all buckets in the current version of the database.
 	buckets = []kv.Key{
@@ -63,8 +64,6 @@ var (
 		{Dirs: []quad.Direction{quad.Object, quad.Predicate, quad.Subject}},
 	}
 )
-
-var quadKeyEnc = binary.BigEndian
 
 type QuadIndex struct {
 	Dirs   []quad.Direction `json:"dirs" msgpack:"d"`
@@ -108,23 +107,23 @@ func (ind QuadIndex) Equal(ot QuadIndex) bool {
 }
 
 func (ind QuadIndex) Key(vals []uint64) kv.Key {
-	key := make([]byte, 8*len(vals))
-	n := 0
+	var buf bytes.Buffer
+	buf.Grow(12 * len(vals))
 	for i := range vals {
-		quadKeyEnc.PutUint64(key[n:], vals[i])
-		n += 8
+		if i != 0 {
+			_, _ = buf.WriteRune(rune(':'))
+		}
+		_, _ = buf.Write(uint64KeyBytes(vals[i]))
 	}
-	return ind.bucket().AppendBytes(key)
+	return ind.bucket().AppendBytes(buf.Bytes())
 }
 
 func (ind QuadIndex) KeyFor(p *proto.Primitive) kv.Key {
-	key := make([]byte, 8*len(ind.Dirs))
-	n := 0
-	for _, d := range ind.Dirs {
-		quadKeyEnc.PutUint64(key[n:], p.GetDirection(d))
-		n += 8
+	vals := make([]uint64, len(ind.Dirs))
+	for i, d := range ind.Dirs {
+		vals[i] = p.GetDirection(d)
 	}
-	return ind.bucket().AppendBytes(key)
+	return ind.Key(vals)
 }
 
 func (ind QuadIndex) bucket() kv.Key {
@@ -162,7 +161,7 @@ func (qs *QuadStore) writeIndexesMeta(ctx context.Context) error {
 		return err
 	}
 	return kv.Update(ctx, qs.db, func(tx kv.Tx) error {
-		return tx.Put(keyMetaIndexes, data)
+		return tx.Put(kv.Key{keyMetaIndexes}, data)
 	})
 }
 
@@ -174,7 +173,7 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 		return nil, err
 	}
 	defer tx.Close()
-	val, err := tx.Get(ctx, keyMetaIndexes)
+	val, err := tx.Get(ctx, kv.Key{keyMetaIndexes})
 	if err == kv.ErrNotFound {
 		return DefaultQuadIndexes, nil
 	} else if err != nil {
@@ -727,7 +726,7 @@ func (qs *QuadStore) markAsDead(tx kv.Tx, p *proto.Primitive) error {
 }
 
 func (qs *QuadStore) delLog(tx kv.Tx, id uint64) error {
-	return tx.Del(logIndex.Append(uint64KeyBytes(id)))
+	return tx.Del(logIndex.AppendBytes(uint64KeyBytesBase10(id)))
 }
 
 func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, links []*proto.Primitive) error {
@@ -1043,7 +1042,7 @@ func (qs *QuadStore) addToLog(tx kv.Tx, p *proto.Primitive) error {
 	if err != nil {
 		return err
 	}
-	if err := tx.Put(logIndex.Append(uint64KeyBytes(p.ID)), buf); err != nil {
+	if err := tx.Put(logIndex.AppendBytes(uint64KeyBytesBase10(p.ID)), buf); err != nil {
 		return err
 	}
 	return nil
@@ -1128,20 +1127,35 @@ func uint64toBytesAt(x uint64, bytes []byte) []byte {
 	return bytes[:n]
 }
 
-func uint64KeyBytes(n uint64) kv.Key {
-	const digits = 20 // max digits for a uint64 number
-	s := strconv.FormatUint(n, 10)
+func uint64KeyBytesBase10(n uint64) []byte {
+	return []byte(strconv.FormatUint(n, 10))
+}
 
-	prefix := digits - len(s)
-	leadingZeros := strings.Repeat("0", prefix)
+func uint64KeyBytes(n uint64) []byte {
+	var data [8]byte
+	binary.BigEndian.PutUint64(data[:], n)
 
-	return kv.Key{[]byte(leadingZeros + s)}
+	// base62 encoding
+	var i big.Int
+	i.SetBytes(data[:])
+	s := i.Text(62)
+
+	// if padding (lexographical sort) is needed:
+	/*
+		if padding {
+			const digits = 11 // max digits for a uint64 number in base62
+			prefix := digits - len(s)
+			s = strings.Repeat("-", prefix) + s
+		}
+	*/
+
+	return []byte(s)
 }
 
 func (qs *QuadStore) getPrimitivesFromLog(ctx context.Context, tx kv.Tx, keys []uint64) ([]*proto.Primitive, error) {
 	bkeys := make([]kv.Key, len(keys))
 	for i, k := range keys {
-		bkeys[i] = logIndex.Append(uint64KeyBytes(k))
+		bkeys[i] = logIndex.Append(kv.Key{uint64KeyBytesBase10(k)})
 	}
 	vals, err := tx.GetBatch(ctx, bkeys)
 	if err != nil {
@@ -1232,10 +1246,12 @@ func (qs *QuadStore) bloomAdd(p *proto.Primitive) {
 	qs.exists.Add(qs.exists.buf)
 }
 
+var quadExistsEnc = binary.LittleEndian
+
 func writePrimToBuf(p *proto.Primitive, buf []byte) {
-	quadKeyEnc.PutUint64(buf[0:8], p.Subject)
-	quadKeyEnc.PutUint64(buf[8:16], p.Predicate)
-	quadKeyEnc.PutUint64(buf[16:24], p.Object)
+	quadExistsEnc.PutUint64(buf[0:8], p.Subject)
+	quadExistsEnc.PutUint64(buf[8:16], p.Predicate)
+	quadExistsEnc.PutUint64(buf[16:24], p.Object)
 }
 
 type Int64Set []uint64
