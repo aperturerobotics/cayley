@@ -17,10 +17,8 @@ package kv
 import (
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/cayleygraph/cayley/graph"
@@ -92,6 +90,8 @@ type QuadStore struct {
 	indexes struct {
 		sync.RWMutex
 		all []QuadIndex
+		// set dirty=true if changing all
+		dirty bool
 		// indexes used to detect duplicate quads
 		exists []QuadIndex
 	}
@@ -119,9 +119,11 @@ func Init(ctx context.Context, kv kv.KV, opt graph.Options) error {
 	qs := newQuadStore(kv)
 	if qs.indexes.all == nil {
 		qs.indexes.all = DefaultQuadIndexes
-	}
-	if err := qs.writeIndexesMeta(ctx); err != nil {
-		return err
+	} else if !CompareQuadIndexes(qs.indexes.all, DefaultQuadIndexes) {
+		// only write if the value is different from DefaultQuadIndexes
+		if err := qs.writeIndexesMeta(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

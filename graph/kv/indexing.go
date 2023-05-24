@@ -34,6 +34,7 @@ import (
 	"github.com/cayleygraph/quad/pquads"
 	gproto "github.com/golang/protobuf/proto"
 	b58 "github.com/mr-tron/base58/base58"
+	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/hidal-go/hidalgo/kv"
 	boom "github.com/tylertreat/BoomFilters"
@@ -51,12 +52,6 @@ var (
 		logIndex,
 	}
 
-	// legacyQuadIndexes is a set of indexes used in Cayley < 0.7.6
-	legacyQuadIndexes = []QuadIndex{
-		{Dirs: []quad.Direction{quad.Subject}},
-		{Dirs: []quad.Direction{quad.Object}},
-	}
-
 	DefaultQuadIndexes = []QuadIndex{
 		// First index optimizes forward traversals. Getting all relations for a node should
 		// also be reasonably fast (prefix scan).
@@ -72,8 +67,44 @@ var (
 var quadKeyEnc = binary.BigEndian
 
 type QuadIndex struct {
-	Dirs   []quad.Direction `json:"dirs"`
-	Unique bool             `json:"unique"`
+	Dirs   []quad.Direction `json:"dirs" msgpack:"d"`
+	Unique bool             `json:"unique" msgpack:"u"`
+}
+
+// CompareQuadDirections compares two slices of quad directions for equality.
+func CompareQuadDirections(a, b []quad.Direction) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// CompareQuadIndexes compares two slices of quad indexes for equality.
+func CompareQuadIndexes(a, b []QuadIndex) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if !a[i].Equal(b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (ind QuadIndex) Equal(ot QuadIndex) bool {
+	if ind.Unique != ot.Unique {
+		return false
+	}
+	if !CompareQuadDirections(ind.Dirs, ot.Dirs) {
+		return false
+	}
+	return true
 }
 
 func (ind QuadIndex) Key(vals []uint64) kv.Key {
@@ -83,7 +114,6 @@ func (ind QuadIndex) Key(vals []uint64) kv.Key {
 		quadKeyEnc.PutUint64(key[n:], vals[i])
 		n += 8
 	}
-	// TODO(dennwc): split into parts?
 	return ind.bucket().AppendBytes(key)
 }
 
@@ -94,7 +124,6 @@ func (ind QuadIndex) KeyFor(p *proto.Primitive) kv.Key {
 		quadKeyEnc.PutUint64(key[n:], p.GetDirection(d))
 		n += 8
 	}
-	// TODO(dennwc): split into parts?
 	return ind.bucket().AppendBytes(key)
 }
 
@@ -128,8 +157,7 @@ func (qs *QuadStore) incSize(ctx context.Context, tx kv.Tx, size int64) error {
 // writeIndexesMeta writes metadata about current indexes to the KV database,
 // so we can read this information back later.
 func (qs *QuadStore) writeIndexesMeta(ctx context.Context) error {
-	// TODO(dennwc): change to protobuf later?
-	data, err := json.Marshal(qs.indexes.all)
+	data, err := msgpack.Marshal(qs.indexes.all)
 	if err != nil {
 		return err
 	}
@@ -148,7 +176,7 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 	defer tx.Close()
 	val, err := tx.Get(ctx, keyMetaIndexes)
 	if err == kv.ErrNotFound {
-		return legacyQuadIndexes, nil
+		return DefaultQuadIndexes, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -156,7 +184,7 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 	if err := json.Unmarshal(val, &out); err != nil {
 		return nil, fmt.Errorf("cannot decode indexes: %v", err)
 	} else if len(out) == 0 {
-		return legacyQuadIndexes, nil
+		return DefaultQuadIndexes, nil
 	}
 	return out, nil
 }

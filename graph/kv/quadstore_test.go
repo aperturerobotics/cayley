@@ -81,8 +81,6 @@ const (
 
 var (
 	vAuto = []byte("auto")
-
-	kIndexes = []byte("idx")
 )
 
 type Ops []kvOp
@@ -139,16 +137,12 @@ func TestApplyDeltas(t *testing.T) {
 	err := kv.Init(ctx, hook, nil)
 	require.NoError(t, err)
 
-	expect(Ops{
-		{opPut, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
-	})
-
 	qs, err := kv.New(ctx, hook, nil)
 	require.NoError(t, err)
 	defer qs.Close()
 
 	expect(Ops{
-		{opGet, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
+		{opGet, key(bMeta, []byte("idx")), nil, hkv.ErrNotFound},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 	})
 
