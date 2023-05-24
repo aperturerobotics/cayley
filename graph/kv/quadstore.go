@@ -129,16 +129,22 @@ func Init(ctx context.Context, kv kv.KV, opt graph.Options) error {
 }
 
 const (
-	OptNoBloom = "no_bloom"
+	OptAssumeDefaultIdx = "assume_default_idx"
+	OptNoBloom          = "no_bloom"
 )
 
 func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
 	qs := newQuadStore(kv)
-	list, err := qs.readIndexesMeta(ctx)
-	if err != nil {
-		return nil, err
+	assumeDefaultIdx, _ := opt.BoolKey(OptAssumeDefaultIdx, false)
+	if !assumeDefaultIdx {
+		list, err := qs.readIndexesMeta(ctx)
+		if err != nil {
+			return nil, err
+		}
+		qs.indexes.all = list
+	} else {
+		qs.indexes.all = DefaultQuadIndexes
 	}
-	qs.indexes.all = list
 	qs.valueLRU = lru.New(2000)
 	qs.exists.disabled, _ = opt.BoolKey(OptNoBloom, false)
 	if err := qs.initBloomFilter(ctx); err != nil {
