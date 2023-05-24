@@ -143,7 +143,7 @@ func TestApplyDeltas(t *testing.T) {
 
 	expect(Ops{
 		{opGet, key(bMeta, []byte("idx")), nil, hkv.ErrNotFound},
-		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
+		// {opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 	})
 
 	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
@@ -153,6 +153,10 @@ func TestApplyDeltas(t *testing.T) {
 	require.NoError(t, err)
 
 	expect(Ops{
+		{opGet, key(irib("a"), irih("a")), nil, nil},
+		{opGet, key(irib("b"), irih("b")), nil, nil},
+		{opGet, key(irib("c"), irih("c")), nil, nil},
+
 		{opGet, key(bMeta, []byte("horizon")), nil, hkv.ErrNotFound},
 		{opPut, key(bMeta, []byte("horizon")), le(3), nil},
 
@@ -171,7 +175,9 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
+		{opGet, key("ops", be(3, 2, 1)), nil, nil},
 		{opPut, key("ops", be(3, 2, 1)), hex("04"), nil},
+		{opGet, key("sp", be(1, 2)), nil, nil},
 		{opPut, key("sp", be(1, 2)), hex("04"), nil},
 	})
 
@@ -179,6 +185,8 @@ func TestApplyDeltas(t *testing.T) {
 	require.NoError(t, err)
 
 	expect(Ops{
+		{opGet, key(irib("e"), irih("e")), nil, nil},
+
 		// served from IRI cache
 		//{opGet, irib("a"), irih("a"), vAuto, nil},
 		//{opGet, irib("b"), irih("b"), vAuto, nil},
@@ -198,6 +206,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bLog, ukey(6)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(1), nil},
 		{opPut, key(bMeta, []byte("size")), le(2), nil},
+		{opGet, key("ops", be(5, 2, 1)), nil, nil},
 		{opPut, key("ops", be(5, 2, 1)), hex("06"), nil},
 		{opGet, key("sp", be(1, 2)), hex("04"), nil},
 		{opPut, key("sp", be(1, 2)), hex("0406"), nil},

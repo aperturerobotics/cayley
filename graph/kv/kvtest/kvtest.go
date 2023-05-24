@@ -43,8 +43,8 @@ func newQuadStore(t testing.TB, gen DatabaseFunc, bloom bool) (graph.QuadStore, 
 	if opt == nil {
 		opt = make(graph.Options)
 	}
-	if !bloom {
-		opt[kv.OptNoBloom] = true
+	if bloom {
+		opt[kv.OptBloom] = true
 	}
 	ctx := context.Background()
 	err := kv.Init(ctx, db, opt)
