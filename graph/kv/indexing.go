@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
@@ -31,16 +33,17 @@ import (
 	"github.com/cayleygraph/quad"
 	"github.com/cayleygraph/quad/pquads"
 	gproto "github.com/golang/protobuf/proto"
+	b58 "github.com/mr-tron/base58/base58"
 
 	"github.com/hidal-go/hidalgo/kv"
 	boom "github.com/tylertreat/BoomFilters"
 )
 
 var (
-	metaBucket = kv.Key{[]byte("meta")}
-	logIndex   = kv.Key{[]byte("log")}
+	metaBucket = kv.Key{[]byte("m")}
+	logIndex   = kv.Key{[]byte("l")}
 
-	keyMetaIndexes = metaBucket.AppendBytes([]byte("indexes"))
+	keyMetaIndexes = metaBucket.AppendBytes([]byte("idx"))
 
 	// List of all buckets in the current version of the database.
 	buckets = []kv.Key{
@@ -83,6 +86,7 @@ func (ind QuadIndex) Key(vals []uint64) kv.Key {
 	// TODO(dennwc): split into parts?
 	return ind.bucket().AppendBytes(key)
 }
+
 func (ind QuadIndex) KeyFor(p *proto.Primitive) kv.Key {
 	key := make([]byte, 8*len(ind.Dirs))
 	n := 0
@@ -93,22 +97,27 @@ func (ind QuadIndex) KeyFor(p *proto.Primitive) kv.Key {
 	// TODO(dennwc): split into parts?
 	return ind.bucket().AppendBytes(key)
 }
+
 func (ind QuadIndex) bucket() kv.Key {
 	buf := make([]byte, len(ind.Dirs))
 	for i, d := range ind.Dirs {
-		buf[i] = d.Prefix()
+		buf[i] = d.Prefix() // a s p c o
+		// prevent nil character
+		if buf[i] == '\x00' {
+			buf[i] = '0'
+		}
 	}
 	key := make(kv.Key, 1, 2)
 	key[0] = buf
 	return key
 }
 
-func bucketForVal(i, j byte) kv.Key {
-	return kv.Key{[]byte{'v', i, j}}
+func bucketForVal() kv.Key {
+	return kv.Key{[]byte{'v'}}
 }
 
-func bucketForValRefs(i, j byte) kv.Key {
-	return kv.Key{[]byte{'n', i, j}}
+func bucketForValRefs() kv.Key {
+	return kv.Key{[]byte{'n'}}
 }
 
 func (qs *QuadStore) incSize(ctx context.Context, tx kv.Tx, size int64) error {
@@ -170,7 +179,7 @@ func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []gr
 			continue
 		}
 		inds = append(inds, i)
-		keys = append(keys, bucketKeyForHash(d.Hash))
+		keys = append(keys, bucketKeyForHash(d.Hash[:]))
 	}
 	if len(keys) == 0 {
 		return nil
@@ -353,7 +362,7 @@ func (qs *QuadStore) decNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 	}
 	for _, i := range del {
 		d := upds[i]
-		key := bucketForVal(d.Hash[0], d.Hash[1]).AppendBytes(d.Hash[:])
+		key := bucketKeyForHash(d.Hash[:])
 		if err = tx.Del(key); err != nil {
 			return err
 		}
@@ -457,7 +466,12 @@ func (w *quadWriter) Close() error {
 	return err
 }
 
-func (qs *QuadStore) applyAddDeltas(tx kv.Tx, in []graph.Delta, deltas *graphlog.Deltas, ignoreOpts graph.IgnoreOpts) (map[refs.ValueHash]resolvedNode, error) {
+func (qs *QuadStore) applyAddDeltas(
+	tx kv.Tx,
+	in []graph.Delta,
+	deltas *graphlog.Deltas,
+	ignoreOpts graph.IgnoreOpts,
+) (map[refs.ValueHash]resolvedNode, error) {
 	ctx := context.TODO()
 
 	// first add all new nodes
@@ -635,7 +649,8 @@ func (qs *QuadStore) indexNode(tx kv.Tx, p *proto.Primitive, val quad.Value) err
 		}
 	}
 	hash := quad.HashOf(val)
-	err = tx.Put(bucketForVal(hash[0], hash[1]).AppendBytes(hash), uint64toBytes(p.ID))
+	key := bucketKeyForHash(hash)
+	err = tx.Put(key, uint64toBytes(p.ID))
 	if err != nil {
 		return err
 	}
@@ -656,6 +671,7 @@ func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, links []*proto.Pr
 	}
 	return qs.incSize(ctx, tx, int64(len(links)))
 }
+
 func (qs *QuadStore) indexLink(tx kv.Tx, p *proto.Primitive) error {
 	var err error
 	qs.indexes.RLock()
@@ -1025,15 +1041,17 @@ func (qs *QuadStore) resolveQuadValue(ctx context.Context, tx kv.Tx, v quad.Valu
 
 func bucketKeyForVal(v quad.Value) kv.Key {
 	hash := refs.HashOf(v)
-	return bucketKeyForHash(hash)
+	return bucketKeyForHash(hash[:])
 }
 
-func bucketKeyForHash(h refs.ValueHash) kv.Key {
-	return bucketForVal(h[0], h[1]).AppendBytes(h[:])
+func bucketKeyForHash(h []byte) kv.Key {
+	hashB58 := b58.Encode(h)
+	return bucketForVal().AppendBytes([]byte(hashB58))
 }
 
 func bucketKeyForHashRefs(h refs.ValueHash) kv.Key {
-	return bucketForValRefs(h[0], h[1]).AppendBytes(h[:])
+	hashB58 := b58.Encode(h[:])
+	return bucketForValRefs().AppendBytes([]byte(hashB58))
 }
 
 func (qs *QuadStore) resolveQuadValues(ctx context.Context, tx kv.Tx, vals []quad.Value) ([]uint64, error) {
@@ -1082,10 +1100,14 @@ func uint64toBytesAt(x uint64, bytes []byte) []byte {
 	return bytes[:n]
 }
 
-func uint64KeyBytes(x uint64) kv.Key {
-	k := make([]byte, 8)
-	quadKeyEnc.PutUint64(k, x)
-	return kv.Key{k}
+func uint64KeyBytes(n uint64) kv.Key {
+	const digits = 20 // max digits for a uint64 number
+	s := strconv.FormatUint(n, 10)
+
+	prefix := digits - len(s)
+	leadingZeros := strings.Repeat("0", prefix)
+
+	return kv.Key{[]byte(leadingZeros + s)}
 }
 
 func (qs *QuadStore) getPrimitivesFromLog(ctx context.Context, tx kv.Tx, keys []uint64) ([]*proto.Primitive, error) {

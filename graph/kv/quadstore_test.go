@@ -7,6 +7,8 @@ import (
 	henc "encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/cayley/writer"
 	"github.com/cayleygraph/quad"
+	b58 "github.com/mr-tron/base58/base58"
 )
 
 func hex(s string) []byte {
@@ -31,17 +34,16 @@ func hex(s string) []byte {
 
 func irih(s string) []byte {
 	h := refs.HashOf(quad.IRI(s))
-	return h[:]
+	hashB58 := b58.Encode(h[:])
+	return []byte(hashB58)
 }
 
 func irib(s string) string {
-	h := refs.HashOf(quad.IRI(s))
-	return string([]byte{'v', h[0], h[1]})
+	return string([]byte{'v'})
 }
 
 func iric(s string) string {
-	h := refs.HashOf(quad.IRI(s))
-	return string([]byte{'n', h[0], h[1]})
+	return string([]byte{'n'})
 }
 
 func key(b string, k []byte) hkv.Key {
@@ -55,6 +57,17 @@ func be(v ...uint64) []byte {
 	}
 	return b
 }
+
+func ukey(n uint64) []byte {
+	const digits = 20 // max digits for a uint64 number
+	s := strconv.FormatUint(n, 10)
+
+	prefix := digits - len(s)
+	leadingZeros := strings.Repeat("0", prefix)
+
+	return []byte(leadingZeros + s)
+}
+
 func le(v uint64) []byte {
 	var b [8]byte
 	binary.LittleEndian.PutUint64(b[:], uint64(v))
@@ -62,14 +75,14 @@ func le(v uint64) []byte {
 }
 
 const (
-	bMeta = "meta"
-	bLog  = "log"
+	bMeta = "m"
+	bLog  = "l"
 )
 
 var (
 	vAuto = []byte("auto")
 
-	kIndexes = []byte("indexes")
+	kIndexes = []byte("idx")
 )
 
 type Ops []kvOp
@@ -150,18 +163,18 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bMeta, []byte("horizon")), le(3), nil},
 
 		{opPut, key(irib("a"), irih("a")), vAuto, nil},
-		{opPut, key(bLog, be(1)), vAuto, nil},
+		{opPut, key(bLog, ukey(1)), vAuto, nil},
 		{opPut, key(irib("b"), irih("b")), vAuto, nil},
-		{opPut, key(bLog, be(2)), vAuto, nil},
+		{opPut, key(bLog, ukey(2)), vAuto, nil},
 		{opPut, key(irib("c"), irih("c")), vAuto, nil},
-		{opPut, key(bLog, be(3)), vAuto, nil},
+		{opPut, key(bLog, ukey(3)), vAuto, nil},
 
 		{opPut, key(iric("a"), irih("a")), hex("01"), nil},
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opPut, key(iric("c"), irih("c")), hex("01"), nil},
 		{opGet, key(bMeta, []byte("horizon")), le(3), nil},
 		{opPut, key(bMeta, []byte("horizon")), le(4), nil},
-		{opPut, key(bLog, be(4)), vAuto, nil},
+		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
 		{opPut, key("ops", be(3, 2, 1)), hex("04"), nil},
@@ -179,7 +192,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(bMeta, []byte("horizon")), le(5), nil},
 
 		{opPut, key(irib("e"), irih("e")), vAuto, nil},
-		{opPut, key(bLog, be(5)), vAuto, nil},
+		{opPut, key(bLog, ukey(5)), vAuto, nil},
 
 		{opGet, key(iric("a"), irih("a")), hex("01"), nil},
 		{opGet, key(iric("b"), irih("b")), hex("01"), nil},
@@ -188,7 +201,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("e"), irih("e")), hex("01"), nil},
 		{opGet, key(bMeta, []byte("horizon")), le(5), nil},
 		{opPut, key(bMeta, []byte("horizon")), le(6), nil},
-		{opPut, key(bLog, be(6)), vAuto, nil},
+		{opPut, key(bLog, ukey(6)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(1), nil},
 		{opPut, key(bMeta, []byte("size")), le(2), nil},
 		{opPut, key("ops", be(5, 2, 1)), hex("06"), nil},
@@ -200,8 +213,8 @@ func TestApplyDeltas(t *testing.T) {
 	expect(Ops{
 		{opGet, key("sp", be(1, 2)), hex("0406"), nil},
 		{opGet, key("ops", be(3, 2, 1)), hex("04"), nil},
-		{opGet, key(bLog, be(4)), vAuto, nil},
-		{opPut, key(bLog, be(4)), vAuto, nil},
+		{opGet, key(bLog, ukey(4)), vAuto, nil},
+		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(2), nil},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
 		{opGet, key(iric("a"), irih("a")), hex("02"), nil},
@@ -211,7 +224,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opDel, key(iric("c"), irih("c")), nil, nil},
 		{opDel, key(irib("c"), irih("c")), nil, nil},
-		{opDel, key(bLog, be(3)), nil, nil},
+		{opDel, key(bLog, ukey(3)), nil, nil},
 	})
 	require.NoError(t, err)
 }
