@@ -81,10 +81,6 @@ func Register(name string, r Registration) {
 	})
 }
 
-const (
-	envKVDefaultIndexes = "CAYLEY_KV_INDEXES"
-)
-
 var (
 	_ refs.BatchNamer = (*QuadStore)(nil)
 	_ shape.Optimizer = (*QuadStore)(nil)
@@ -121,12 +117,6 @@ func newQuadStore(kv kv.KV) *QuadStore {
 
 func Init(ctx context.Context, kv kv.KV, opt graph.Options) error {
 	qs := newQuadStore(kv)
-	if data := os.Getenv(envKVDefaultIndexes); data != "" {
-		qs.indexes.all = nil
-		if err := json.Unmarshal([]byte(data), &qs.indexes); err != nil {
-			return err
-		}
-	}
 	if qs.indexes.all == nil {
 		qs.indexes.all = DefaultQuadIndexes
 	}
