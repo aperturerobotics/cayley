@@ -130,10 +130,6 @@ func TestApplyDeltas(t *testing.T) {
 
 	expect(Ops{
 		{opGet, key(bMeta, kVers), nil, hkv.ErrNotFound},
-		{opPut, key(bMeta, []byte{}), nil, nil},
-		{opPut, key(bLog, []byte{}), nil, nil},
-		{opPut, key("sp", []byte{}), nil, nil},
-		{opPut, key("ops", []byte{}), nil, nil},
 		{opPut, key(bMeta, kVers), vVers, nil},
 		{opPut, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
 	})

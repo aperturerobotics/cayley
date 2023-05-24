@@ -111,37 +111,6 @@ func bucketForValRefs(i, j byte) kv.Key {
 	return kv.Key{[]byte{'n', i, j}}
 }
 
-func (qs *QuadStore) createBuckets(ctx context.Context, upfront bool) error {
-	err := kv.Update(ctx, qs.db, func(tx kv.Tx) error {
-		for _, index := range buckets {
-			_ = kv.CreateBucket(ctx, tx, index)
-		}
-		for _, ind := range qs.indexes.all {
-			_ = kv.CreateBucket(ctx, tx, ind.bucket())
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if !upfront {
-		return nil
-	}
-	for i := 0; i < 256; i++ {
-		err := kv.Update(ctx, qs.db, func(tx kv.Tx) error {
-			for j := 0; j < 256; j++ {
-				_ = kv.CreateBucket(ctx, tx, bucketForVal(byte(i), byte(j)))
-				_ = kv.CreateBucket(ctx, tx, bucketForValRefs(byte(i), byte(j)))
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (qs *QuadStore) incSize(ctx context.Context, tx kv.Tx, size int64) error {
 	_, err := qs.incMetaInt(ctx, tx, "size", size)
 	return err
