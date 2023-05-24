@@ -67,9 +67,6 @@ const (
 )
 
 var (
-	kVers = []byte("version")
-	vVers = le(2)
-
 	vAuto = []byte("auto")
 
 	kIndexes = []byte("indexes")
@@ -129,8 +126,6 @@ func TestApplyDeltas(t *testing.T) {
 	require.NoError(t, err)
 
 	expect(Ops{
-		{opGet, key(bMeta, kVers), nil, hkv.ErrNotFound},
-		{opPut, key(bMeta, kVers), vVers, nil},
 		{opPut, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
 	})
 
@@ -139,7 +134,6 @@ func TestApplyDeltas(t *testing.T) {
 	defer qs.Close()
 
 	expect(Ops{
-		{opGet, key(bMeta, kVers), vVers, nil},
 		{opGet, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 	})

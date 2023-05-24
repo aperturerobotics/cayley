@@ -82,7 +82,6 @@ func Register(name string, r Registration) {
 }
 
 const (
-	latestDataVersion   = 2
 	envKVDefaultIndexes = "CAYLEY_KV_INDEXES"
 )
 
@@ -132,14 +131,6 @@ func Init(kv kv.KV, opt graph.Options) error {
 	if qs.indexes.all == nil {
 		qs.indexes.all = DefaultQuadIndexes
 	}
-	if _, err := qs.getMetadata(ctx); err == nil {
-		return graph.ErrDatabaseExists
-	} else if err != ErrNoBucket {
-		return err
-	}
-	if err := setVersion(ctx, qs.db, latestDataVersion); err != nil {
-		return err
-	}
 	if err := qs.writeIndexesMeta(ctx); err != nil {
 		return err
 	}
@@ -153,13 +144,6 @@ const (
 func New(kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
 	ctx := context.TODO()
 	qs := newQuadStore(kv)
-	if vers, err := qs.getMetadata(ctx); err == ErrNoBucket {
-		return nil, graph.ErrNotInitialized
-	} else if err != nil {
-		return nil, err
-	} else if vers != latestDataVersion {
-		return nil, errors.New("kv: data version is out of date. Run cayleyupgrade for your config to update the data")
-	}
 	list, err := qs.readIndexesMeta(ctx)
 	if err != nil {
 		return nil, err
@@ -179,17 +163,6 @@ func New(kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
 		}
 	}
 	return qs, nil
-}
-
-func setVersion(ctx context.Context, db kv.KV, version int64) error {
-	return kv.Update(ctx, db, func(tx kv.Tx) error {
-		var buf [8]byte
-		binary.LittleEndian.PutUint64(buf[:], uint64(version))
-		if err := tx.Put(metaBucket.AppendBytes([]byte("version")), buf[:]); err != nil {
-			return fmt.Errorf("couldn't write version: %v", err)
-		}
-		return nil
-	})
 }
 
 func (qs *QuadStore) getMetaInt(ctx context.Context, key string) (int64, error) {
@@ -256,24 +229,6 @@ func (qs *QuadStore) Stats(ctx context.Context, exact bool) (graph.Stats, error)
 
 func (qs *QuadStore) Close() error {
 	return qs.db.Close()
-}
-
-func (qs *QuadStore) getMetadata(ctx context.Context) (int64, error) {
-	var vers int64
-	err := kv.View(qs.db, func(tx kv.Tx) error {
-		val, err := tx.Get(ctx, metaBucket.AppendBytes([]byte("version")))
-		if err == kv.ErrNotFound {
-			return ErrNoBucket
-		} else if err != nil {
-			return err
-		}
-		vers, err = asInt64(val, 0)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	return vers, err
 }
 
 func asInt64(b []byte, empty int64) (int64, error) {
