@@ -100,4 +100,4 @@ fix: $(GOLANGCI_LINT)
 
 .PHONY: test
 test:
-	go test -v ./...
+	go test -v ./... -timeout=10m
