@@ -57,7 +57,8 @@ func makeTestStore(t testing.TB, fnc testutil.DatabaseFunc, quads ...quad.Quad) 
 	if fnc != nil {
 		qs, opts, closer = fnc(t)
 	} else {
-		qs, _ = graph.NewQuadStore("memstore", "", nil)
+		ctx := context.Background()
+		qs, _ = graph.NewQuadStore(ctx, "memstore", "", nil)
 	}
 	_ = testutil.MakeWriter(t, qs, opts, quads...)
 	return qs, closer

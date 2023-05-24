@@ -21,11 +21,11 @@ import (
 
 func registerQuadStore(name, typ string) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{
-		NewFunc: func(addr string, options graph.Options) (graph.QuadStore, error) {
+		NewFunc: func(ctx context.Context, addr string, options graph.Options) (graph.QuadStore, error) {
 			return New(typ, addr, options)
 		},
 		UpgradeFunc: nil,
-		InitFunc: func(addr string, options graph.Options) error {
+		InitFunc: func(ctx context.Context, addr string, options graph.Options) error {
 			return Init(typ, addr, options)
 		},
 		IsPersistent: true,

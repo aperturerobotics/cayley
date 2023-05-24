@@ -23,13 +23,14 @@ func main() {
 	defer os.RemoveAll(tmpdir) // clean up
 
 	// Initialize the database
-	err = graph.InitQuadStore("bolt", tmpdir, nil)
+	ctx := context.Background()
+	err = graph.InitQuadStore(ctx, "bolt", tmpdir, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Open and use the database
-	store, err := cayley.NewGraph("bolt", tmpdir, nil)
+	store, err := cayley.NewGraph(ctx, "bolt", tmpdir, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -42,7 +43,6 @@ func main() {
 	// This is more advanced example of the query.
 	// Simpler equivalent can be found in hello_world example.
 
-	ctx := context.TODO()
 	// Now we get an iterator for the path and optimize it.
 	// The second return is if it was optimized, but we don't care for now.
 	its, _ := p.BuildIterator(ctx).Optimize(ctx)

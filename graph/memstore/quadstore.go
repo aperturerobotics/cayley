@@ -30,7 +30,7 @@ const QuadStoreType = "memstore"
 
 func init() {
 	graph.RegisterQuadStore(QuadStoreType, graph.QuadStoreRegistration{
-		NewFunc: func(string, graph.Options) (graph.QuadStore, error) {
+		NewFunc: func(context.Context, string, graph.Options) (graph.QuadStore, error) {
 			return newQuadStore(), nil
 		},
 		UpgradeFunc:  nil,

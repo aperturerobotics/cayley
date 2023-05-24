@@ -160,10 +160,10 @@ var testQueries = []struct {
 }
 
 func TestSexp(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	for _, test := range testQueries {
 		t.Run(test.message, func(t *testing.T) {
-			qs, _ := graph.NewQuadStore("memstore", "", nil)
+			qs, _ := graph.NewQuadStore(ctx, "memstore", "", nil)
 			_ = testutil.MakeWriter(t, qs, nil, test.add...)
 
 			s, _ := BuildShape(ctx, test.query)

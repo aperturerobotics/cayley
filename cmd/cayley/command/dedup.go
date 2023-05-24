@@ -34,7 +34,7 @@ func NewDedupCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			printBackendInfo()
-			h, err := openDatabase()
+			h, err := openDatabase(cmd.Context())
 			if err != nil {
 				return err
 			}

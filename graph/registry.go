@@ -15,6 +15,7 @@
 package graph
 
 import (
+	"context"
 	"fmt"
 	"sort"
 )
@@ -27,9 +28,9 @@ var (
 
 var storeRegistry = make(map[string]QuadStoreRegistration)
 
-type NewStoreFunc func(string, Options) (QuadStore, error)
-type InitStoreFunc func(string, Options) error
-type UpgradeStoreFunc func(string, Options) error
+type NewStoreFunc func(context.Context, string, Options) (QuadStore, error)
+type InitStoreFunc func(context.Context, string, Options) error
+type UpgradeStoreFunc func(context.Context, string, Options) error
 
 type QuadStoreRegistration struct {
 	NewFunc      NewStoreFunc
@@ -50,27 +51,27 @@ func RegisterQuadStore(name string, register QuadStoreRegistration) {
 	storeRegistry[name] = register
 }
 
-func NewQuadStore(name string, dbpath string, opts Options) (QuadStore, error) {
+func NewQuadStore(ctx context.Context, name string, dbpath string, opts Options) (QuadStore, error) {
 	r, registered := storeRegistry[name]
 	if !registered {
 		return nil, ErrQuadStoreNotRegistred
 	} else if dbpath != "" && !r.IsPersistent {
 		return nil, ErrQuadStoreNotPersistent
 	}
-	return r.NewFunc(dbpath, opts)
+	return r.NewFunc(ctx, dbpath, opts)
 }
 
-func InitQuadStore(name string, dbpath string, opts Options) error {
+func InitQuadStore(ctx context.Context, name string, dbpath string, opts Options) error {
 	r, registered := storeRegistry[name]
 	if !registered {
 		return ErrQuadStoreNotRegistred
 	} else if r.InitFunc == nil {
 		return ErrOperationNotSupported
 	}
-	return r.InitFunc(dbpath, opts)
+	return r.InitFunc(ctx, dbpath, opts)
 }
 
-func UpgradeQuadStore(name string, dbpath string, opts Options) error {
+func UpgradeQuadStore(ctx context.Context, name string, dbpath string, opts Options) error {
 	r, registered := storeRegistry[name]
 	if !registered {
 		return ErrQuadStoreNotRegistred
@@ -78,7 +79,7 @@ func UpgradeQuadStore(name string, dbpath string, opts Options) error {
 		// return ErrOperationNotSupported
 		return nil
 	}
-	return r.UpgradeFunc(dbpath, opts)
+	return r.UpgradeFunc(ctx, dbpath, opts)
 }
 
 func IsRegistered(name string) bool {

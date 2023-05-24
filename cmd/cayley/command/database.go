@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -74,7 +75,7 @@ func NewInitDatabaseCmd() *cobra.Command {
 				return ErrNotPersistent
 			}
 			// TODO: maybe check read-only flag in config before that?
-			if err := initDatabase(); err != nil {
+			if err := initDatabase(cmd.Context()); err != nil {
 				return err
 			}
 			return nil
@@ -101,11 +102,11 @@ func NewLoadDatabaseCmd() *cobra.Command {
 			if init, err := cmd.Flags().GetBool("init"); err != nil {
 				return err
 			} else if init {
-				if err = initDatabase(); err != nil {
+				if err = initDatabase(cmd.Context()); err != nil {
 					return err
 				}
 			}
-			h, err := openDatabase()
+			h, err := openDatabase(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -151,7 +152,7 @@ func NewDumpDatabaseCmd() *cobra.Command {
 			if dump == "" {
 				dump = "-"
 			}
-			h, err := openDatabase()
+			h, err := openDatabase(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -178,7 +179,7 @@ func NewUpgradeCmd() *cobra.Command {
 			addr := viper.GetString(KeyAddress)
 			opts := graph.Options(viper.GetStringMap(KeyOptions))
 			clog.Infof("upgrading database...")
-			return graph.UpgradeQuadStore(name, addr, opts)
+			return graph.UpgradeQuadStore(cmd.Context(), name, addr, opts)
 		},
 	}
 	return cmd
@@ -193,18 +194,18 @@ func printBackendInfo() {
 	clog.Infof("using backend %q%s", name, path)
 }
 
-func initDatabase() error {
+func initDatabase(ctx context.Context) error {
 	name := viper.GetString(KeyBackend)
 	path := viper.GetString(KeyAddress)
 	opts := viper.GetStringMap(KeyOptions)
-	return graph.InitQuadStore(name, path, graph.Options(opts))
+	return graph.InitQuadStore(ctx, name, path, graph.Options(opts))
 }
 
-func openDatabase() (*graph.Handle, error) {
+func openDatabase(ctx context.Context) (*graph.Handle, error) {
 	name := viper.GetString(KeyBackend)
 	path := viper.GetString(KeyAddress)
 	opts := graph.Options(viper.GetStringMap(KeyOptions))
-	qs, err := graph.NewQuadStore(name, path, opts)
+	qs, err := graph.NewQuadStore(ctx, name, path, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -219,18 +220,18 @@ func openForQueries(cmd *cobra.Command) (*graph.Handle, error) {
 	if init, err := cmd.Flags().GetBool("init"); err != nil {
 		return nil, err
 	} else if init {
-		if err = initDatabase(); err == graph.ErrDatabaseExists {
+		if err = initDatabase(cmd.Context()); err == graph.ErrDatabaseExists {
 			clog.Infof("database already initialized, skipping init")
 		} else if err != nil {
 			return nil, err
 		}
 	}
 	var load string
-	h, err := openDatabase()
+	h, err := openDatabase(cmd.Context())
 	if err == graph.ErrQuadStoreNotPersistent {
 		load = viper.GetString(KeyAddress)
 		viper.Set(KeyAddress, "")
-		h, err = openDatabase()
+		h, err = openDatabase(cmd.Context())
 	}
 	if err == graph.ErrQuadStoreNotPersistent {
 		return nil, fmt.Errorf("%v; did you mean -i flag?", err)

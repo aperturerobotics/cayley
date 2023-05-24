@@ -50,7 +50,7 @@ type NewFunc func(string, graph.Options) (kv.KV, error)
 
 func Register(name string, r Registration) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{
-		InitFunc: func(addr string, opt graph.Options) error {
+		InitFunc: func(ctx context.Context, addr string, opt graph.Options) error {
 			if !r.IsPersistent {
 				return nil
 			}
@@ -59,23 +59,23 @@ func Register(name string, r Registration) {
 				return err
 			}
 			defer kv.Close()
-			if err = Init(kv, opt); err != nil {
+			if err = Init(ctx, kv, opt); err != nil {
 				return err
 			}
 			return kv.Close()
 		},
-		NewFunc: func(addr string, opt graph.Options) (graph.QuadStore, error) {
+		NewFunc: func(ctx context.Context, addr string, opt graph.Options) (graph.QuadStore, error) {
 			kv, err := r.NewFunc(addr, opt)
 			if err != nil {
 				return nil, err
 			}
 			if !r.IsPersistent {
-				if err = Init(kv, opt); err != nil {
+				if err = Init(ctx, kv, opt); err != nil {
 					kv.Close()
 					return nil, err
 				}
 			}
-			return New(kv, opt)
+			return New(ctx, kv, opt)
 		},
 		IsPersistent: r.IsPersistent,
 	})
@@ -119,8 +119,7 @@ func newQuadStore(kv kv.KV) *QuadStore {
 	return &QuadStore{db: kv}
 }
 
-func Init(kv kv.KV, opt graph.Options) error {
-	ctx := context.TODO()
+func Init(ctx context.Context, kv kv.KV, opt graph.Options) error {
 	qs := newQuadStore(kv)
 	if data := os.Getenv(envKVDefaultIndexes); data != "" {
 		qs.indexes.all = nil
@@ -141,8 +140,7 @@ const (
 	OptNoBloom = "no_bloom"
 )
 
-func New(kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
-	ctx := context.TODO()
+func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
 	qs := newQuadStore(kv)
 	list, err := qs.readIndexesMeta(ctx)
 	if err != nil {

@@ -61,7 +61,7 @@ type NewFunc func(string, graph.Options) (nosql.Database, error)
 
 func Register(name string, r Registration) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{
-		InitFunc: func(addr string, opt graph.Options) error {
+		InitFunc: func(ctx context.Context, addr string, opt graph.Options) error {
 			if !r.IsPersistent {
 				return nil
 			}
@@ -75,7 +75,7 @@ func Register(name string, r Registration) {
 			}
 			return db.Close()
 		},
-		NewFunc: func(addr string, opt graph.Options) (graph.QuadStore, error) {
+		NewFunc: func(ctx context.Context, addr string, opt graph.Options) (graph.QuadStore, error) {
 			db, err := r.NewFunc(addr, opt)
 			if err != nil {
 				return nil, err

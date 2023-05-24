@@ -1,6 +1,8 @@
 package cayley
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
 	_ "github.com/cayleygraph/cayley/graph/memstore"
@@ -41,8 +43,8 @@ func Quad(subject, predicate, object, label interface{}) quad.Quad {
 	return quad.Make(subject, predicate, object, label)
 }
 
-func NewGraph(name, dbpath string, opts graph.Options) (*Handle, error) {
-	qs, err := graph.NewQuadStore(name, dbpath, opts)
+func NewGraph(ctx context.Context, name, dbpath string, opts graph.Options) (*Handle, error) {
+	qs, err := graph.NewQuadStore(ctx, name, dbpath, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -53,6 +55,6 @@ func NewGraph(name, dbpath string, opts graph.Options) (*Handle, error) {
 	return &Handle{qs, qw}, nil
 }
 
-func NewMemoryGraph() (*Handle, error) {
-	return NewGraph("memstore", "", nil)
+func NewMemoryGraph(ctx context.Context) (*Handle, error) {
+	return NewGraph(ctx, "memstore", "", nil)
 }

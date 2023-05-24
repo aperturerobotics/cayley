@@ -122,14 +122,15 @@ func TestApplyDeltas(t *testing.T) {
 		require.Equal(t, exp, got, "%d\n%v\nvs\n\n%d\n%v", len(exp), exp, len(got), got)
 	}
 
-	err := kv.Init(hook, nil)
+	ctx := context.Background()
+	err := kv.Init(ctx, hook, nil)
 	require.NoError(t, err)
 
 	expect(Ops{
 		{opPut, key(bMeta, kIndexes), []byte(`[{"dirs":"AQI=","unique":false},{"dirs":"AwIB","unique":false}]`), nil},
 	})
 
-	qs, err := kv.New(hook, nil)
+	qs, err := kv.New(ctx, hook, nil)
 	require.NoError(t, err)
 	defer qs.Close()
 

@@ -63,11 +63,12 @@ func main() {
 	defer os.RemoveAll(tmpdir) // clean up
 
 	// Initialize the database
-	err = graph.InitQuadStore("bolt", tmpdir, nil)
+	ctx := context.Background()
+	err = graph.InitQuadStore(ctx, "bolt", tmpdir, nil)
 	checkErr(err)
 
 	// Open and use the database
-	store, err := cayley.NewGraph("bolt", tmpdir, nil)
+	store, err := cayley.NewGraph(ctx, "bolt", tmpdir, nil)
 	checkErr(err)
 	defer store.Close()
 	qw := graph.NewWriter(store)
@@ -121,7 +122,6 @@ func main() {
 
 	// Print quads
 	fmt.Println("\nquads:")
-	ctx := context.TODO()
 	it := store.QuadsAllIterator().Iterate()
 	defer it.Close()
 	for it.Next(ctx) {

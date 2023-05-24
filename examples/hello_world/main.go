@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -10,7 +11,8 @@ import (
 
 func main() {
 	// Create a brand new graph
-	store, err := cayley.NewMemoryGraph()
+	ctx := context.Background()
+	store, err := cayley.NewMemoryGraph(ctx)
 	if err != nil {
 		log.Fatalln(err)
 	}

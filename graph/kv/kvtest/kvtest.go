@@ -46,13 +46,14 @@ func newQuadStore(t testing.TB, gen DatabaseFunc, bloom bool) (graph.QuadStore, 
 	if !bloom {
 		opt[kv.OptNoBloom] = true
 	}
-	err := kv.Init(db, opt)
+	ctx := context.Background()
+	err := kv.Init(ctx, db, opt)
 	if err != nil {
 		db.Close()
 		closer()
 		require.Fail(t, "init failed", "%v", err)
 	}
-	kdb, err := kv.New(db, opt)
+	kdb, err := kv.New(ctx, db, opt)
 	if err != nil {
 		db.Close()
 		closer()

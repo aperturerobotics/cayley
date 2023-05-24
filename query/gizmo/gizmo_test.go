@@ -46,8 +46,8 @@ import (
 //            +--------+
 //
 
-func makeTestSession(data []quad.Quad) *Session {
-	qs, _ := graph.NewQuadStore("memstore", "", nil)
+func makeTestSession(ctx context.Context, data []quad.Quad) *Session {
+	qs, _ := graph.NewQuadStore(ctx, "memstore", "", nil)
 	w, _ := graph.NewQuadWriter("single", qs, nil)
 	for _, t := range data {
 		w.AddQuad(t)
@@ -692,9 +692,8 @@ var testQueries = []struct {
 	},
 }
 
-func runQueryGetTag(rec func(), g []quad.Quad, qu string, tag string, limit int) ([]string, error) {
-	js := makeTestSession(g)
-	ctx := context.TODO()
+func runQueryGetTag(ctx context.Context, rec func(), g []quad.Quad, qu string, tag string, limit int) ([]string, error) {
+	js := makeTestSession(ctx, g)
 	it, err := js.Execute(ctx, qu, query.Options{
 		Collation: query.Raw,
 		Limit:     limit,
@@ -733,6 +732,7 @@ func runQueryGetTag(rec func(), g []quad.Quad, qu string, tag string, limit int)
 
 func TestGizmo(t *testing.T) {
 
+	ctx := context.Background()
 	simpleGraph := testutil.LoadGraph(t, "../../data/testdata.nq")
 	multiGraph := testutil.LoadGraph(t, multiGraphTestFile)
 
@@ -760,7 +760,7 @@ func TestGizmo(t *testing.T) {
 			if limit == 0 {
 				limit = -1
 			}
-			got, err := runQueryGetTag(rec, quads, test.query, test.tag, limit)
+			got, err := runQueryGetTag(ctx, rec, quads, test.query, test.tag, limit)
 			if err != nil {
 				if test.err {
 					return //expected
@@ -798,8 +798,8 @@ func TestIssue160(t *testing.T) {
 		"****\nid : bob\n",
 	}
 
-	ses := makeTestSession(issue160TestGraph)
-	ctx := context.TODO()
+	ctx := context.Background()
+	ses := makeTestSession(ctx, issue160TestGraph)
 	it, err := ses.Execute(ctx, qu, query.Options{
 		Collation: query.REPL,
 		Limit:     100,
