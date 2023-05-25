@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv/options"
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
@@ -44,11 +45,11 @@ func (qs *QuadStore) newQuadIterator(ind QuadIndex, vals []uint64) *QuadIterator
 	}
 }
 
-func (it *QuadIterator) Iterate() iterator.Scanner {
+func (it *QuadIterator) Iterate(ctx context.Context) iterator.Scanner {
 	return it.qs.newQuadIteratorNext(it.ind, it.vals)
 }
 
-func (it *QuadIterator) Lookup() iterator.Index {
+func (it *QuadIterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newQuadIteratorContains(it.ind, it.vals)
 }
 
@@ -71,7 +72,11 @@ func (it *QuadIterator) getSize(ctx context.Context) (refs.Size, error) {
 		it.size = sz
 		return sz, nil
 	}
-	sz := refs.Size{Value: 1 + it.qs.Size()/2, Exact: false}
+	rsize, err := it.qs.Size(ctx)
+	if err != nil {
+		return refs.Size{}, err
+	}
+	sz := refs.Size{Value: 1 + rsize/2, Exact: false}
 	it.size = sz
 	return sz, nil
 }
@@ -82,8 +87,8 @@ func (it *QuadIterator) String() string {
 
 func (it *QuadIterator) Sorted() bool { return true }
 
-func (it *QuadIterator) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	return it, false
+func (it *QuadIterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
 }
 
 func (it *QuadIterator) Stats(ctx context.Context) (iterator.Costs, error) {
@@ -119,7 +124,9 @@ func (qs *QuadStore) newQuadIteratorNext(ind QuadIndex, vals []uint64) *quadIter
 	}
 }
 
-func (it *quadIteratorNext) TagResults(dst map[string]graph.Ref) {}
+func (it *quadIteratorNext) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *quadIteratorNext) Close() error {
 	if it.it != nil {
@@ -142,18 +149,21 @@ func (it *quadIteratorNext) Err() error {
 	return it.err
 }
 
-func (it *quadIteratorNext) Result() graph.Ref {
-	if it.off < 0 || it.prim == nil {
-		return nil
+func (it *quadIteratorNext) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	return it.prim
+	if it.off < 0 || it.prim == nil {
+		return nil, nil
+	}
+	return it.prim, nil
 }
 
-func (it *quadIteratorNext) ensureTx() bool {
+func (it *quadIteratorNext) ensureTx(ctx context.Context) bool {
 	if it.tx != nil {
 		return true
 	}
-	it.tx, it.err = it.qs.db.Tx(false)
+	it.tx, it.err = it.qs.db.Tx(ctx, false)
 	if it.err != nil {
 		return false
 	}
@@ -166,10 +176,10 @@ func (it *quadIteratorNext) Next(ctx context.Context) bool {
 		return false
 	}
 	if it.it == nil {
-		if !it.ensureTx() {
+		if !it.ensureTx(ctx) {
 			return false
 		}
-		it.it = it.tx.Scan(it.ind.Key(it.vals))
+		it.it = it.tx.Scan(ctx, options.WithPrefixKV(it.ind.Key(it.vals)))
 		if err := it.Err(); err != nil {
 			it.err = err
 			return false
@@ -242,7 +252,9 @@ func (qs *QuadStore) newQuadIteratorContains(ind QuadIndex, vals []uint64) *quad
 	}
 }
 
-func (it *quadIteratorContains) TagResults(dst map[string]graph.Ref) {}
+func (it *quadIteratorContains) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *quadIteratorContains) Close() error {
 	return it.err
@@ -252,31 +264,34 @@ func (it *quadIteratorContains) Err() error {
 	return it.err
 }
 
-func (it *quadIteratorContains) Result() graph.Ref {
-	if it.prim == nil {
-		return nil
+func (it *quadIteratorContains) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	return it.prim
+	if it.prim == nil {
+		return nil, nil
+	}
+	return it.prim, nil
 }
 
 func (it *quadIteratorContains) NextPath(ctx context.Context) bool {
 	return false
 }
 
-func (it *quadIteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *quadIteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
 	it.prim = nil
 	// TODO(dennwc): shouldn't this check the horizon?
 	p, ok := v.(*proto.Primitive)
 	if !ok {
-		return false
+		return false, nil
 	}
 	for i, v := range it.vals {
 		if p.GetDirection(it.ind.Dirs[i]) != v {
-			return false
+			return false, nil
 		}
 	}
 	it.prim = p
-	return true
+	return true, nil
 }
 
 func (it *quadIteratorContains) String() string {

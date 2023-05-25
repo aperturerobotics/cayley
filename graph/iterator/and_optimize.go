@@ -41,25 +41,28 @@ import (
 
 // Optimizes the And, by picking the most efficient way to Next() and
 // Contains() its subiterators. For SQL fans, this is equivalent to JOIN.
-func (it *And) Optimize(ctx context.Context) (Shape, bool) {
+func (it *And) Optimize(ctx context.Context) (Shape, bool, error) {
 	// First, let's get the slice of iterators, in order (first one is Next()ed,
 	// the rest are Contains()ed)
 	old := it.sub
 	if len(old) == 0 {
-		return NewNull(), true
+		return NewNull(), true, nil
 	}
 
 	// And call Optimize() on our subtree, replacing each one in the order we
 	// found them. it_list is the newly optimized versions of these, and changed
 	// is another list, of only the ones that have returned replacements and
 	// changed.
-	its := optimizeSubIterators(ctx, old)
+	its, err := optimizeSubIterators(ctx, old)
+	if err != nil {
+		return it, false, err
+	}
 
 	// If we can find only one subiterator which is equivalent to this whole and,
 	// we can replace the And...
 	if out := optimizeReplacement(its); out != nil && len(it.opt) == 0 {
 		// ...And return it.
-		return out, true
+		return out, true, nil
 	}
 
 	// And now, without changing any of the iterators, we reorder them. it_list is
@@ -75,16 +78,24 @@ func (it *And) Optimize(ctx context.Context) (Shape, bool) {
 	// Add the subiterators in order.
 	newAnd := NewAnd(its...)
 
-	opt := optimizeSubIterators(ctx, it.opt)
+	opt, err := optimizeSubIterators(ctx, it.opt)
+	if err != nil {
+		return it, false, err
+	}
+
 	for _, sub := range opt {
 		newAnd.AddOptionalIterator(sub)
 	}
 
-	_ = newAnd.optimizeContains(ctx)
+	err = newAnd.optimizeContains(ctx)
+	if err != nil {
+		return it, false, err
+	}
+
 	if clog.V(3) {
 		clog.Infof("%p become %p", it, newAnd)
 	}
-	return newAnd, true
+	return newAnd, true, nil
 }
 
 // Find if there is a single subiterator which is a valid replacement for this
@@ -213,13 +224,16 @@ func (it *And) optimizeContains(ctx context.Context) error {
 // of them. It returns two lists -- the first contains the same list as l, where
 // any replacements are made by Optimize() and the second contains the originals
 // which were replaced.
-func optimizeSubIterators(ctx context.Context, its []Shape) []Shape {
+func optimizeSubIterators(ctx context.Context, its []Shape) ([]Shape, error) {
 	out := make([]Shape, 0, len(its))
 	for _, it := range its {
-		o, _ := it.Optimize(ctx)
+		o, _, err := it.Optimize(ctx)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, o)
 	}
-	return out
+	return out, nil
 }
 
 // Check a list of iterators for any Null iterators.

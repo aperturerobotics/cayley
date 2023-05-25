@@ -362,10 +362,12 @@ func TestSQLShapes(t *testing.T) {
 	dialect.Placeholder = func(i int) string {
 		return fmt.Sprintf("$%d", i)
 	}
+	ctx := context.Background()
 	for _, c := range shapeCases {
 		t.Run(c.name, func(t *testing.T) {
 			opt := NewOptimizer()
-			s, ok := c.s.Optimize(context.TODO(), opt)
+			s, ok, err := c.s.Optimize(ctx, opt)
+			require.NoError(t, err)
 			if c.skip {
 				t.Skipf("%#v", s)
 			}

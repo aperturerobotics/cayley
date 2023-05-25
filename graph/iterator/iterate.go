@@ -10,10 +10,9 @@ import (
 
 // Chain is a chain-enabled helper to setup iterator execution.
 type Chain struct {
-	ctx context.Context
-	s   Shape
-	it  Scanner
-	qs  refs.Namer
+	s  Shape
+	it Scanner
+	qs refs.Namer
 
 	paths    bool
 	optimize bool
@@ -26,45 +25,44 @@ type Chain struct {
 // Iterator will be optimized and closed after execution.
 //
 // By default, iteration has no limit and includes sub-paths.
-func Iterate(ctx context.Context, it Shape) *Chain {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+func Iterate(it Shape) *Chain {
 	return &Chain{
-		ctx: ctx, s: it,
+		s:     it,
 		limit: -1, paths: true,
 		optimize: true,
 	}
 }
-func (c *Chain) next() bool {
-	select {
-	case <-c.ctx.Done():
+
+func (c *Chain) next(ctx context.Context) bool {
+	if err := ctx.Err(); err != nil {
 		return false
-	default:
 	}
-	ok := (c.limit < 0 || c.n < c.limit) && c.it.Next(c.ctx)
+	ok := (c.limit < 0 || c.n < c.limit) && c.it.Next(ctx)
 	if ok {
 		c.n++
 	}
 	return ok
 }
-func (c *Chain) nextPath() bool {
-	select {
-	case <-c.ctx.Done():
+
+func (c *Chain) nextPath(ctx context.Context) bool {
+	if err := ctx.Err(); err != nil {
 		return false
-	default:
 	}
-	ok := c.paths && (c.limit < 0 || c.n < c.limit) && c.it.NextPath(c.ctx)
+	ok := c.paths && (c.limit < 0 || c.n < c.limit) && c.it.NextPath(ctx)
 	if ok {
 		c.n++
 	}
 	return ok
 }
-func (c *Chain) start() {
+
+func (c *Chain) start(ctx context.Context) {
 	if c.optimize {
-		c.s, _ = c.s.Optimize(c.ctx)
+		optim, _, err := c.s.Optimize(ctx)
+		if err == nil {
+			c.s = optim
+		}
 	}
-	c.it = c.s.Iterate()
+	c.it = c.s.Iterate(ctx)
 }
 
 func (c *Chain) end() {
@@ -97,64 +95,68 @@ func (c *Chain) UnOptimized() *Chain {
 }
 
 // Each will run a provided callback for each result of the iterator.
-func (c *Chain) Each(fnc func(refs.Ref) error) error {
-	c.start()
+func (c *Chain) Each(ctx context.Context, fnc func(refs.Ref) error) error {
+	c.start(ctx)
 	defer c.end()
-	done := c.ctx.Done()
 
-	for c.next() {
-		select {
-		case <-done:
-			return c.ctx.Err()
-		default:
+	process := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		err := fnc(c.it.Result())
+		res, err := c.it.Result(ctx)
 		if err != nil {
 			return err
 		}
-		for c.nextPath() {
-			select {
-			case <-done:
-				return c.ctx.Err()
-			default:
+		return fnc(res)
+	}
+
+	for c.next(ctx) {
+		if err := process(); err != nil {
+			return err
+		}
+		for c.nextPath(ctx) {
+			if err := process(); err != nil {
+				return err
 			}
-			fnc(c.it.Result())
 		}
 	}
 	return c.it.Err()
 }
 
-// All will return all results of an iterator.
-func (c *Chain) Count() (int64, error) {
-	// TODO(dennwc): this should wrap the shape in Count
+// Count returns the number of results in the Chain.
+//
+// In the best case it uses Stats to determine the count.
+// In the worst case it will iterate over all values to count them.
+func (c *Chain) Count(ctx context.Context) (int64, error) {
+	// attempt to use Stats first.
+	ch := c.s
 	if c.optimize {
-		c.s, _ = c.s.Optimize(c.ctx)
+		optim, _, err := c.s.Optimize(ctx)
+		if err == nil {
+			ch = optim
+		}
 	}
-	if st, err := c.s.Stats(c.ctx); err != nil {
+	if st, err := ch.Stats(ctx); err != nil {
 		return st.Size.Value, err
 	} else if st.Size.Exact {
 		return st.Size.Value, nil
 	}
-	c.start()
+
+	// use iteration to count
+	c.start(ctx)
 	defer c.end()
 	if err := c.it.Err(); err != nil {
 		return 0, err
 	}
-	done := c.ctx.Done()
 	var cnt int64
-iteration:
-	for c.next() {
-		select {
-		case <-done:
-			break iteration
-		default:
+	for c.next(ctx) {
+		if err := ctx.Err(); err != nil {
+			return cnt, err
 		}
 		cnt++
-		for c.nextPath() {
-			select {
-			case <-done:
-				break iteration
-			default:
+		for c.nextPath(ctx) {
+			if err := ctx.Err(); err != nil {
+				return cnt, err
 			}
 			cnt++
 		}
@@ -163,100 +165,75 @@ iteration:
 }
 
 // All will return all results of an iterator.
-func (c *Chain) All() ([]refs.Ref, error) {
-	c.start()
+func (c *Chain) All(ctx context.Context) ([]refs.Ref, error) {
+	c.start(ctx)
 	defer c.end()
-	done := c.ctx.Done()
 	var out []refs.Ref
-iteration:
-	for c.next() {
-		select {
-		case <-done:
-			break iteration
-		default:
+
+	process := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		out = append(out, c.it.Result())
-		for c.nextPath() {
-			select {
-			case <-done:
-				break iteration
-			default:
+		if err := c.it.Err(); err != nil {
+			return err
+		}
+		res, err := c.it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		out = append(out, res)
+		return nil
+	}
+
+	for c.next(ctx) {
+		if err := process(); err != nil {
+			return out, err
+		}
+		for c.nextPath(ctx) {
+			if err := process(); err != nil {
+				return out, err
 			}
-			out = append(out, c.it.Result())
 		}
 	}
+
 	return out, c.it.Err()
 }
 
 // First will return a first result of an iterator. It returns nil if iterator is empty.
-func (c *Chain) First() (refs.Ref, error) {
-	c.start()
+func (c *Chain) First(ctx context.Context) (refs.Ref, error) {
+	c.start(ctx)
 	defer c.end()
-	if !c.next() {
+	if !c.next(ctx) {
 		return nil, c.it.Err()
 	}
-	return c.it.Result(), nil
+	return c.it.Result(ctx)
 }
 
 // Send will send each result of the iterator to the provided channel.
 //
 // Channel will NOT be closed when function returns.
-func (c *Chain) Send(out chan<- refs.Ref) error {
-	c.start()
+func (c *Chain) Send(ctx context.Context, out chan<- refs.Ref) error {
+	c.start(ctx)
 	defer c.end()
-	done := c.ctx.Done()
-	for c.next() {
-		select {
-		case <-done:
-			return c.ctx.Err()
-		case out <- c.it.Result():
-		}
-		for c.nextPath() {
-			select {
-			case <-done:
-				return c.ctx.Err()
-			case out <- c.it.Result():
-			}
-		}
-	}
-	return c.it.Err()
-}
-
-// TagEach will run a provided tag map callback for each result of the iterator.
-func (c *Chain) TagEach(fnc func(map[string]refs.Ref) error) error {
-	c.start()
-	defer c.end()
-	done := c.ctx.Done()
-
-	mn := 0
-	for c.next() {
-		select {
-		case <-done:
-			return c.ctx.Err()
-		default:
-		}
-		tags := make(map[string]refs.Ref, mn)
-		c.it.TagResults(tags)
-		if n := len(tags); n > mn {
-			mn = n
-		}
-		err := fnc(tags)
+	done := ctx.Done()
+	process := func() error {
+		res, err := c.it.Result(ctx)
 		if err != nil {
 			return err
 		}
-		for c.nextPath() {
-			select {
-			case <-done:
-				return c.ctx.Err()
-			default:
-			}
-			tags := make(map[string]refs.Ref, mn)
-			c.it.TagResults(tags)
-			if n := len(tags); n > mn {
-				mn = n
-			}
-			err = fnc(tags)
-			if err != nil {
+		select {
+		case <-done:
+			return ctx.Err()
+		case out <- res:
+			return nil
+		}
+	}
+	for c.next(ctx) {
+		if err := process(); err != nil {
+			return err
+		}
+		for c.nextPath(ctx) {
+			if err := process(); err != nil {
 				return err
 			}
 		}
@@ -264,11 +241,45 @@ func (c *Chain) TagEach(fnc func(map[string]refs.Ref) error) error {
 	return c.it.Err()
 }
 
+// TagEach will run a provided tag map callback for each result of the iterator.
+func (c *Chain) TagEach(ctx context.Context, fnc func(map[string]refs.Ref) error) error {
+	c.start(ctx)
+	defer c.end()
+
+	mn := 0
+	process := func() error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		tags := make(map[string]refs.Ref, mn)
+		if err := c.it.TagResults(ctx, tags); err != nil {
+			return err
+		}
+		if n := len(tags); n > mn {
+			mn = n
+		}
+		return fnc(tags)
+	}
+
+	for c.next(ctx) {
+		if err := process(); err != nil {
+			return err
+		}
+		for c.nextPath(ctx) {
+			if err := process(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return c.it.Err()
+}
+
 var errNoQuadStore = fmt.Errorf("no quad store in Iterate")
 
 // EachValue is an analog of Each, but it will additionally call NameOf
 // for each graph.Ref before passing it to a callback.
-func (c *Chain) EachValue(qs refs.Namer, fnc func(quad.Value) error) error {
+func (c *Chain) EachValue(ctx context.Context, qs refs.Namer, fnc func(quad.Value) error) error {
 	if qs != nil {
 		c.qs = qs
 	}
@@ -276,8 +287,8 @@ func (c *Chain) EachValue(qs refs.Namer, fnc func(quad.Value) error) error {
 		return errNoQuadStore
 	}
 	// TODO(dennwc): batch NameOf?
-	return c.Each(func(v refs.Ref) error {
-		nv, err := c.qs.NameOf(v)
+	return c.Each(ctx, func(v refs.Ref) error {
+		nv, err := c.qs.NameOf(ctx, v)
 		if err == nil && nv != nil {
 			err = fnc(nv)
 		}
@@ -287,7 +298,7 @@ func (c *Chain) EachValue(qs refs.Namer, fnc func(quad.Value) error) error {
 
 // EachValuePair is an analog of Each, but it will additionally call NameOf
 // for each graph.Ref before passing it to a callback. Original value will be passed as well.
-func (c *Chain) EachValuePair(qs refs.Namer, fnc func(refs.Ref, quad.Value) error) error {
+func (c *Chain) EachValuePair(ctx context.Context, qs refs.Namer, fnc func(refs.Ref, quad.Value) error) error {
 	if qs != nil {
 		c.qs = qs
 	}
@@ -295,8 +306,8 @@ func (c *Chain) EachValuePair(qs refs.Namer, fnc func(refs.Ref, quad.Value) erro
 		return errNoQuadStore
 	}
 	// TODO(dennwc): batch NameOf?
-	return c.Each(func(v refs.Ref) error {
-		nv, err := c.qs.NameOf(v)
+	return c.Each(ctx, func(v refs.Ref) error {
+		nv, err := c.qs.NameOf(ctx, v)
 		if err == nil && nv != nil {
 			err = fnc(v, nv)
 		}
@@ -306,9 +317,9 @@ func (c *Chain) EachValuePair(qs refs.Namer, fnc func(refs.Ref, quad.Value) erro
 
 // AllValues is an analog of All, but it will additionally call NameOf
 // for each graph.Ref before returning the results slice.
-func (c *Chain) AllValues(qs refs.Namer) ([]quad.Value, error) {
+func (c *Chain) AllValues(ctx context.Context, qs refs.Namer) ([]quad.Value, error) {
 	var out []quad.Value
-	err := c.EachValue(qs, func(v quad.Value) error {
+	err := c.EachValue(ctx, qs, func(v quad.Value) error {
 		out = append(out, v)
 		return nil
 	})
@@ -316,75 +327,89 @@ func (c *Chain) AllValues(qs refs.Namer) ([]quad.Value, error) {
 }
 
 // FirstValue is an analog of First, but it does lookup of a value in QuadStore.
-func (c *Chain) FirstValue(qs refs.Namer) (quad.Value, error) {
+func (c *Chain) FirstValue(ctx context.Context, qs refs.Namer) (quad.Value, error) {
 	if qs != nil {
 		c.qs = qs
 	}
 	if c.qs == nil {
 		return nil, errNoQuadStore
 	}
-	v, err := c.First()
+	v, err := c.First(ctx)
 	if err != nil || v == nil {
 		return nil, err
 	}
-	return c.qs.NameOf(v)
+	return c.qs.NameOf(ctx, v)
 }
 
 // SendValues is an analog of Send, but it will additionally call NameOf
 // for each graph.Ref before sending it to a channel.
-func (c *Chain) SendValues(qs refs.Namer, out chan<- quad.Value) error {
+func (c *Chain) SendValues(ctx context.Context, qs refs.Namer, out chan<- quad.Value) error {
 	if qs != nil {
 		c.qs = qs
 	}
 	if c.qs == nil {
 		return errNoQuadStore
 	}
-	c.start()
+	c.start(ctx)
 	defer c.end()
-	done := c.ctx.Done()
+	done := ctx.Done()
 	send := func(v refs.Ref) error {
-		nv, err := c.qs.NameOf(c.it.Result())
+		res, err := c.it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		nv, err := c.qs.NameOf(ctx, res)
 		if err != nil || nv == nil {
 			return err
 		}
-		nvResult, err := c.qs.NameOf(c.it.Result())
+		nvResult, err := c.qs.NameOf(ctx, res)
 		if err != nil {
 			return err
 		}
 		select {
 		case <-done:
-			return c.ctx.Err()
+			return ctx.Err()
 		case out <- nvResult:
 		}
 		return nil
 	}
-	for c.next() {
-		if err := send(c.it.Result()); err != nil {
+
+	process := func() error {
+		res, err := c.it.Result(ctx)
+		if err != nil {
 			return err
 		}
-		for c.nextPath() {
-			if err := send(c.it.Result()); err != nil {
+		return send(res)
+	}
+
+	for c.next(ctx) {
+		if err := process(); err != nil {
+			return err
+		}
+		for c.nextPath(ctx) {
+			if err := process(); err != nil {
 				return err
 			}
 		}
 	}
+
 	return c.it.Err()
 }
 
 // TagValues is an analog of TagEach, but it will additionally call NameOf
 // for each graph.Ref before passing the map to a callback.
-func (c *Chain) TagValues(qs refs.Namer, fnc func(map[string]quad.Value) error) error {
+func (c *Chain) TagValues(ctx context.Context, qs refs.Namer, fnc func(map[string]quad.Value) error) error {
 	if qs != nil {
 		c.qs = qs
 	}
 	if c.qs == nil {
 		return errNoQuadStore
 	}
-	return c.TagEach(func(m map[string]refs.Ref) error {
+	return c.TagEach(ctx, func(m map[string]refs.Ref) error {
 		vm := make(map[string]quad.Value, len(m))
 		for k, v := range m {
 			var err error
-			vm[k], err = c.qs.NameOf(v) // TODO(dennwc): batch NameOf?
+			vm[k], err = c.qs.NameOf(ctx, v) // TODO(dennwc): batch NameOf?
 			if err != nil {
 				return err
 			}

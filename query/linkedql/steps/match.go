@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph"
@@ -31,10 +32,10 @@ func (s *Match) Description() string {
 }
 
 // BuildPath implements linkedql.PathStep.
-func (s *Match) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (s *Match) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	var p *path.Path
 	if s.From != nil {
-		fromPath, err := s.From.BuildPath(qs, ns)
+		fromPath, err := s.From.BuildPath(ctx, qs, ns)
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +45,7 @@ func (s *Match) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, e
 	}
 
 	// Get quads
-	quads, err := parsePattern(s.Pattern, ns)
+	quads, err := parsePattern(ctx, s.Pattern, ns)
 
 	if err != nil {
 		return nil, err
@@ -130,9 +131,9 @@ func contextualizePattern(pattern linkedql.GraphPattern, ns *voc.Namespaces) lin
 	return pattern
 }
 
-func quadsFromMap(o interface{}) ([]quad.Quad, error) {
+func quadsFromMap(ctx context.Context, o interface{}) ([]quad.Quad, error) {
 	reader := jsonld.NewReaderFromMap(o)
-	return quad.ReadAll(reader)
+	return quad.ReadAll(ctx, reader)
 }
 
 func normalizeQuads(quads []quad.Quad, pattern linkedql.GraphPattern) ([]quad.Quad, error) {
@@ -146,9 +147,9 @@ func normalizeQuads(quads []quad.Quad, pattern linkedql.GraphPattern) ([]quad.Qu
 	return quads, nil
 }
 
-func parsePattern(pattern linkedql.GraphPattern, ns *voc.Namespaces) ([]quad.Quad, error) {
+func parsePattern(ctx context.Context, pattern linkedql.GraphPattern, ns *voc.Namespaces) ([]quad.Quad, error) {
 	contextualizedPattern := contextualizePattern(pattern, ns)
-	quads, err := quadsFromMap(contextualizedPattern)
+	quads, err := quadsFromMap(ctx, contextualizedPattern)
 	if err != nil {
 		return nil, err
 	}

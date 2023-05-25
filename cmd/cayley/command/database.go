@@ -112,7 +112,8 @@ func NewLoadDatabaseCmd() *cobra.Command {
 			}
 			defer h.Close()
 
-			qw, err := h.NewQuadWriter()
+			ctx := cmd.Context()
+			qw, err := h.NewQuadWriter(ctx)
 			if err != nil {
 				return err
 			}
@@ -120,13 +121,13 @@ func NewLoadDatabaseCmd() *cobra.Command {
 
 			// TODO: check read-only flag in config before that?
 			typ, _ := cmd.Flags().GetString(flagLoadFormat)
-			if err = internal.Load(qw, quad.DefaultBatch, load, typ); err != nil {
+			if err = internal.Load(ctx, qw, quad.DefaultBatch, load, typ); err != nil {
 				return err
 			}
 
 			if dump, _ := cmd.Flags().GetString(flagDump); dump != "" {
 				typ, _ := cmd.Flags().GetString(flagDumpFormat)
-				if err = dumpDatabase(h, dump, typ); err != nil {
+				if err = dumpDatabase(ctx, h, dump, typ); err != nil {
 					return err
 				}
 			}
@@ -159,7 +160,8 @@ func NewDumpDatabaseCmd() *cobra.Command {
 			defer h.Close()
 
 			typ, _ := cmd.Flags().GetString(flagDumpFormat)
-			return dumpDatabase(h, dump, typ)
+			ctx := cmd.Context()
+			return dumpDatabase(ctx, h, dump, typ)
 		},
 	}
 	registerDumpFlags(cmd)
@@ -246,8 +248,9 @@ func openForQueries(cmd *cobra.Command) (*graph.Handle, error) {
 		}
 		load = load2
 	}
+	ctx := cmd.Context()
 	if load != "" {
-		qw, err := h.NewQuadWriter()
+		qw, err := h.NewQuadWriter(ctx)
 		if err != nil {
 			h.Close()
 			return nil, err
@@ -257,7 +260,7 @@ func openForQueries(cmd *cobra.Command) (*graph.Handle, error) {
 		typ, _ := cmd.Flags().GetString(flagLoadFormat)
 		// TODO: check read-only flag in config before that?
 		start := time.Now()
-		if err = internal.Load(qw, quad.DefaultBatch, load, typ); err != nil {
+		if err = internal.Load(ctx, qw, quad.DefaultBatch, load, typ); err != nil {
 			h.Close()
 			return nil, err
 		}

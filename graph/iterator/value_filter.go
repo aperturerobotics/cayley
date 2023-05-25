@@ -37,12 +37,12 @@ func NewValueFilter(qs refs.Namer, sub Shape, filter ValueFilterFunc) *ValueFilt
 	}
 }
 
-func (it *ValueFilter) Iterate() Scanner {
-	return newValueFilterNext(it.qs, it.sub.Iterate(), it.filter)
+func (it *ValueFilter) Iterate(ctx context.Context) Scanner {
+	return newValueFilterNext(it.qs, it.sub.Iterate(ctx), it.filter)
 }
 
-func (it *ValueFilter) Lookup() Index {
-	return newValueFilterContains(it.qs, it.sub.Lookup(), it.filter)
+func (it *ValueFilter) Lookup(ctx context.Context) Index {
+	return newValueFilterContains(it.qs, it.sub.Lookup(ctx), it.filter)
 }
 
 func (it *ValueFilter) SubIterators() []Shape {
@@ -56,12 +56,15 @@ func (it *ValueFilter) String() string {
 // There's nothing to optimize, locally, for a value-comparison iterator.
 // Replace the underlying iterator if need be.
 // potentially replace it.
-func (it *ValueFilter) Optimize(ctx context.Context) (Shape, bool) {
-	newSub, changed := it.sub.Optimize(ctx)
+func (it *ValueFilter) Optimize(ctx context.Context) (Shape, bool, error) {
+	newSub, changed, err := it.sub.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if changed {
 		it.sub = newSub
 	}
-	return it, true
+	return it, true, nil
 }
 
 // We're only as expensive as our subiterator.
@@ -89,8 +92,8 @@ func newValueFilterNext(qs refs.Namer, sub Scanner, filter ValueFilterFunc) *val
 	}
 }
 
-func (it *valueFilterNext) doFilter(val refs.Ref) bool {
-	qval, err := it.qs.NameOf(val)
+func (it *valueFilterNext) doFilter(ctx context.Context, val refs.Ref) bool {
+	qval, err := it.qs.NameOf(ctx, val)
 	if err != nil {
 		it.err = err
 		return false
@@ -107,9 +110,16 @@ func (it *valueFilterNext) Close() error {
 }
 
 func (it *valueFilterNext) Next(ctx context.Context) bool {
+	if it.Err() != nil {
+		return false
+	}
 	for it.sub.Next(ctx) {
-		val := it.sub.Result()
-		if it.doFilter(val) {
+		val, err := it.sub.Result(ctx)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		if it.doFilter(ctx, val) {
 			it.result = val
 			return true
 		}
@@ -122,8 +132,8 @@ func (it *valueFilterNext) Err() error {
 	return it.err
 }
 
-func (it *valueFilterNext) Result() refs.Ref {
-	return it.result
+func (it *valueFilterNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.Err()
 }
 
 func (it *valueFilterNext) NextPath(ctx context.Context) bool {
@@ -132,8 +142,8 @@ func (it *valueFilterNext) NextPath(ctx context.Context) bool {
 
 // If we failed the check, then the subiterator should not contribute to the result
 // set. Otherwise, go ahead and tag it.
-func (it *valueFilterNext) TagResults(dst map[string]refs.Ref) {
-	it.sub.TagResults(dst)
+func (it *valueFilterNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.sub.TagResults(ctx, dst)
 }
 
 func (it *valueFilterNext) String() string {
@@ -156,8 +166,8 @@ func newValueFilterContains(qs refs.Namer, sub Index, filter ValueFilterFunc) *v
 	}
 }
 
-func (it *valueFilterContains) doFilter(val refs.Ref) bool {
-	qval, err := it.qs.NameOf(val)
+func (it *valueFilterContains) doFilter(ctx context.Context, val refs.Ref) bool {
+	qval, err := it.qs.NameOf(ctx, val)
 	if err != nil {
 		it.err = err
 		return false
@@ -177,29 +187,32 @@ func (it *valueFilterContains) Err() error {
 	return it.err
 }
 
-func (it *valueFilterContains) Result() refs.Ref {
-	return it.result
+func (it *valueFilterContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 func (it *valueFilterContains) NextPath(ctx context.Context) bool {
 	return it.sub.NextPath(ctx)
 }
 
-func (it *valueFilterContains) Contains(ctx context.Context, val refs.Ref) bool {
-	if !it.doFilter(val) {
-		return false
+func (it *valueFilterContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	if !it.doFilter(ctx, val) {
+		return false, it.err
 	}
-	ok := it.sub.Contains(ctx, val)
+	ok, err := it.sub.Contains(ctx, val)
+	if err != nil {
+		return false, err
+	}
 	if !ok {
 		it.err = it.sub.Err()
 	}
-	return ok
+	return ok, it.err
 }
 
 // If we failed the check, then the subiterator should not contribute to the result
 // set. Otherwise, go ahead and tag it.
-func (it *valueFilterContains) TagResults(dst map[string]refs.Ref) {
-	it.sub.TagResults(dst)
+func (it *valueFilterContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.sub.TagResults(ctx, dst)
 }
 
 func (it *valueFilterContains) String() string {

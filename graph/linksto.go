@@ -61,12 +61,12 @@ func NewLinksTo(qs QuadIndexer, it iterator.Shape, d quad.Direction) *LinksTo {
 // Direction returns the direction under consideration.
 func (it *LinksTo) Direction() quad.Direction { return it.dir }
 
-func (it *LinksTo) Iterate() iterator.Scanner {
-	return newLinksToNext(it.qs, it.primary.Iterate(), it.dir)
+func (it *LinksTo) Iterate(ctx context.Context) iterator.Scanner {
+	return newLinksToNext(ctx, it.qs, it.primary.Iterate(ctx), it.dir)
 }
 
-func (it *LinksTo) Lookup() iterator.Index {
-	return newLinksToContains(it.qs, it.primary.Lookup(), it.dir)
+func (it *LinksTo) Lookup(ctx context.Context) iterator.Index {
+	return newLinksToContains(it.qs, it.primary.Lookup(ctx), it.dir)
 }
 
 func (it *LinksTo) String() string {
@@ -79,15 +79,18 @@ func (it *LinksTo) SubIterators() []iterator.Shape {
 }
 
 // Optimize the LinksTo, by replacing it if it can be.
-func (it *LinksTo) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	newPrimary, changed := it.primary.Optimize(ctx)
+func (it *LinksTo) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	newPrimary, changed, err := it.primary.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if changed {
 		it.primary = newPrimary
 		if iterator.IsNull(it.primary) {
-			return it.primary, true
+			return it.primary, true, nil
 		}
 	}
-	return it, false
+	return it, false, nil
 }
 
 // Stats returns a guess as to how big or costly it is to next the iterator.
@@ -114,7 +117,7 @@ func (it *LinksTo) getSize(ctx context.Context) refs.Size {
 			exact = true
 		)
 		for _, v := range fixed.Values() {
-			sit := it.qs.QuadIterator(it.dir, v)
+			sit := it.qs.QuadIterator(ctx, it.dir, v)
 			st, _ := sit.Stats(ctx)
 			sz += st.Size.Value
 			exact = exact && st.Size.Exact
@@ -149,12 +152,12 @@ type linksToNext struct {
 
 // Construct a new LinksTo iterator around a direction and a subiterator of
 // nodes.
-func newLinksToNext(qs QuadIndexer, it iterator.Scanner, d quad.Direction) iterator.Scanner {
+func newLinksToNext(ctx context.Context, qs QuadIndexer, it iterator.Scanner, d quad.Direction) iterator.Scanner {
 	return &linksToNext{
 		qs:      qs,
 		primary: it,
 		dir:     d,
-		nextIt:  iterator.NewNull().Iterate(),
+		nextIt:  iterator.NewNull().Iterate(ctx),
 	}
 }
 
@@ -162,8 +165,8 @@ func newLinksToNext(qs QuadIndexer, it iterator.Scanner, d quad.Direction) itera
 func (it *linksToNext) Direction() quad.Direction { return it.dir }
 
 // Tag these results, and our subiterator's results.
-func (it *linksToNext) TagResults(dst map[string]refs.Ref) {
-	it.primary.TagResults(dst)
+func (it *linksToNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primary.TagResults(ctx, dst)
 }
 
 func (it *linksToNext) String() string {
@@ -174,7 +177,12 @@ func (it *linksToNext) String() string {
 func (it *linksToNext) Next(ctx context.Context) bool {
 	for {
 		if it.nextIt.Next(ctx) {
-			it.result = it.nextIt.Result()
+			res, err := it.nextIt.Result(ctx)
+			if err != nil {
+				it.err = err
+				return false
+			}
+			it.result = res
 			return true
 		}
 
@@ -192,8 +200,15 @@ func (it *linksToNext) Next(ctx context.Context) bool {
 			// We're out of nodes in our subiterator, so we're done as well.
 			return false
 		}
-		it.nextIt.Close()
-		it.nextIt = it.qs.QuadIterator(it.dir, it.primary.Result()).Iterate()
+		_ = it.nextIt.Close()
+
+		res, err := it.primary.Result(ctx)
+		if err != nil {
+			it.err = err
+			return false
+		}
+
+		it.nextIt = it.qs.QuadIterator(ctx, it.dir, res).Iterate(ctx)
 
 		// Continue -- return the first in the next set.
 	}
@@ -203,8 +218,8 @@ func (it *linksToNext) Err() error {
 	return it.err
 }
 
-func (it *linksToNext) Result() refs.Ref {
-	return it.result
+func (it *linksToNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.Err()
 }
 
 // Close closes the iterator.  It closes all subiterators it can, but
@@ -254,8 +269,8 @@ func newLinksToContains(qs QuadIndexer, it iterator.Index, d quad.Direction) ite
 func (it *linksToContains) Direction() quad.Direction { return it.dir }
 
 // Tag these results, and our subiterator's results.
-func (it *linksToContains) TagResults(dst map[string]refs.Ref) {
-	it.primary.TagResults(dst)
+func (it *linksToContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primary.TagResults(ctx, dst)
 }
 
 func (it *linksToContains) String() string {
@@ -264,17 +279,25 @@ func (it *linksToContains) String() string {
 
 // If it checks in the right direction for the subiterator, it is a valid link
 // for the LinksTo.
-func (it *linksToContains) Contains(ctx context.Context, val refs.Ref) bool {
-	node, err := it.qs.QuadDirection(val, it.dir)
+func (it *linksToContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
+	node, err := it.qs.QuadDirection(ctx, val, it.dir)
 	if err != nil {
 		it.err = err
-		return false
+		return false, err
 	}
-	if it.primary.Contains(ctx, node) {
+	cnt, err := it.primary.Contains(ctx, node)
+	if err != nil {
+		it.err = err
+		return false, err
+	}
+	if cnt {
 		it.result = val
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
 func (it *linksToContains) Err() error {
@@ -284,8 +307,8 @@ func (it *linksToContains) Err() error {
 	return it.primary.Err()
 }
 
-func (it *linksToContains) Result() refs.Ref {
-	return it.result
+func (it *linksToContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.Err()
 }
 
 // Close closes the iterator.  It closes all subiterators it can, but

@@ -21,12 +21,12 @@ func NewLimit(it Shape, max int64) *Limit {
 	}
 }
 
-func (it *Limit) Iterate() Scanner {
-	return NewLimitNext(it.it.Iterate(), it.limit)
+func (it *Limit) Iterate(ctx context.Context) Scanner {
+	return NewLimitNext(it.it.Iterate(ctx), it.limit)
 }
 
-func (it *Limit) Lookup() Index {
-	return newLimitContains(it.it.Lookup(), it.limit)
+func (it *Limit) Lookup(ctx context.Context) Index {
+	return newLimitContains(it.it.Lookup(ctx), it.limit)
 }
 
 // SubIterators returns a slice of the sub iterators.
@@ -34,13 +34,16 @@ func (it *Limit) SubIterators() []Shape {
 	return []Shape{it.it}
 }
 
-func (it *Limit) Optimize(ctx context.Context) (Shape, bool) {
-	nit, optimized := it.it.Optimize(ctx)
+func (it *Limit) Optimize(ctx context.Context) (Shape, bool, error) {
+	nit, optimized, err := it.it.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if it.limit <= 0 { // no Limit
-		return nit, true
+		return nit, true, nil
 	}
 	it.it = nit
-	return it, optimized
+	return it, optimized, nil
 }
 
 func (it *Limit) Stats(ctx context.Context) (Costs, error) {
@@ -70,8 +73,8 @@ func NewLimitNext(it Scanner, limit int64) Scanner {
 	}
 }
 
-func (it *limitNext) TagResults(dst map[string]refs.Ref) {
-	it.it.TagResults(dst)
+func (it *limitNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.it.TagResults(ctx, dst)
 }
 
 // Next advances the Limit iterator. It will stop iteration if Limit was reached.
@@ -90,8 +93,8 @@ func (it *limitNext) Err() error {
 	return it.it.Err()
 }
 
-func (it *limitNext) Result() refs.Ref {
-	return it.it.Result()
+func (it *limitNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.it.Result(ctx)
 }
 
 // NextPath checks whether there is another path. Will call primary iterator
@@ -132,27 +135,31 @@ func newLimitContains(it Index, limit int64) *limitContains {
 	}
 }
 
-func (it *limitContains) TagResults(dst map[string]refs.Ref) {
-	it.it.TagResults(dst)
+func (it *limitContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.it.TagResults(ctx, dst)
 }
 
 func (it *limitContains) Err() error {
 	return it.it.Err()
 }
 
-func (it *limitContains) Result() refs.Ref {
-	return it.it.Result()
+func (it *limitContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.it.Result(ctx)
 }
 
-func (it *limitContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *limitContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
 	if it.limit > 0 && it.count >= it.limit {
-		return false
+		return false, nil
 	}
-	if it.it.Contains(ctx, val) {
+	cnt, err := it.it.Contains(ctx, val)
+	if err != nil {
+		return false, err
+	}
+	if cnt {
 		it.count++
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
 // NextPath checks whether there is another path. Will call primary iterator

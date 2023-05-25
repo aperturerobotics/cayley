@@ -29,7 +29,7 @@ import (
 
 var _ shape.Optimizer = (*QuadStore)(nil)
 
-func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool) {
+func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool, error) {
 	return qs.opt.OptimizeShape(ctx, s)
 }
 
@@ -71,11 +71,11 @@ type Iterator struct {
 	err   error
 }
 
-func (it *Iterator) Iterate() iterator.Scanner {
+func (it *Iterator) Iterate(ctx context.Context) iterator.Scanner {
 	return it.qs.newIteratorNext(it.query)
 }
 
-func (it *Iterator) Lookup() iterator.Index {
+func (it *Iterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newIteratorContains(it.query)
 }
 
@@ -108,8 +108,8 @@ func (it *Iterator) getSize(ctx context.Context) (refs.Size, error) {
 	return sz, nil
 }
 
-func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	return it, false
+func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
 }
 
 func (it *Iterator) SubIterators() []iterator.Shape {
@@ -139,14 +139,18 @@ type iteratorBase struct {
 	tags map[string]graph.Ref
 }
 
-func (it *iteratorBase) TagResults(m map[string]graph.Ref) {
+func (it *iteratorBase) TagResults(ctx context.Context, m map[string]graph.Ref) error {
+	if err := it.Err(); err != nil {
+		return err
+	}
 	for tag, val := range it.tags {
 		m[tag] = val
 	}
+	return nil
 }
 
-func (it *iteratorBase) Result() graph.Ref {
-	return it.res
+func (it *iteratorBase) Result(ctx context.Context) (graph.Ref, error) {
+	return it.res, it.err
 }
 
 func (it *iteratorBase) ensureColumns() {
@@ -321,7 +325,7 @@ type iteratorContains struct {
 	nextPathRows *sql.Rows
 }
 
-func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
 	it.ensureColumns()
 	sel := it.query
 	sel.Where = append([]Where{}, sel.Where...)
@@ -329,7 +333,7 @@ func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
 	case NodeHash:
 		i, ok := it.cind[quad.Any]
 		if !ok {
-			return false
+			return false, nil
 		}
 		f := it.query.Fields[i]
 		sel.WhereEq(f.Table, f.Name, v)
@@ -337,7 +341,7 @@ func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
 		for _, d := range quad.Directions {
 			i, ok := it.cind[d]
 			if !ok {
-				return false
+				return false, nil
 			}
 			h := v.Get(d)
 			if !h.Valid() {
@@ -347,13 +351,13 @@ func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
 			sel.WhereEq(f.Table, f.Name, NodeHash{h})
 		}
 	default:
-		return false
+		return false, nil
 	}
 
 	rows, err := it.qs.Query(ctx, sel)
 	if err != nil {
 		it.err = err
-		return false
+		return false, err
 	}
 	if it.query.nextPath {
 		if it.nextPathRows != nil {
@@ -365,9 +369,9 @@ func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
 	}
 	if !rows.Next() {
 		it.err = rows.Err()
-		return false
+		return false, it.err
 	}
-	return it.scanValue(rows)
+	return it.scanValue(rows), it.err
 }
 
 func (it *iteratorContains) NextPath(ctx context.Context) bool {

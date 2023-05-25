@@ -16,7 +16,7 @@ import (
 
 var _ shape.Optimizer = (*QuadStore)(nil)
 
-func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool) {
+func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool, error) {
 	switch s := s.(type) {
 	case shape.Quads:
 		return qs.optimizeQuads(s)
@@ -25,11 +25,11 @@ func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Sh
 	case shape.Page:
 		return qs.optimizePage(s)
 	case shape.Composite:
-		if s2, opt := s.Simplify().Optimize(ctx, qs); opt {
-			return s2, true
+		if s2, opt, err := s.Simplify().Optimize(ctx, qs); opt && err == nil {
+			return s2, true, nil
 		}
 	}
-	return s, false
+	return s, false, nil
 }
 
 // Shape is a shape representing a documents query with filters
@@ -39,7 +39,7 @@ type Shape struct {
 	Limit      int64               // limits a number of documents
 }
 
-func (s Shape) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Shape) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	db, ok := qs.(*QuadStore)
 	if !ok {
 		return iterator.NewError(fmt.Errorf("not a nosql database: %T", qs))
@@ -47,8 +47,8 @@ func (s Shape) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	return db.newIterator(s.Collection, s.Filters...)
 }
 
-func (s Shape) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
-	return s, false
+func (s Shape) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
+	return s, false, nil
 }
 
 // Quads is a shape representing a quads query
@@ -57,7 +57,7 @@ type Quads struct {
 	Limit int64     // limits a number of documents
 }
 
-func (s Quads) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Quads) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	db, ok := qs.(*QuadStore)
 	if !ok {
 		return iterator.NewError(fmt.Errorf("not a nosql database: %T", qs))
@@ -65,8 +65,8 @@ func (s Quads) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	return db.newLinksToIterator(colQuads, s.Links)
 }
 
-func (s Quads) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
-	return s, false
+func (s Quads) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
+	return s, false, nil
 }
 
 const int64Adjust = 1 << 63
@@ -149,9 +149,9 @@ func toFieldFilter(opt *Traits, c shape.Comparison) ([]nosql.FieldFilter, bool) 
 	return filters, true
 }
 
-func (qs *QuadStore) optimizeFilter(s shape.Filter) (shape.Shape, bool) {
+func (qs *QuadStore) optimizeFilter(s shape.Filter) (shape.Shape, bool, error) {
 	if _, ok := s.From.(shape.AllNodes); !ok {
-		return s, false
+		return s, false, nil
 	}
 	var (
 		filters []nosql.FieldFilter
@@ -187,16 +187,16 @@ func (qs *QuadStore) optimizeFilter(s shape.Filter) (shape.Shape, bool) {
 		left = append(left, f)
 	}
 	if len(filters) == 0 {
-		return s, false
+		return s, false, nil
 	}
 	var ns shape.Shape = Shape{Collection: colNodes, Filters: filters}
 	if len(left) != 0 {
 		ns = shape.Filter{From: ns, Filters: left}
 	}
-	return ns, true
+	return ns, true, nil
 }
 
-func (qs *QuadStore) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
+func (qs *QuadStore) optimizeQuads(s shape.Quads) (shape.Shape, bool, error) {
 	var (
 		links []Linkage
 		left  []shape.QuadFilter
@@ -211,30 +211,30 @@ func (qs *QuadStore) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 		left = append(left, f)
 	}
 	if len(links) == 0 {
-		return s, false
+		return s, false, nil
 	}
 	var ns shape.Shape = Quads{Links: links}
 	if len(left) != 0 {
 		ns = shape.Intersect{ns, shape.Quads(left)}
 	}
-	return s, true
+	return s, true, nil
 }
 
-func (qs *QuadStore) optimizePage(s shape.Page) (shape.Shape, bool) {
+func (qs *QuadStore) optimizePage(s shape.Page) (shape.Shape, bool, error) {
 	if s.Skip != 0 {
-		return s, false
+		return s, false, nil
 	}
 	switch f := s.From.(type) {
 	case shape.AllNodes:
-		return Shape{Collection: colNodes, Limit: s.Limit}, false
+		return Shape{Collection: colNodes, Limit: s.Limit}, false, nil
 	case Shape:
 		s.ApplyPage(shape.Page{Limit: f.Limit})
 		f.Limit = s.Limit
-		return f, true
+		return f, true, nil
 	case Quads:
 		s.ApplyPage(shape.Page{Limit: f.Limit})
 		f.Limit = s.Limit
-		return f, true
+		return f, true, nil
 	}
-	return s, false
+	return s, false, nil
 }

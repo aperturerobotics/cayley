@@ -464,8 +464,9 @@ func prepare(t testing.TB, gen testutil.DatabaseFunc) (graph.QuadStore, func()) 
 	qs, _, closer := gen(t)
 
 	const needsLoad = true // TODO: support local setup
+	ctx := context.Background()
 	if needsLoad {
-		qw, err := qs.NewQuadWriter()
+		qw, err := qs.NewQuadWriter(ctx)
 		if err != nil {
 			closer()
 			require.NoError(t, err)
@@ -473,7 +474,7 @@ func prepare(t testing.TB, gen testutil.DatabaseFunc) (graph.QuadStore, func()) 
 
 		start := time.Now()
 		for _, p := range []string{"./", "../"} {
-			err = internal.Load(qw, 0, filepath.Join(p, "../../data/30kmoviedata.nq.gz"), format)
+			err = internal.Load(ctx, qw, 0, filepath.Join(p, "../../data/30kmoviedata.nq.gz"), format)
 			if err == nil || !os.IsNotExist(err) {
 				break
 			}
@@ -522,7 +523,9 @@ func checkQueries(t *testing.T, qs graph.QuadStore, timeout time.Duration) {
 			defer it.Close()
 			var got []interface{}
 			for it.Next(ctx) {
-				got = append(got, it.Result())
+				resi, err := it.Result(ctx)
+				require.NoError(t, err)
+				got = append(got, resi)
 			}
 			t.Logf("%12v %v", time.Since(start), test.message)
 

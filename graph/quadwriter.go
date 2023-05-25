@@ -140,23 +140,23 @@ var (
 
 type QuadWriter interface {
 	// AddQuad adds a quad to the store.
-	AddQuad(quad.Quad) error
+	AddQuad(context.Context, quad.Quad) error
 
 	// TODO(barakmich): Deprecate in favor of transaction.
 	// AddQuadSet adds a set of quads to the store, atomically if possible.
-	AddQuadSet([]quad.Quad) error
+	AddQuadSet(context.Context, []quad.Quad) error
 
 	// RemoveQuad removes a quad matching the given one  from the database,
 	// if it exists. Does nothing otherwise.
-	RemoveQuad(quad.Quad) error
+	RemoveQuad(context.Context, quad.Quad) error
 
 	// ApplyTransaction applies a set of quad changes.
-	ApplyTransaction(*Transaction) error
+	ApplyTransaction(context.Context, *Transaction) error
 
 	// RemoveNode removes all quads which have the given node as subject, predicate, object, or label.
 	//
 	// It returns ErrNodeNotExists if node is missing.
-	RemoveNode(quad.Value) error
+	RemoveNode(context.Context, quad.Value) error
 
 	// Close cleans up replication and closes the writing aspect of the database.
 	Close() error
@@ -191,7 +191,7 @@ func WriterMethods() []string {
 
 type BatchWriter interface {
 	quad.WriteCloser
-	Flush() error
+	Flush(ctx context.Context) error
 }
 
 // NewWriter creates a quad writer for a given QuadStore.
@@ -206,33 +206,33 @@ type batchWriter struct {
 	buf []quad.Quad
 }
 
-func (w *batchWriter) flushBuffer(force bool) error {
+func (w *batchWriter) flushBuffer(ctx context.Context, force bool) error {
 	if !force && len(w.buf) < quad.DefaultBatch {
 		return nil
 	}
-	_, err := w.WriteQuads(w.buf)
+	_, err := w.WriteQuads(ctx, w.buf)
 	w.buf = w.buf[:0]
 	return err
 }
 
-func (w *batchWriter) WriteQuad(q quad.Quad) error {
-	if err := w.flushBuffer(false); err != nil {
+func (w *batchWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
+	if err := w.flushBuffer(ctx, false); err != nil {
 		return err
 	}
 	w.buf = append(w.buf, q)
 	return nil
 }
-func (w *batchWriter) WriteQuads(quads []quad.Quad) (int, error) {
-	if err := w.qs.AddQuadSet(quads); err != nil {
+func (w *batchWriter) WriteQuads(ctx context.Context, quads []quad.Quad) (int, error) {
+	if err := w.qs.AddQuadSet(ctx, quads); err != nil {
 		return 0, err
 	}
 	return len(quads), nil
 }
-func (w *batchWriter) Flush() error {
-	return w.flushBuffer(true)
+func (w *batchWriter) Flush(ctx context.Context) error {
+	return w.flushBuffer(ctx, true)
 }
 func (w *batchWriter) Close() error {
-	return w.Flush()
+	return w.Flush(context.Background())
 }
 
 // NewTxWriter creates a writer that applies a given procedures for all quads in stream.
@@ -249,7 +249,7 @@ type txWriter struct {
 	p  Procedure
 }
 
-func (w *txWriter) WriteQuad(q quad.Quad) error {
+func (w *txWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
 	switch w.p {
 	case Add:
 		w.tx.AddQuad(q)
@@ -261,9 +261,9 @@ func (w *txWriter) WriteQuad(q quad.Quad) error {
 	return nil
 }
 
-func (w *txWriter) WriteQuads(buf []quad.Quad) (int, error) {
+func (w *txWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	for i, q := range buf {
-		if err := w.WriteQuad(q); err != nil {
+		if err := w.WriteQuad(ctx, q); err != nil {
 			return i, err
 		}
 	}
@@ -279,27 +279,30 @@ type removeWriter struct {
 	qs QuadWriter
 }
 
-func (w *removeWriter) WriteQuad(q quad.Quad) error {
-	return w.qs.RemoveQuad(q)
+func (w *removeWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
+	return w.qs.RemoveQuad(ctx, q)
 }
-func (w *removeWriter) WriteQuads(quads []quad.Quad) (int, error) {
+
+func (w *removeWriter) WriteQuads(ctx context.Context, quads []quad.Quad) (int, error) {
 	tx := NewTransaction()
 	for _, q := range quads {
 		tx.RemoveQuad(q)
 	}
-	if err := w.qs.ApplyTransaction(tx); err != nil {
+	if err := w.qs.ApplyTransaction(ctx, tx); err != nil {
 		return 0, err
 	}
 	return len(quads), nil
 }
-func (w *removeWriter) Flush() error {
+
+func (w *removeWriter) Flush(ctx context.Context) error {
 	return nil // TODO: batch deletes automatically
 }
+
 func (w *removeWriter) Close() error { return nil }
 
 // NewQuadStoreReader creates a quad reader for a given QuadStore.
-func NewQuadStoreReader(qs QuadStore) quad.ReadSkipCloser {
-	return NewResultReader(qs, nil)
+func NewQuadStoreReader(ctx context.Context, qs QuadStore) quad.ReadSkipCloser {
+	return NewResultReader(ctx, qs, nil)
 }
 
 // NewResultReader creates a quad reader for a given QuadStore and iterator.
@@ -308,9 +311,9 @@ func NewQuadStoreReader(qs QuadStore) quad.ReadSkipCloser {
 // Only quads returned by iterator's Result will be used.
 //
 // Iterator will be closed with the reader.
-func NewResultReader(qs QuadStore, it iterator.Scanner) quad.ReadSkipCloser {
+func NewResultReader(ctx context.Context, qs QuadStore, it iterator.Scanner) quad.ReadSkipCloser {
 	if it == nil {
-		it = qs.QuadsAllIterator().Iterate()
+		it = qs.QuadsAllIterator(ctx).Iterate(ctx)
 	}
 	return &quadReader{qs: qs, it: it}
 }
@@ -320,9 +323,13 @@ type quadReader struct {
 	it iterator.Scanner
 }
 
-func (r *quadReader) ReadQuad() (quad.Quad, error) {
-	if r.it.Next(context.TODO()) {
-		return r.qs.Quad(r.it.Result())
+func (r *quadReader) ReadQuad(ctx context.Context) (quad.Quad, error) {
+	if r.it.Next(ctx) {
+		res, err := r.it.Result(ctx)
+		if err != nil {
+			return quad.Quad{}, err
+		}
+		return r.qs.Quad(ctx, res)
 	}
 	err := r.it.Err()
 	if err == nil {
@@ -330,8 +337,9 @@ func (r *quadReader) ReadQuad() (quad.Quad, error) {
 	}
 	return quad.Quad{}, err
 }
-func (r *quadReader) SkipQuad() error {
-	if r.it.Next(context.TODO()) {
+
+func (r *quadReader) SkipQuad(ctx context.Context) error {
+	if r.it.Next(ctx) {
 		return nil
 	}
 	if err := r.it.Err(); err != nil {
@@ -339,4 +347,5 @@ func (r *quadReader) SkipQuad() error {
 	}
 	return io.EOF
 }
+
 func (r *quadReader) Close() error { return r.it.Close() }

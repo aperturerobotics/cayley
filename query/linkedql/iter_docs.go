@@ -28,7 +28,10 @@ func NewDocumentIterator(valueIt *ValueIterator) *DocumentIterator {
 func (it *DocumentIterator) getDataset(ctx context.Context) (*ld.RDFDataset, error) {
 	d := ld.NewRDFDataset()
 	for it.tagsIt.Next(ctx) {
-		r := it.tagsIt.ValueIt.scanner.Result()
+		r, err := it.tagsIt.ValueIt.scanner.Result(ctx)
+		if err != nil {
+			return nil, err
+		}
 		if err := it.tagsIt.Err(); err != nil {
 			if err != nil {
 				return nil, err
@@ -37,7 +40,7 @@ func (it *DocumentIterator) getDataset(ctx context.Context) (*ld.RDFDataset, err
 		if r == nil {
 			continue
 		}
-		err := it.tagsIt.addResultsToDataset(d, r)
+		err = it.tagsIt.addResultsToDataset(ctx, d, r)
 		if err != nil {
 			return nil, err
 		}
@@ -61,14 +64,17 @@ func (it *DocumentIterator) Next(ctx context.Context) bool {
 }
 
 // Result implements query.Iterator.
-func (it *DocumentIterator) Result() interface{} {
+func (it *DocumentIterator) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	context := make(map[string]interface{})
 	opts := ld.NewJsonLdOptions("")
 	c, err := datasetToCompact(it.dataset, context, opts)
 	if err != nil {
 		it.err = err
 	}
-	return c
+	return c, err
 }
 
 // Err implements query.Iterator.

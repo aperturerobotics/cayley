@@ -87,7 +87,7 @@ func TestAll(t *testing.T, gen DatabaseFunc, conf *Config) {
 }
 
 func testOptimize(t *testing.T, gen DatabaseFunc, _ *Config) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	qs, opts, closer := NewQuadStore(t, gen)
 	defer closer()
 
@@ -100,16 +100,17 @@ func testOptimize(t *testing.T, gen DatabaseFunc, _ *Config) {
 
 	oldIt := shape.BuildIterator(ctx, qs, shape.Quads{
 		{Dir: quad.Object, Values: shape.Lookup{quad.Raw("F")}},
-	}).Iterate()
+	}).Iterate(ctx)
 	defer oldIt.Close()
-	newIts, ok := lto.Optimize(ctx)
+	newIts, ok, err := lto.Optimize(ctx)
+	require.NoError(t, err)
 	if ok {
 		t.Errorf("unexpected optimization step")
 	}
 	if _, ok := newIts.(*kv.QuadIterator); !ok {
 		t.Errorf("Optimized iterator type does not match original, got: %T", newIts)
 	}
-	newIt := newIts.Iterate()
+	newIt := newIts.Iterate(ctx)
 	defer newIt.Close()
 
 	newQuads := graphtest.IteratedQuadsNext(t, qs, newIt)
@@ -120,10 +121,12 @@ func testOptimize(t *testing.T, gen DatabaseFunc, _ *Config) {
 
 	oldIt.Next(ctx)
 	oldResults := make(map[string]graph.Ref)
-	oldIt.TagResults(oldResults)
+	err = oldIt.TagResults(ctx, oldResults)
+	require.NoError(t, err)
 	newIt.Next(ctx)
 	newResults := make(map[string]graph.Ref)
-	newIt.TagResults(newResults)
+	err = newIt.TagResults(ctx, newResults)
+	require.NoError(t, err)
 	if !reflect.DeepEqual(newResults, oldResults) {
 		t.Errorf("Discordant tag results, new:%v old:%v", newResults, oldResults)
 	}

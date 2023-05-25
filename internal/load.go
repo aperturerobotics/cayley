@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,8 +18,8 @@ import (
 
 // Load loads a graph from the given path and write it to qw.  See
 // DecompressAndLoad for more information.
-func Load(qw quad.WriteCloser, batch int, path, typ string) error {
-	return DecompressAndLoad(qw, batch, path, typ)
+func Load(ctx context.Context, qw quad.WriteCloser, batch int, path, typ string) error {
+	return DecompressAndLoad(ctx, qw, batch, path, typ)
 }
 
 type readCloser struct {
@@ -120,7 +121,7 @@ func QuadReaderFor(path, typ string) (quad.ReadCloser, error) {
 // DecompressAndLoad will load or fetch a graph from the given path, decompress
 // it, and then call the given load function to process the decompressed graph.
 // If no loadFn is provided, db.Load is called.
-func DecompressAndLoad(qw quad.WriteCloser, batch int, path, typ string) error {
+func DecompressAndLoad(ctx context.Context, qw quad.WriteCloser, batch int, path, typ string) error {
 	if path == "" {
 		return nil
 	}
@@ -130,7 +131,7 @@ func DecompressAndLoad(qw quad.WriteCloser, batch int, path, typ string) error {
 	}
 	defer qr.Close()
 
-	_, err = quad.CopyBatch(&batchLogger{w: qw}, qr, batch)
+	_, err = quad.CopyBatch(ctx, &batchLogger{w: qw}, qr, batch)
 	if err != nil {
 		return fmt.Errorf("db: failed to load data: %v", err)
 	}
@@ -142,8 +143,8 @@ type batchLogger struct {
 	w   quad.Writer
 }
 
-func (w *batchLogger) WriteQuads(quads []quad.Quad) (int, error) {
-	n, err := w.w.WriteQuads(quads)
+func (w *batchLogger) WriteQuads(ctx context.Context, quads []quad.Quad) (int, error) {
+	n, err := w.w.WriteQuads(ctx, quads)
 	if clog.V(2) {
 		w.cnt += n
 		clog.Infof("Wrote %d quads.", w.cnt)

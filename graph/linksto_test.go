@@ -27,7 +27,7 @@ import (
 )
 
 func TestLinksTo(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	object := quad.Raw("cool")
 	q := quad.Quad{Subject: quad.IRI("alice"), Predicate: quad.IRI("is"), Object: object, Label: nil}
 	qs := &graphmock.Store{
@@ -35,13 +35,15 @@ func TestLinksTo(t *testing.T) {
 	}
 	fixed := iterator.NewFixed()
 
-	val, err := qs.ValueOf(object)
+	val, err := qs.ValueOf(ctx, object)
 	require.NoError(t, err)
 
 	fixed.Add(val)
-	lto := graph.NewLinksTo(qs, fixed, quad.Object).Iterate()
+	lto := graph.NewLinksTo(qs, fixed, quad.Object).Iterate(ctx)
 	require.True(t, lto.Next(ctx))
-	qv, err := qs.Quad(lto.Result())
+	res, err := lto.Result(ctx)
+	require.NoError(t, err)
+	qv, err := qs.Quad(ctx, res)
 	require.NoError(t, err)
 	require.Equal(t, q, qv)
 }

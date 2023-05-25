@@ -20,12 +20,12 @@ func NewSkip(primaryIt Shape, off int64) *Skip {
 	}
 }
 
-func (it *Skip) Iterate() Scanner {
-	return newSkipNext(it.primaryIt.Iterate(), it.skip)
+func (it *Skip) Iterate(ctx context.Context) Scanner {
+	return newSkipNext(it.primaryIt.Iterate(ctx), it.skip)
 }
 
-func (it *Skip) Lookup() Index {
-	return newSkipContains(it.primaryIt.Lookup(), it.skip)
+func (it *Skip) Lookup(ctx context.Context) Index {
+	return newSkipContains(it.primaryIt.Lookup(ctx), it.skip)
 }
 
 // SubIterators returns a slice of the sub iterators.
@@ -33,13 +33,16 @@ func (it *Skip) SubIterators() []Shape {
 	return []Shape{it.primaryIt}
 }
 
-func (it *Skip) Optimize(ctx context.Context) (Shape, bool) {
-	optimizedPrimaryIt, optimized := it.primaryIt.Optimize(ctx)
+func (it *Skip) Optimize(ctx context.Context) (Shape, bool, error) {
+	optimizedPrimaryIt, optimized, err := it.primaryIt.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if it.skip == 0 { // nothing to skip
-		return optimizedPrimaryIt, true
+		return optimizedPrimaryIt, true, nil
 	}
 	it.primaryIt = optimizedPrimaryIt
-	return it, optimized
+	return it, optimized, nil
 }
 
 func (it *Skip) Stats(ctx context.Context) (Costs, error) {
@@ -71,8 +74,8 @@ func newSkipNext(primaryIt Scanner, skip int64) *skipNext {
 	}
 }
 
-func (it *skipNext) TagResults(dst map[string]refs.Ref) {
-	it.primaryIt.TagResults(dst)
+func (it *skipNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primaryIt.TagResults(ctx, dst)
 }
 
 // Next advances the Skip iterator. It will skip all initial values
@@ -93,8 +96,8 @@ func (it *skipNext) Err() error {
 	return it.primaryIt.Err()
 }
 
-func (it *skipNext) Result() refs.Ref {
-	return it.primaryIt.Result()
+func (it *skipNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.primaryIt.Result(ctx)
 }
 
 // NextPath checks whether there is another path. It will skip first paths
@@ -132,25 +135,26 @@ func newSkipContains(primaryIt Index, skip int64) *skipContains {
 	}
 }
 
-func (it *skipContains) TagResults(dst map[string]refs.Ref) {
-	it.primaryIt.TagResults(dst)
+func (it *skipContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primaryIt.TagResults(ctx, dst)
 }
 
 func (it *skipContains) Err() error {
 	return it.primaryIt.Err()
 }
 
-func (it *skipContains) Result() refs.Ref {
-	return it.primaryIt.Result()
+func (it *skipContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.primaryIt.Result(ctx)
 }
 
-func (it *skipContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *skipContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
 	inNextPath := false
 	for it.skipped <= it.skip {
 		// skipping main iterator results
 		inNextPath = false
-		if !it.primaryIt.Contains(ctx, val) {
-			return false
+		cnt, err := it.primaryIt.Contains(ctx, val)
+		if !cnt || err != nil {
+			return false, err
 		}
 		it.skipped++
 
@@ -163,20 +167,23 @@ func (it *skipContains) Contains(ctx context.Context, val refs.Ref) bool {
 				// main path exists, but we skipped it
 				// and we skipped all alternative paths now
 				// so we definitely "don't have" this value
-				return false
+				return false, it.primaryIt.Err()
 			}
 			it.skipped++
 
 			for it.skipped <= it.skip {
 				if !it.primaryIt.NextPath(ctx) {
-					return false
+					return false, it.primaryIt.Err()
 				}
 				it.skipped++
 			}
 		}
 	}
 	if inNextPath && it.primaryIt.NextPath(ctx) {
-		return true
+		if err := it.primaryIt.Err(); err != nil {
+			return false, err
+		}
+		return true, nil
 	}
 	return it.primaryIt.Contains(ctx, val)
 }

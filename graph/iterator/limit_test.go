@@ -23,22 +23,30 @@ func TestLimitIteratorBasics(t *testing.T) {
 	expectSz, _ := allIt.Stats(ctx)
 	sz, _ := u.Stats(ctx)
 	require.Equal(t, expectSz.Size.Value, sz.Size.Value)
-	require.Equal(t, []int{1, 2, 3, 4, 5}, iterated(u))
+	require.Equal(t, []int{1, 2, 3, 4, 5}, iterated(t, u))
 
 	u = NewLimit(allIt, 3)
 	sz, _ = u.Stats(ctx)
 	require.Equal(t, int64(3), sz.Size.Value)
-	require.Equal(t, []int{1, 2, 3}, iterated(u))
+	require.Equal(t, []int{1, 2, 3}, iterated(t, u))
 
-	uc := u.Lookup()
+	uc := u.Lookup(ctx)
 	for _, v := range []int{1, 2, 3} {
-		require.True(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
-	require.False(t, uc.Contains(ctx, Int64Node(4)))
+	cnt, err := uc.Contains(ctx, Int64Node(4))
+	require.NoError(t, err)
+	require.False(t, cnt)
 
-	uc = u.Lookup()
+	uc = u.Lookup(ctx)
 	for _, v := range []int{5, 4, 3} {
-		require.True(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err = uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
-	require.False(t, uc.Contains(ctx, Int64Node(2)))
+	cnt, err = uc.Contains(ctx, Int64Node(2))
+	require.NoError(t, err)
+	require.False(t, cnt)
 }

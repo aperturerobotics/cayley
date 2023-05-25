@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -28,7 +29,8 @@ var testData = []quad.Quad{
 func serializeTestData() string {
 	buffer := bytes.NewBuffer(nil)
 	writer := jsonld.NewWriter(buffer)
-	writer.WriteQuads(testData)
+	ctx := context.Background()
+	writer.WriteQuads(ctx, testData)
 	writer.Close()
 	return buffer.String()
 }

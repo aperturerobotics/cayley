@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"regexp"
 
 	"github.com/cayleygraph/cayley/graph"
@@ -28,8 +29,8 @@ func (s *RegExp) Description() string {
 }
 
 // BuildPath implements PathStep.
-func (s *RegExp) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
-	fromPath, err := s.From.BuildPath(qs, ns)
+func (s *RegExp) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+	fromPath, err := s.From.BuildPath(ctx, qs, ns)
 	if err != nil {
 		return nil, err
 	}

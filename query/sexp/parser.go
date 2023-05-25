@@ -36,7 +36,13 @@ func BuildIteratorTreeForQuery(ctx context.Context, qs graph.QuadStore, query st
 func BuildShape(ctx context.Context, query string) (shape.Shape, error) {
 	tree := parseQuery(query)
 	s, _ := buildShape(tree)
-	s, _ = shape.Optimize(ctx, s, nil)
+	optim, opt, err := shape.Optimize(ctx, s, nil)
+	if err != nil {
+		return s, err
+	}
+	if opt {
+		return optim, nil
+	}
 	return s, nil
 }
 

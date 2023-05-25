@@ -64,23 +64,23 @@ func makeTestStore(t testing.TB, fnc testutil.DatabaseFunc, quads ...quad.Quad) 
 	return qs, closer
 }
 
-func runTopLevel(qs graph.QuadStore, path *path.Path, opt bool) ([]quad.Value, error) {
-	pb := path.Iterate(context.TODO())
+func runTopLevel(ctx context.Context, qs graph.QuadStore, path *path.Path, opt bool) ([]quad.Value, error) {
+	pb := path.Iterate(ctx)
 	if !opt {
 		pb = pb.UnOptimized()
 	}
-	return pb.Paths(false).AllValues(qs)
+	return pb.Paths(false).AllValues(ctx, qs)
 }
 
-func runTag(qs graph.QuadStore, path *path.Path, tag string, opt, keepEmpty bool) ([]quad.Value, error) {
+func runTag(ctx context.Context, qs graph.QuadStore, path *path.Path, tag string, opt, keepEmpty bool) ([]quad.Value, error) {
 	var out []quad.Value
-	pb := path.Iterate(context.TODO())
+	pb := path.Iterate(ctx)
 	if !opt {
 		pb = pb.UnOptimized()
 	}
-	err := pb.Paths(true).TagEach(func(tags map[string]graph.Ref) error {
+	err := pb.Paths(true).TagEach(ctx, func(tags map[string]graph.Ref) error {
 		if t, ok := tags[tag]; ok {
-			tv, err := qs.NameOf(t)
+			tv, err := qs.NameOf(ctx, t)
 			if err != nil {
 				return err
 			}
@@ -93,13 +93,13 @@ func runTag(qs graph.QuadStore, path *path.Path, tag string, opt, keepEmpty bool
 	return out, err
 }
 
-func runAllTags(qs graph.QuadStore, path *path.Path, opt bool) ([]map[string]quad.Value, error) {
+func runAllTags(ctx context.Context, qs graph.QuadStore, path *path.Path, opt bool) ([]map[string]quad.Value, error) {
 	var out []map[string]quad.Value
-	pb := path.Iterate(context.TODO())
+	pb := path.Iterate(ctx)
 	if !opt {
 		pb = pb.UnOptimized()
 	}
-	err := pb.Paths(true).TagValues(qs, func(tags map[string]quad.Value) error {
+	err := pb.Paths(true).TagValues(ctx, qs, func(tags map[string]quad.Value) error {
 		out = append(out, tags)
 		return nil
 	})
@@ -537,6 +537,7 @@ func RunTestMorphisms(t *testing.T, fnc testutil.DatabaseFunc) {
 	qs, closer := makeTestStore(t, fnc)
 	defer closer()
 
+	ctx := context.Background()
 	for _, test := range testSet(qs) {
 		for _, opt := range []bool{true, false} {
 			name := test.message
@@ -553,9 +554,9 @@ func RunTestMorphisms(t *testing.T, fnc testutil.DatabaseFunc) {
 				)
 				start := time.Now()
 				if test.tag == "" {
-					got, err = runTopLevel(qs, test.path, opt)
+					got, err = runTopLevel(ctx, qs, test.path, opt)
 				} else {
-					got, err = runTag(qs, test.path, test.tag, opt, test.empty)
+					got, err = runTag(ctx, qs, test.path, test.tag, opt, test.empty)
 				}
 				dt := time.Since(start)
 				if err != nil {
@@ -613,13 +614,14 @@ func testFollowRecursive(t *testing.T, fnc testutil.DatabaseFunc) {
 
 	const msg = "follows recursive order"
 
+	ctx := context.Background()
 	for _, opt := range []bool{true, false} {
 		unopt := ""
 		if !opt {
 			unopt = " (unoptimized)"
 		}
 		t.Run(msg+unopt, func(t *testing.T) {
-			got, err := runTopLevel(qs, qu, opt)
+			got, err := runTopLevel(ctx, qs, qu, opt)
 			if err != nil {
 				t.Errorf("Failed to check %s%s: %v", msg, unopt, err)
 				return
@@ -688,13 +690,14 @@ func testFollowRecursiveHas(t *testing.T, fnc testutil.DatabaseFunc) {
 
 	const msg = "follows recursive loop"
 
+	ctx := context.Background()
 	for _, opt := range []bool{true, false} {
 		unopt := ""
 		if !opt {
 			unopt = " (unoptimized)"
 		}
 		t.Run(msg+unopt, func(t *testing.T) {
-			got, err := runAllTags(qs, qu, opt)
+			got, err := runAllTags(ctx, qs, qu, opt)
 			if err != nil {
 				t.Errorf("Failed to check %s%s: %v", msg, unopt, err)
 				return

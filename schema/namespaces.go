@@ -17,7 +17,7 @@ type namespace struct {
 }
 
 // WriteNamespaces will writes namespaces list into graph.
-func (c *Config) WriteNamespaces(w quad.Writer, n *voc.Namespaces) error {
+func (c *Config) WriteNamespaces(ctx context.Context, w quad.Writer, n *voc.Namespaces) error {
 	rules, err := c.rulesFor(reflect.TypeOf(namespace{}))
 	if err != nil {
 		return fmt.Errorf("can't load rules: %v", err)
@@ -29,7 +29,7 @@ func (c *Config) WriteNamespaces(w quad.Writer, n *voc.Namespaces) error {
 			Prefix: quad.IRI(ns.Prefix),
 		}
 		rv := reflect.ValueOf(obj)
-		if err = wr.writeValueAs(obj.Full, rv, "", rules); err != nil {
+		if err = wr.writeValueAs(ctx, obj.Full, rv, "", rules); err != nil {
 			return err
 		}
 	}

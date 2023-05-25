@@ -37,9 +37,9 @@ func (it *TagsIterator) Next(ctx context.Context) bool {
 	return it.ValueIt.Next(ctx)
 }
 
-func (it *TagsIterator) addQuadFromRef(dataset *ld.RDFDataset, subject ld.Node, tag string, ref refs.Ref) error {
+func (it *TagsIterator) addQuadFromRef(ctx context.Context, dataset *ld.RDFDataset, subject ld.Node, tag string, ref refs.Ref) error {
 	p := ld.NewIRI(tag)
-	rname, err := it.ValueIt.Namer.NameOf(ref)
+	rname, err := it.ValueIt.Namer.NameOf(ctx, ref)
 	if err != nil {
 		return err
 	}
@@ -52,8 +52,8 @@ func (it *TagsIterator) addQuadFromRef(dataset *ld.RDFDataset, subject ld.Node, 
 	return nil
 }
 
-func toSubject(namer refs.Namer, result refs.Ref) (ld.Node, error) {
-	v, err := namer.NameOf(result)
+func toSubject(ctx context.Context, namer refs.Namer, result refs.Ref) (ld.Node, error) {
+	v, err := namer.NameOf(ctx, result)
 	if err != nil {
 		return nil, err
 	}
@@ -64,23 +64,24 @@ func toSubject(namer refs.Namer, result refs.Ref) (ld.Node, error) {
 	return jsonld.ToNode(id)
 }
 
-func (it *TagsIterator) addResultsToDataset(dataset *ld.RDFDataset, result refs.Ref) error {
-	s, err := toSubject(it.ValueIt.Namer, result)
+func (it *TagsIterator) addResultsToDataset(ctx context.Context, dataset *ld.RDFDataset, result refs.Ref) error {
+	s, err := toSubject(ctx, it.ValueIt.Namer, result)
 	if err != nil {
 		return err
 	}
 
 	refTags := make(map[string]refs.Ref)
-
-	it.ValueIt.scanner.TagResults(refTags)
+	if err := it.ValueIt.scanner.TagResults(ctx, refTags); err != nil {
+		return err
+	}
 
 	if len(it.Selected) == 0 {
 		for tag, ref := range refTags {
-			it.addQuadFromRef(dataset, s, tag, ref)
+			it.addQuadFromRef(ctx, dataset, s, tag, ref)
 		}
 	} else {
 		for _, tag := range it.Selected {
-			it.addQuadFromRef(dataset, s, tag, refTags[tag])
+			it.addQuadFromRef(ctx, dataset, s, tag, refTags[tag])
 		}
 	}
 
@@ -88,29 +89,35 @@ func (it *TagsIterator) addResultsToDataset(dataset *ld.RDFDataset, result refs.
 }
 
 // Result implements query.Iterator.
-func (it *TagsIterator) Result() interface{} {
+func (it *TagsIterator) Result(ctx context.Context) (interface{}, error) {
+	if err := it.err; err != nil {
+		return nil, err
+	}
 	// FIXME(iddan): only convert when collation is JSON/JSON-LD, leave as Ref otherwise
-	r := it.ValueIt.scanner.Result()
+	r, err := it.ValueIt.scanner.Result(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if r == nil {
-		return nil
+		return nil, nil
 	}
 	d := ld.NewRDFDataset()
-	err := it.addResultsToDataset(d, r)
+	err = it.addResultsToDataset(ctx, d, r)
 	if err != nil {
 		it.err = err
-		return nil
+		return nil, err
 	}
 	doc, err := singleDocumentFromRDF(d)
 	if err != nil {
 		it.err = err
-		return nil
+		return nil, err
 	}
 	if !it.ExcludeID {
 		m := doc.(map[string]interface{})
 		delete(m, "@id")
-		return m
+		return m, nil
 	}
-	return doc
+	return doc, nil
 }
 
 // Err implements query.Iterator.

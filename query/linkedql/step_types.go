@@ -1,6 +1,8 @@
 package linkedql
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/path"
@@ -15,11 +17,11 @@ type Step interface {
 // IteratorStep is a step that can build an Iterator.
 type IteratorStep interface {
 	Step
-	BuildIterator(qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error)
+	BuildIterator(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error)
 }
 
 // PathStep is a Step that can build a Path.
 type PathStep interface {
 	Step
-	BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error)
+	BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error)
 }

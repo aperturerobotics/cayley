@@ -127,16 +127,19 @@ func MakeQuadSet() []quad.Quad {
 }
 
 func IteratedQuads(t testing.TB, qs graph.QuadStore, s iterator.Shape) []quad.Quad {
-	it := s.Iterate()
+	ctx := context.Background()
+	it := s.Iterate(ctx)
 	defer it.Close()
 	return IteratedQuadsNext(t, qs, it)
 }
 
 func IteratedQuadsNext(t testing.TB, qs graph.QuadStore, it iterator.Scanner) []quad.Quad {
-	ctx := context.TODO()
+	ctx := context.Background()
 	var res quad.ByQuadString
 	for it.Next(ctx) {
-		qsq, err := qs.Quad(it.Result())
+		resi, err := it.Result(ctx)
+		require.NoError(t, err)
+		qsq, err := qs.Quad(ctx, resi)
 		require.NoError(t, err)
 		res = append(res, qsq)
 	}
@@ -187,12 +190,14 @@ func ExpectIteratedValues(t testing.TB, qs graph.QuadStore, it iterator.Shape, e
 }
 
 func IteratedStrings(t testing.TB, qs graph.QuadStore, s iterator.Shape) []string {
-	ctx := context.TODO()
-	it := s.Iterate()
+	ctx := context.Background()
+	it := s.Iterate(ctx)
 	defer it.Close()
 	var res []string
 	for it.Next(ctx) {
-		qsn, err := qs.NameOf(it.Result())
+		resi, err := it.Result(ctx)
+		require.Nil(t, err)
+		qsn, err := qs.NameOf(ctx, resi)
 		require.Nil(t, err)
 		res = append(res, quad.ToString(qsn))
 	}
@@ -202,11 +207,13 @@ func IteratedStrings(t testing.TB, qs graph.QuadStore, s iterator.Shape) []strin
 }
 
 func IteratedValues(t testing.TB, qs graph.QuadStore, s iterator.Shape) []quad.Value {
-	ctx := context.TODO()
-	it := s.Iterate()
+	ctx := context.Background()
+	it := s.Iterate(ctx)
 	var res []quad.Value
 	for it.Next(ctx) {
-		itn, err := qs.NameOf(it.Result())
+		resi, err := it.Result(ctx)
+		require.Nil(t, err)
+		itn, err := qs.NameOf(ctx, resi)
 		require.Nil(t, err)
 		res = append(res, itn)
 	}
@@ -228,13 +235,14 @@ func TestLoadOneQuad(t testing.TB, gen testutil.DatabaseFunc, c *Config) {
 		"context",
 	)
 
-	err := w.AddQuad(q)
+	ctx := context.Background()
+	err := w.AddQuad(ctx, q)
 	require.NoError(t, err)
 	for _, pq := range []quad.String{"Something", "points_to", "Something Else", "context"} {
-		tok, err := qs.ValueOf(pq)
+		tok, err := qs.ValueOf(ctx, pq)
 		require.Nil(t, err)
 		require.NotNil(t, tok, "quad store failed to find value: %q", pq)
-		val, err := qs.NameOf(tok)
+		val, err := qs.NameOf(ctx, tok)
 		require.Nil(t, err)
 		require.NotNil(t, val, "quad store failed to decode value: %q", pq)
 		require.Equal(t, pq, val, "quad store failed to roundtrip value: %q", pq)
@@ -247,7 +255,7 @@ func TestLoadOneQuad(t testing.TB, gen testutil.DatabaseFunc, c *Config) {
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), []quad.Quad{q}, false)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), []quad.Quad{q}, false)
 }
 
 func testLoadDup(t testing.TB, gen testutil.DatabaseFunc, c *Config, single bool) {
@@ -263,13 +271,14 @@ func testLoadDup(t testing.TB, gen testutil.DatabaseFunc, c *Config, single bool
 		"context",
 	)
 
+	ctx := context.Background()
 	if single {
-		err := w.AddQuadSet([]quad.Quad{q, q})
+		err := w.AddQuadSet(ctx, []quad.Quad{q, q})
 		require.NoError(t, err)
 	} else {
-		err := w.AddQuad(q)
+		err := w.AddQuad(ctx, q)
 		require.NoError(t, err)
-		err = w.AddQuad(q)
+		err = w.AddQuad(ctx, q)
 		require.NoError(t, err)
 	}
 
@@ -281,7 +290,7 @@ func testLoadDup(t testing.TB, gen testutil.DatabaseFunc, c *Config, single bool
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), []quad.Quad{q}, false)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), []quad.Quad{q}, false)
 }
 
 func TestLoadDup(t testing.TB, gen testutil.DatabaseFunc, c *Config) {
@@ -303,7 +312,8 @@ func TestLoadDupRaw(t testing.TB, gen testutil.DatabaseFunc, c *Config) {
 		"context",
 	)
 
-	err := qs.ApplyDeltas([]graph.Delta{
+	ctx := context.Background()
+	err := qs.ApplyDeltas(ctx, []graph.Delta{
 		{Quad: q, Action: graph.Add},
 		{Quad: q, Action: graph.Add},
 	}, graph.IgnoreOpts{IgnoreDup: true})
@@ -317,15 +327,16 @@ func TestLoadDupRaw(t testing.TB, gen testutil.DatabaseFunc, c *Config) {
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), []quad.Quad{q}, false)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), []quad.Quad{q}, false)
 }
 
 func TestWriters(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
+	ctx := context.Background()
 	t.Run("batch", func(t *testing.T) {
 		qs, _, closer := gen(t)
 		defer closer()
 
-		w, err := qs.NewQuadWriter()
+		w, err := qs.NewQuadWriter(ctx)
 		require.NoError(t, err)
 		defer w.Close()
 
@@ -333,18 +344,18 @@ func TestWriters(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 		q1 := quads[:len(quads)/2]
 		q2 := quads[len(q1):]
 
-		n, err := w.WriteQuads(q1)
+		n, err := w.WriteQuads(ctx, q1)
 		require.NoError(t, err)
 		require.Equal(t, len(q1), n)
 
-		n, err = w.WriteQuads(q2)
+		n, err = w.WriteQuads(ctx, q2)
 		require.NoError(t, err)
 		require.Equal(t, len(q2), n)
 
 		err = w.Close()
 		require.NoError(t, err)
 
-		ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), quads, true)
+		ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), quads, true)
 	})
 	for _, mis := range []bool{false, true} {
 		for _, dup := range []bool{false, true} {
@@ -365,7 +376,7 @@ func TestWriters(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 				require.NoError(t, err)
 
 				quads := func(arr ...quad.Quad) {
-					ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), arr, false)
+					ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), arr, false)
 				}
 
 				deltaErr := func(exp, err error) {
@@ -383,35 +394,35 @@ func TestWriters(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 
 				// add one quad
 				q := quad.Make("a", "b", "c", nil)
-				err = w.AddQuad(q)
+				err = w.AddQuad(ctx, q)
 				require.NoError(t, err)
 				quads(q)
 
 				// try to add the same quad again
-				err = w.AddQuad(q)
+				err = w.AddQuad(ctx, q)
 				deltaErr(graph.ErrQuadExists, err)
 				quads(q)
 
 				// remove quad with non-existent node
-				err = w.RemoveQuad(quad.Make("a", "b", "not-existent", nil))
+				err = w.RemoveQuad(ctx, quad.Make("a", "b", "not-existent", nil))
 				deltaErr(graph.ErrQuadNotExist, err)
 
 				// remove non-existent quads
-				err = w.RemoveQuad(quad.Make("a", "c", "b", nil))
+				err = w.RemoveQuad(ctx, quad.Make("a", "c", "b", nil))
 				deltaErr(graph.ErrQuadNotExist, err)
-				err = w.RemoveQuad(quad.Make("c", "b", "a", nil))
+				err = w.RemoveQuad(ctx, quad.Make("c", "b", "a", nil))
 				deltaErr(graph.ErrQuadNotExist, err)
 
 				// make sure store is still in correct state
 				quads(q)
 
 				// remove existing quad
-				err = w.RemoveQuad(q)
+				err = w.RemoveQuad(ctx, q)
 				require.NoError(t, err)
 				quads()
 
 				// add the same quad again
-				err = w.AddQuad(q)
+				err = w.AddQuad(ctx, q)
 				require.NoError(t, err)
 				quads(q)
 			})
@@ -432,17 +443,18 @@ func Test1K(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 	w, err := writer.NewSingle(qs, graph.IgnoreOpts{})
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	qw := graph.NewWriter(w)
 	exp := make([]quad.Quad, 0, n)
 	for i := 0; i < n; i++ {
 		q := quad.Make(i, i, i, nil)
 		exp = append(exp, q)
-		qw.WriteQuad(q)
+		qw.WriteQuad(ctx, q)
 	}
-	err = qw.Flush()
+	err = qw.Flush(ctx)
 	require.NoError(t, err)
 
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), exp, true)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), exp, true)
 }
 
 func Test1KBatch(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
@@ -461,18 +473,19 @@ func Test1KBatch(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 		exp = append(exp, q)
 	}
 
-	qw, err := qs.NewQuadWriter()
+	ctx := context.Background()
+	qw, err := qs.NewQuadWriter(ctx)
 	require.NoError(t, err)
 	defer qw.Close()
 
-	n, err = qw.WriteQuads(exp)
+	n, err = qw.WriteQuads(ctx, exp)
 	require.NoError(t, err)
 	require.Equal(t, len(exp), n)
 
 	err = qw.Close()
 	require.NoError(t, err)
 
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), exp, true)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), exp, true)
 }
 
 type ValueSizer interface {
@@ -485,7 +498,8 @@ func TestSizes(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 
 	w := testutil.MakeWriter(t, qs, opts)
 
-	err := w.AddQuadSet(MakeQuadSet())
+	ctx := context.Background()
+	err := w.AddQuadSet(ctx, MakeQuadSet())
 	require.NoError(t, err)
 
 	exp := graph.Stats{
@@ -497,20 +511,20 @@ func TestSizes(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
 	if qss, ok := qs.(ValueSizer); ok {
-		sn, err := qs.ValueOf(quad.String("B"))
+		sn, err := qs.ValueOf(ctx, quad.String("B"))
 		require.Nil(t, err)
 		s := qss.SizeOf(sn)
 		require.Equal(t, int64(5), s, "Unexpected quadstore value size")
 	}
 
-	err = w.RemoveQuad(quad.Make(
+	err = w.RemoveQuad(ctx, quad.Make(
 		"A",
 		"follows",
 		"B",
 		nil,
 	))
 	require.NoError(t, err)
-	err = w.RemoveQuad(quad.Make(
+	err = w.RemoveQuad(ctx, quad.Make(
 		"A",
 		"follows",
 		"B",
@@ -536,7 +550,7 @@ func TestSizes(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	}
 
 	if qss, ok := qs.(ValueSizer); ok {
-		vn, err := qs.ValueOf(quad.String("B"))
+		vn, err := qs.ValueOf(ctx, quad.String("B"))
 		require.NoError(t, err)
 		s := qss.SizeOf(vn)
 		require.Equal(t, int64(4), s, "Unexpected quadstore value size")
@@ -552,14 +566,15 @@ func TestIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 
 	var it iterator.Shape
 
-	it = qs.NodesAllIterator()
+	it = qs.NodesAllIterator(ctx)
 	require.NotNil(t, it)
 
 	st, _ := it.Stats(ctx)
 	size := st.Size.Value
 	require.True(t, size > 0 && size < 23, "Unexpected size: %v", size)
 
-	optIt, changed := it.Optimize(ctx)
+	optIt, changed, err := it.Optimize(ctx)
+	require.NoError(t, err)
 	require.True(t, !changed && optIt == it, "Optimize unexpectedly changed iterator: %v, %T(%p) vs %T(%p)", changed, optIt, optIt, it, it)
 
 	expect := []string{
@@ -582,12 +597,13 @@ func TestIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 		require.Equal(t, expect, got, "Unexpected iterated result on repeat %d", i)
 	}
 
-	itc := it.Lookup()
+	itc := it.Lookup(ctx)
 	defer itc.Close()
 	for _, pq := range expect {
-		qsv, err := qs.ValueOf(quad.Raw(pq))
+		qsv, err := qs.ValueOf(ctx, quad.Raw(pq))
 		require.NoError(t, err)
-		ok := itc.Contains(ctx, qsv)
+		ok, err := itc.Contains(ctx, qsv)
+		require.NoError(t, err)
 		require.NoError(t, itc.Err())
 		require.True(t, ok, "Failed to find and check %q correctly", pq)
 
@@ -601,15 +617,18 @@ func TestIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 		}
 	*/
 
-	it = qs.QuadsAllIterator()
-	optIt, changed = it.Optimize(ctx)
+	it = qs.QuadsAllIterator(ctx)
+	optIt, changed, err = it.Optimize(ctx)
+	require.NoError(t, err)
 	require.True(t, !changed && optIt == it, "Optimize unexpectedly changed iterator: %v, %T", changed, optIt)
 
-	itn := it.Iterate()
+	itn := it.Iterate(ctx)
 	defer itn.Close()
 	require.True(t, itn.Next(ctx))
 
-	q, err := qs.Quad(itn.Result())
+	res, err := itn.Result(ctx)
+	require.NoError(t, err)
+	q, err := qs.Quad(ctx, res)
 	require.NoError(t, err)
 	require.Nil(t, itn.Err())
 	require.True(t, q.IsValid(), "Invalid quad returned: %q", q)
@@ -625,16 +644,18 @@ func TestIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 }
 
 func TestHasA(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
+	ctx := context.Background()
 	qs, opts, closer := gen(t)
 	defer closer()
 
 	testutil.MakeWriter(t, qs, opts, MakeQuadSet()...)
 
 	var it iterator.Shape = graph.NewHasA(qs,
-		graph.NewLinksTo(qs, qs.NodesAllIterator(), quad.Predicate),
+		graph.NewLinksTo(qs, qs.NodesAllIterator(ctx), quad.Predicate),
 		quad.Predicate)
 
-	it, _ = it.Optimize(context.TODO())
+	it, _, err := it.Optimize(ctx)
+	require.NoError(t, err)
 
 	var exp []quad.Value
 	for i := 0; i < 8; i++ {
@@ -657,9 +678,10 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	}
 
 	// Subject iterator.
-	qsv, err := qs.ValueOf(quad.String("C"))
+	ctx := context.Background()
+	qsv, err := qs.ValueOf(ctx, quad.String("C"))
 	require.NoError(t, err)
-	it := qs.QuadIterator(quad.Subject, qsv)
+	it := qs.QuadIterator(ctx, quad.Subject, qsv)
 
 	expectIteratedQuads(it, []quad.Quad{
 		quad.Make("C", "follows", "B", nil),
@@ -667,7 +689,7 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	and := iterator.NewAnd(
-		qs.QuadsAllIterator(),
+		qs.QuadsAllIterator(ctx),
 		it,
 	)
 
@@ -677,19 +699,19 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	// Object iterator.
-	qsv, err = qs.ValueOf(quad.String("F"))
+	qsv, err = qs.ValueOf(ctx, quad.String("F"))
 	require.NoError(t, err)
-	it = qs.QuadIterator(quad.Object, qsv)
+	it = qs.QuadIterator(ctx, quad.Object, qsv)
 
 	expectIteratedQuads(it, []quad.Quad{
 		quad.Make("B", "follows", "F", nil),
 		quad.Make("E", "follows", "F", nil),
 	})
 
-	qsv, err = qs.ValueOf(quad.String("B"))
+	qsv, err = qs.ValueOf(ctx, quad.String("B"))
 	require.NoError(t, err)
 	and = iterator.NewAnd(
-		qs.QuadIterator(quad.Subject, qsv),
+		qs.QuadIterator(ctx, quad.Subject, qsv),
 		it,
 	)
 
@@ -698,9 +720,9 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	// Predicate iterator.
-	qsv, err = qs.ValueOf(quad.String("status"))
+	qsv, err = qs.ValueOf(ctx, quad.String("status"))
 	require.NoError(t, err)
-	it = qs.QuadIterator(quad.Predicate, qsv)
+	it = qs.QuadIterator(ctx, quad.Predicate, qsv)
 
 	expectIteratedQuads(it, []quad.Quad{
 		quad.Make("B", "status", "cool", "status_graph"),
@@ -709,9 +731,9 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	// Label iterator.
-	qsv, err = qs.ValueOf(quad.String("status_graph"))
+	qsv, err = qs.ValueOf(ctx, quad.String("status_graph"))
 	require.NoError(t, err)
-	it = qs.QuadIterator(quad.Label, qsv)
+	it = qs.QuadIterator(ctx, quad.Label, qsv)
 
 	expectIteratedQuads(it, []quad.Quad{
 		quad.Make("B", "status", "cool", "status_graph"),
@@ -720,10 +742,10 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	// Order is important
-	qsv, err = qs.ValueOf(quad.String("B"))
+	qsv, err = qs.ValueOf(ctx, quad.String("B"))
 	require.NoError(t, err)
 	and = iterator.NewAnd(
-		qs.QuadIterator(quad.Subject, qsv),
+		qs.QuadIterator(ctx, quad.Subject, qsv),
 		it,
 	)
 
@@ -732,11 +754,11 @@ func TestSetIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	})
 
 	// Order is important
-	qsv, err = qs.ValueOf(quad.String("B"))
+	qsv, err = qs.ValueOf(ctx, quad.String("B"))
 	require.NoError(t, err)
 	and = iterator.NewAnd(
 		it,
-		qs.QuadIterator(quad.Subject, qsv),
+		qs.QuadIterator(ctx, quad.Subject, qsv),
 	)
 
 	expectIteratedQuads(and, []quad.Quad{
@@ -750,24 +772,25 @@ func TestDeleteQuad(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 
 	w := testutil.MakeWriter(t, qs, opts, MakeQuadSet()...)
 
-	vn, err := qs.ValueOf(quad.Raw("E"))
+	ctx := context.Background()
+	vn, err := qs.ValueOf(ctx, quad.Raw("E"))
 	require.NoError(t, err)
 	require.NotNil(t, vn)
 
-	it := qs.QuadIterator(quad.Subject, vn)
+	it := qs.QuadIterator(ctx, quad.Subject, vn)
 	ExpectIteratedQuads(t, qs, it, []quad.Quad{
 		quad.Make("E", "follows", "F", nil),
 	}, false)
 
-	err = w.RemoveQuad(quad.Make("E", "follows", "F", nil))
+	err = w.RemoveQuad(ctx, quad.Make("E", "follows", "F", nil))
 	require.NoError(t, err)
 
-	qsv, err := qs.ValueOf(quad.Raw("E"))
+	qsv, err := qs.ValueOf(ctx, quad.Raw("E"))
 	require.NoError(t, err)
-	it = qs.QuadIterator(quad.Subject, qsv)
+	it = qs.QuadIterator(ctx, quad.Subject, qsv)
 	ExpectIteratedQuads(t, qs, it, nil, false)
 
-	it = qs.QuadsAllIterator()
+	it = qs.QuadsAllIterator(ctx)
 	ExpectIteratedQuads(t, qs, it, []quad.Quad{
 		quad.Make("A", "follows", "B", nil),
 		quad.Make("C", "follows", "B", nil),
@@ -792,15 +815,16 @@ func TestDeletedFromIterator(t testing.TB, gen testutil.DatabaseFunc, conf *Conf
 	w := testutil.MakeWriter(t, qs, opts, MakeQuadSet()...)
 
 	// Subject iterator.
-	qsv, err := qs.ValueOf(quad.Raw("E"))
+	ctx := context.Background()
+	qsv, err := qs.ValueOf(ctx, quad.Raw("E"))
 	require.NoError(t, err)
-	it := qs.QuadIterator(quad.Subject, qsv)
+	it := qs.QuadIterator(ctx, quad.Subject, qsv)
 
 	ExpectIteratedQuads(t, qs, it, []quad.Quad{
 		quad.Make("E", "follows", "F", nil),
 	}, false)
 
-	w.RemoveQuad(quad.Make("E", "follows", "F", nil))
+	w.RemoveQuad(ctx, quad.Make("E", "follows", "F", nil))
 
 	ExpectIteratedQuads(t, qs, it, nil, false)
 }
@@ -822,7 +846,8 @@ func TestLoadTypedQuads(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 		quad.Time(time.Now()),
 	}
 
-	err := w.AddQuadSet([]quad.Quad{
+	ctx := context.Background()
+	err := w.AddQuadSet(ctx, []quad.Quad{
 		{values[0], values[1], values[2], values[3]},
 		{values[4], values[5], values[6], nil},
 		{values[4], values[5], values[7], nil},
@@ -833,9 +858,9 @@ func TestLoadTypedQuads(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	})
 	require.NoError(t, err)
 	for _, pq := range values {
-		qsv, err := qs.ValueOf(pq)
+		qsv, err := qs.ValueOf(ctx, pq)
 		require.NoError(t, err)
-		got, err := qs.NameOf(qsv)
+		got, err := qs.NameOf(ctx, qsv)
 		require.NoError(t, err)
 		if !conf.UnTyped {
 			if pt, ok := pq.(quad.Time); ok {
@@ -863,9 +888,9 @@ func TestLoadTypedQuads(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 				assert.Equal(t, pq, got, "Failed to roundtrip %q (%T)", pq, pq)
 			}
 			// check if we can get received value again (hash roundtrip)
-			gotv, err := qs.ValueOf(got)
+			gotv, err := qs.ValueOf(ctx, got)
 			require.NoError(t, err)
-			got2, err := qs.NameOf(gotv)
+			got2, err := qs.NameOf(ctx, gotv)
 			require.NoError(t, err)
 			assert.Equal(t, got, got2, "Failed to use returned value to get it again")
 		} else {
@@ -899,11 +924,12 @@ func TestAddRemove(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 		Nodes: refs.Size{Value: 11, Exact: true},
 		Quads: refs.Size{Value: 11, Exact: true},
 	}
-	st, err := qs.Stats(context.Background(), true)
+	ctx := context.Background()
+	st, err := qs.Stats(ctx, true)
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	all := qs.NodesAllIterator()
+	all := qs.NodesAllIterator(ctx)
 	expect := []string{
 		"A",
 		"B",
@@ -920,7 +946,7 @@ func TestAddRemove(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	ExpectIteratedRawStrings(t, qs, all, expect)
 
 	// Add more quads, some conflicts
-	err = w.AddQuadSet([]quad.Quad{
+	err = w.AddQuadSet(ctx, []quad.Quad{
 		quad.Make("A", "follows", "B", nil), // duplicate
 		quad.Make("F", "follows", "B", nil),
 		quad.Make("C", "follows", "D", nil), // duplicate
@@ -936,7 +962,7 @@ func TestAddRemove(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	all = qs.NodesAllIterator()
+	all = qs.NodesAllIterator(ctx)
 	expect = []string{
 		"A",
 		"B",
@@ -955,9 +981,9 @@ func TestAddRemove(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 
 	// Remove quad
 	toRemove := quad.Make("X", "follows", "B", nil)
-	err = w.RemoveQuad(toRemove)
+	err = w.RemoveQuad(ctx, toRemove)
 	require.Nil(t, err, "RemoveQuad failed")
-	err = w.RemoveQuad(toRemove)
+	err = w.RemoveQuad(ctx, toRemove)
 	require.True(t, graph.IsQuadNotExist(err), "expected not exists error, got: %v", err)
 
 	expect = []string{
@@ -973,7 +999,7 @@ func TestAddRemove(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 		"status",
 		"status_graph",
 	}
-	all = qs.NodesAllIterator()
+	all = qs.NodesAllIterator(ctx)
 	ExpectIteratedRawStrings(t, qs, all, expect)
 }
 
@@ -992,15 +1018,15 @@ func TestIteratorsAndNextResultOrderA(t testing.TB, gen testutil.DatabaseFunc, c
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
-	qsv, err := qs.ValueOf(quad.Raw("C"))
+	qsv, err := qs.ValueOf(ctx, quad.Raw("C"))
 	require.NoError(t, err)
 	fixed := iterator.NewFixed(qsv)
 
-	qsv, err = qs.ValueOf(quad.Raw("follows"))
+	qsv, err = qs.ValueOf(ctx, quad.Raw("follows"))
 	require.NoError(t, err)
 	fixed2 := iterator.NewFixed(qsv)
 
-	all := qs.NodesAllIterator()
+	all := qs.NodesAllIterator(ctx)
 
 	const allTag = "all"
 	innerAnd := iterator.NewAnd(
@@ -1009,12 +1035,13 @@ func TestIteratorsAndNextResultOrderA(t testing.TB, gen testutil.DatabaseFunc, c
 	)
 
 	hasa := graph.NewHasA(qs, innerAnd, quad.Subject)
-	outerAnd := iterator.NewAnd(fixed, hasa).Iterate()
+	outerAnd := iterator.NewAnd(fixed, hasa).Iterate(ctx)
 
 	require.True(t, outerAnd.Next(ctx), "Expected one matching subtree")
 
-	val := outerAnd.Result()
-	qsn, err := qs.NameOf(val)
+	val, err := outerAnd.Result(ctx)
+	require.NoError(t, err)
+	qsn, err := qs.NameOf(ctx, val)
 	require.NoError(t, err)
 	require.Equal(t, quad.Raw("C"), qsn)
 
@@ -1024,8 +1051,9 @@ func TestIteratorsAndNextResultOrderA(t testing.TB, gen testutil.DatabaseFunc, c
 	)
 	for {
 		m := make(map[string]graph.Ref, 1)
-		outerAnd.TagResults(m)
-		qsn, err = qs.NameOf(m[allTag])
+		err = outerAnd.TagResults(ctx, m)
+		require.NoError(t, err)
+		qsn, err = qs.NameOf(ctx, m[allTag])
 		require.NoError(t, err)
 		got = append(got, quad.ToString(qsn))
 		if !outerAnd.NextPath(ctx) {
@@ -1129,7 +1157,8 @@ func TestCompareTypedValues(t testing.TB, gen testutil.DatabaseFunc, conf *Confi
 		{quad.Int(math.MaxInt64), quad.Int(math.MaxInt64 - 1), quad.Int(math.MinInt64 + 1), quad.Int(math.MinInt64)},
 	}
 
-	err := w.AddQuadSet(quads)
+	ctx := context.Background()
+	err := w.AddQuadSet(ctx, quads)
 	require.NoError(t, err)
 
 	var vals []quad.Value
@@ -1140,18 +1169,18 @@ func TestCompareTypedValues(t testing.TB, gen testutil.DatabaseFunc, conf *Confi
 			}
 		}
 	}
-	ExpectIteratedValues(t, qs, qs.NodesAllIterator(), vals, true)
+	ExpectIteratedValues(t, qs, qs.NodesAllIterator(ctx), vals, true)
 
 	for _, c := range casesCompare {
 		//t.Log(c.op, c.val)
-		it := iterator.NewComparison(qs.NodesAllIterator(), c.op, c.val, qs)
+		it := iterator.NewComparison(qs.NodesAllIterator(ctx), c.op, c.val, qs)
 		ExpectIteratedValues(t, qs, it, c.expect, true)
 	}
 
-	ctx := context.TODO()
 	for _, c := range casesCompare {
 		s := shape.Compare(shape.AllNodes{}, c.op, c.val)
-		ns, ok := shape.Optimize(ctx, s, qs)
+		ns, ok, err := shape.Optimize(ctx, s, qs)
+		require.NoError(t, err)
 		require.Equal(t, conf.OptimizesComparison, ok)
 		if conf.OptimizesComparison {
 			require.NotEqual(t, s, ns)
@@ -1171,7 +1200,8 @@ func TestNodeDelete(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 
 	del := quad.Raw("D")
 
-	err := w.RemoveNode(del)
+	ctx := context.Background()
+	err := w.RemoveNode(ctx, del)
 	require.NoError(t, err)
 
 	exp := MakeQuadSet()
@@ -1184,9 +1214,9 @@ func TestNodeDelete(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 			}
 		}
 	}
-	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(), exp, true)
+	ExpectIteratedQuads(t, qs, qs.QuadsAllIterator(ctx), exp, true)
 
-	ExpectIteratedValues(t, qs, qs.NodesAllIterator(), []quad.Value{
+	ExpectIteratedValues(t, qs, qs.NodesAllIterator(ctx), []quad.Value{
 		quad.Raw("A"),
 		quad.Raw("B"),
 		quad.Raw("C"),
@@ -1220,7 +1250,8 @@ func TestSchema(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	sch := schema.NewConfig()
 
 	qw := graph.NewWriter(w)
-	id, err := sch.WriteAsQuads(qw, p)
+	ctx := context.Background()
+	id, err := sch.WriteAsQuads(ctx, qw, p)
 	require.NoError(t, err)
 	err = qw.Close()
 	require.NoError(t, err)
@@ -1238,19 +1269,18 @@ func TestDeleteReinserted(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 
 	w := testutil.MakeWriter(t, qs, opts, MakeQuadSet()...)
 
-	err := w.AddQuadSet([]quad.Quad{
+	ctx := context.Background()
+	err := w.AddQuadSet(ctx, []quad.Quad{
 		quad.Make("<bob>", "<status>", "Feeling happy", nil),
 		quad.Make("<sally>", "<follows>", "<jim>", nil),
 	})
 	require.NoError(t, err, "Add quadset failed")
 
-	ctx := context.TODO()
-
 	q := quad.Make("<bob>", "<follows>", "<sally>", nil)
 	for i := 0; i < 2; i++ {
-		err = w.AddQuad(q)
+		err = w.AddQuad(ctx, q)
 		require.NoError(t, err, "Add quad failed")
-		err = w.RemoveQuad(q)
+		err = w.RemoveQuad(ctx, q)
 		require.NoError(t, err, "Remove quad failed")
 		refs, err := graph.RefsOf(ctx, qs, []quad.Value{
 			q.Subject, q.Predicate, q.Object,
@@ -1269,22 +1299,21 @@ func TestDeleteReinsertedDup(t testing.TB, gen testutil.DatabaseFunc, _ *Config)
 
 	w := testutil.MakeWriter(t, qs, opts, MakeQuadSet()...)
 
-	err := w.AddQuadSet([]quad.Quad{
+	ctx := context.Background()
+	err := w.AddQuadSet(ctx, []quad.Quad{
 		quad.Make("<bob>", "<status>", "Feeling happy", nil),
 		quad.Make("<sally>", "<follows>", "<jim>", nil),
 	})
 	require.NoError(t, err, "Add quadset failed")
 
-	ctx := context.TODO()
-
 	q := quad.Make("<bob>", "<follows>", "<x>", nil)
 	for i := 0; i < 2; i++ {
-		err = w.AddQuad(q)
+		err = w.AddQuad(ctx, q)
 		require.NoError(t, err, "Add quad failed")
 		// must be ignored
-		err = w.AddQuad(q)
+		err = w.AddQuad(ctx, q)
 		require.NoError(t, err, "Add quad failed")
-		err = w.RemoveQuad(q)
+		err = w.RemoveQuad(ctx, q)
 		require.NoError(t, err, "Remove quad failed")
 
 		refs, err := graph.RefsOf(ctx, qs, []quad.Value{
@@ -1317,7 +1346,8 @@ func BenchmarkImport(b *testing.B, gen testutil.DatabaseFunc) {
 	qs, _, closer := gen(b)
 	defer closer()
 
-	w, err := qs.NewQuadWriter()
+	ctx := context.Background()
+	w, err := qs.NewQuadWriter(ctx)
 	require.NoError(b, err)
 	defer w.Close()
 
@@ -1342,7 +1372,7 @@ func BenchmarkImport(b *testing.B, gen testutil.DatabaseFunc) {
 		if len(batch) > perBatch {
 			batch = batch[:perBatch]
 		}
-		n, err := w.WriteQuads(batch)
+		n, err := w.WriteQuads(ctx, batch)
 		if err != nil {
 			b.Fatal(err)
 		} else if n != len(batch) {

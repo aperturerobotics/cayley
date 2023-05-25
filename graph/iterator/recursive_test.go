@@ -29,7 +29,7 @@ import (
 )
 
 func singleHop(qs graph.QuadIndexer, pred string) Morphism {
-	return func(it Shape) Shape {
+	return func(ctx context.Context, it Shape) Shape {
 		fixed := NewFixed()
 		fixed.Add(refs.PreFetched(quad.Raw(pred)))
 		predlto := graph.NewLinksTo(qs, fixed, quad.Predicate)
@@ -54,16 +54,18 @@ var recTestQs = &graphmock.Store{
 }
 
 func TestRecursiveNext(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	qs := recTestQs
 	start := NewFixed()
 	start.Add(refs.PreFetched(quad.Raw("alice")))
-	r := NewRecursive(start, singleHop(qs, "parent"), 0).Iterate()
+	r := NewRecursive(start, singleHop(qs, "parent"), 0).Iterate(ctx)
 
 	expected := []string{"bob", "charlie", "dani", "emily"}
 	var got []string
 	for r.Next(ctx) {
-		qn, err := qs.NameOf(r.Result())
+		resi, err := r.Result(ctx)
+		require.NoError(t, err)
+		qn, err := qs.NameOf(ctx, resi)
 		require.NoError(t, err)
 		got = append(got, quad.ToString(qn))
 	}
@@ -73,47 +75,50 @@ func TestRecursiveNext(t *testing.T) {
 }
 
 func TestRecursiveContains(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	qs := recTestQs
 	start := NewFixed()
 	start.Add(refs.PreFetched(quad.Raw("alice")))
-	r := NewRecursive(start, singleHop(qs, "parent"), 0).Lookup()
+	r := NewRecursive(start, singleHop(qs, "parent"), 0).Lookup(ctx)
 	values := []string{"charlie", "bob", "not"}
 	expected := []bool{true, true, false}
 
 	for i, v := range values {
-		vn, err := qs.ValueOf(quad.Raw(v))
+		vn, err := qs.ValueOf(ctx, quad.Raw(v))
 		require.NoError(t, err)
-		ok := r.Contains(ctx, vn)
+		ok, err := r.Contains(ctx, vn)
+		require.NoError(t, err)
 		require.Equal(t, expected[i], ok)
 	}
 }
 
 func TestRecursiveNextPath(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	qs := recTestQs
-	start := qs.NodesAllIterator()
+	start := qs.NodesAllIterator(ctx)
 	start = Tag(start, "person")
-	it := singleHop(qs, "follows")(start)
+	it := singleHop(qs, "follows")(ctx, start)
 	and := NewAnd()
 	and.AddSubIterator(it)
 	fixed := NewFixed()
 	fixed.Add(refs.PreFetched(quad.Raw("alice")))
 	and.AddSubIterator(fixed)
-	r := NewRecursive(and, singleHop(qs, "parent"), 0).Iterate()
+	r := NewRecursive(and, singleHop(qs, "parent"), 0).Iterate(ctx)
 
 	expected := []string{"fred", "fred", "fred", "fred", "greg", "greg", "greg", "greg"}
 	var got []string
 	for r.Next(ctx) {
 		res := make(map[string]refs.Ref)
-		r.TagResults(res)
-		vn, err := qs.NameOf(res["person"])
+		err := r.TagResults(ctx, res)
+		require.NoError(t, err)
+		vn, err := qs.NameOf(ctx, res["person"])
 		require.NoError(t, err)
 		got = append(got, quad.ToString(vn))
 		for r.NextPath(ctx) {
 			res := make(map[string]refs.Ref)
-			r.TagResults(res)
-			vn, err := qs.NameOf(res["person"])
+			err := r.TagResults(ctx, res)
+			require.NoError(t, err)
+			vn, err := qs.NameOf(ctx, res["person"])
 			require.NoError(t, err)
 			got = append(got, quad.ToString(vn))
 		}

@@ -1,6 +1,7 @@
 package linkedql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -12,7 +13,7 @@ import (
 
 // PropertyPathI is an interface to be used where a path of properties is expected.
 type PropertyPathI interface {
-	BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error)
+	BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error)
 }
 
 // PropertyPath is a struct wrapping PropertyPathI
@@ -84,7 +85,7 @@ func (p *PropertyPath) UnmarshalJSON(data []byte) error {
 type PropertyIRIs []PropertyIRI
 
 // BuildPath implements PropertyPath.
-func (p PropertyIRIs) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (p PropertyIRIs) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	var values []quad.Value
 	for _, iri := range p {
 		values = append(values, iri.full(ns))
@@ -105,8 +106,8 @@ func (p PropertyIRIStrings) PropertyIRIs() PropertyIRIs {
 }
 
 // BuildPath implements PropertyPath.
-func (p PropertyIRIStrings) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
-	return p.PropertyIRIs().BuildPath(qs, ns)
+func (p PropertyIRIStrings) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+	return p.PropertyIRIs().BuildPath(ctx, qs, ns)
 }
 
 // PropertyIRI is an IRI of a Property
@@ -117,7 +118,7 @@ func (p PropertyIRI) full(ns *voc.Namespaces) quad.IRI {
 }
 
 // BuildPath implements PropertyPath
-func (p PropertyIRI) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (p PropertyIRI) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	return path.StartPath(qs, p.full(ns)), nil
 }
 
@@ -125,9 +126,9 @@ func (p PropertyIRI) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Pa
 type PropertyIRIString string
 
 // BuildPath implements PropertyPath
-func (p PropertyIRIString) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (p PropertyIRIString) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	iri := PropertyIRI(p)
-	return iri.BuildPath(qs, ns)
+	return iri.BuildPath(ctx, qs, ns)
 }
 
 // PropertyStep is a step that should resolve to a path of properties
@@ -136,6 +137,6 @@ type PropertyStep struct {
 }
 
 // BuildPath implements PropertyPath
-func (p PropertyStep) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
-	return p.BuildPath(qs, ns)
+func (p PropertyStep) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+	return p.BuildPath(ctx, qs, ns)
 }

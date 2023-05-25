@@ -138,7 +138,7 @@ func (s *Session) quadValueToNative(v quad.Value) interface{} {
 func (s *Session) tagsToValueMap(m map[string]graph.Ref) (map[string]interface{}, error) {
 	outputMap := make(map[string]interface{})
 	for k, v := range m {
-		nv, err := s.qs.NameOf(v)
+		nv, err := s.qs.NameOf(s.context(), v)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,7 @@ func (s *Session) runIteratorToArray(it iterator.Shape, limit int) ([]map[string
 	ctx := s.context()
 
 	output := make([]map[string]interface{}, 0)
-	err := iterator.Iterate(ctx, it).Limit(limit).TagEach(func(tags map[string]graph.Ref) error {
+	err := iterator.Iterate(it).Limit(limit).TagEach(ctx, func(tags map[string]graph.Ref) error {
 		tm, err := s.tagsToValueMap(tags)
 		if err != nil {
 			return err
@@ -175,7 +175,7 @@ func (s *Session) runIteratorToArrayNoTags(it iterator.Shape, limit int) ([]inte
 	ctx := s.context()
 
 	output := make([]interface{}, 0)
-	err := iterator.Iterate(ctx, it).Paths(false).Limit(limit).EachValue(s.qs, func(v quad.Value) error {
+	err := iterator.Iterate(it).Paths(false).Limit(limit).EachValue(ctx, s.qs, func(v quad.Value) error {
 		if o := s.quadValueToNative(v); o != nil {
 			output = append(output, o)
 		}
@@ -194,7 +194,7 @@ func (s *Session) runIteratorWithCallback(it iterator.Shape, callback goja.Value
 	}
 	ctx, cancel := context.WithCancel(s.context())
 	defer cancel()
-	return iterator.Iterate(ctx, it).Paths(true).Limit(limit).TagEach(func(tags map[string]graph.Ref) error {
+	return iterator.Iterate(it).Paths(true).Limit(limit).TagEach(ctx, func(tags map[string]graph.Ref) error {
 		tm, err := s.tagsToValueMap(tags)
 		if err != nil || tm == nil {
 			return err
@@ -230,7 +230,7 @@ func (s *Session) runIterator(it iterator.Shape) error {
 	ctx, cancel := context.WithCancel(s.context())
 	defer cancel()
 	stop := false
-	err := iterator.Iterate(ctx, it).Paths(true).TagEach(func(tags map[string]graph.Ref) error {
+	err := iterator.Iterate(it).Paths(true).TagEach(ctx, func(tags map[string]graph.Ref) error {
 		if !s.send(ctx, &Result{Tags: tags}) {
 			cancel()
 			stop = true
@@ -244,7 +244,8 @@ func (s *Session) runIterator(it iterator.Shape) error {
 }
 
 func (s *Session) countResults(it iterator.Shape) (int64, error) {
-	return iterator.Iterate(s.context(), it).Paths(true).Count()
+	ctx := s.context()
+	return iterator.Iterate(it).Paths(true).Count(ctx)
 }
 
 type Result struct {
@@ -253,11 +254,11 @@ type Result struct {
 	Tags map[string]graph.Ref
 }
 
-func (r *Result) Result() interface{} {
+func (r *Result) Result(ctx context.Context) (interface{}, error) {
 	if r.Tags != nil {
-		return r.Tags
+		return r.Tags, nil
 	}
-	return r.Val
+	return r.Val, nil
 }
 
 func (s *Session) compile(qu string) error {
@@ -360,28 +361,31 @@ func (it *results) Next(ctx context.Context) bool {
 	}
 }
 
-func (it *results) Result() interface{} {
+func (it *results) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	if it.cur == nil {
-		return nil
+		return nil, nil
 	}
 	switch it.col {
 	case query.Raw:
-		return it.cur
+		return it.cur, nil
 	case query.JSON, query.JSONLD:
-		return it.jsonResult()
+		return it.jsonResult(ctx)
 	case query.REPL:
-		return it.replResult()
+		return it.replResult(ctx)
 	}
-	return nil
+	return nil, nil
 }
 
-func (it *results) jsonResult() interface{} {
+func (it *results) jsonResult(ctx context.Context) (interface{}, error) {
 	data := it.cur
 	if data.Meta {
-		return nil
+		return nil, nil
 	}
 	if data.Val != nil {
-		return data.Val
+		return data.Val, nil
 	}
 	obj := make(map[string]interface{})
 	tags := data.Tags
@@ -391,10 +395,10 @@ func (it *results) jsonResult() interface{} {
 	}
 	sort.Strings(tagKeys)
 	for _, k := range tagKeys {
-		name, err := it.s.qs.NameOf(tags[k])
+		name, err := it.s.qs.NameOf(ctx, tags[k])
 		if err != nil {
 			it.err = err
-			return nil
+			return nil, err
 		}
 		if name != nil {
 			obj[k] = it.s.quadValueToNative(name)
@@ -402,10 +406,10 @@ func (it *results) jsonResult() interface{} {
 			delete(obj, k)
 		}
 	}
-	return obj
+	return obj, nil
 }
 
-func (it *results) replResult() interface{} {
+func (it *results) replResult(ctx context.Context) (interface{}, error) {
 	data := it.cur
 	if data.Meta {
 		if data.Val != nil {
@@ -414,9 +418,9 @@ func (it *results) replResult() interface{} {
 			case *pathObject, *graphObject:
 				s = "[internal Iterator]"
 			}
-			return fmt.Sprintln("=>", s)
+			return fmt.Sprintln("=>", s), nil
 		}
-		return fmt.Sprintln("=>", nil)
+		return fmt.Sprintln("=>", nil), nil
 	}
 	var out string
 	out = fmt.Sprintln("****")
@@ -433,10 +437,9 @@ func (it *results) replResult() interface{} {
 			if k == "$_" {
 				continue
 			}
-			knv, err := it.s.qs.NameOf(tags[k])
+			knv, err := it.s.qs.NameOf(ctx, tags[k])
 			if err != nil {
-				// ignore
-				continue
+				return nil, err
 			}
 			out += fmt.Sprintf("%s : %s\n", k, quadValueToString(knv))
 		}
@@ -454,7 +457,7 @@ func (it *results) replResult() interface{} {
 			out += fmt.Sprintf("%s\n", data.Val)
 		}
 	}
-	return out
+	return out, nil
 }
 
 func (it *results) Err() error {

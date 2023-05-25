@@ -1,6 +1,7 @@
 package sqltest
 
 import (
+	"context"
 	"testing"
 	"unicode/utf8"
 
@@ -83,15 +84,16 @@ func testZeroRune(t testing.TB, create testutil.DatabaseFunc) {
 		t.Fatal("invalid utf8")
 	}
 
-	err := w.AddQuad(quad.Quad{
+	ctx := context.Background()
+	err := w.AddQuad(ctx, quad.Quad{
 		Subject:   quad.IRI("bob"),
 		Predicate: quad.IRI("pred"),
 		Object:    obj,
 	})
 	require.NoError(t, err)
-	qsv, err := qs.ValueOf(quad.Raw(obj.String()))
+	qsv, err := qs.ValueOf(ctx, quad.Raw(obj.String()))
 	require.NoError(t, err)
-	qsn, err := qs.NameOf(qsv)
+	qsn, err := qs.NameOf(ctx, qsv)
 	require.NoError(t, err)
 	require.Equal(t, obj, qsn)
 }

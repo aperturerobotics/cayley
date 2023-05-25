@@ -71,11 +71,11 @@ func (qs *QuadStore) newIterator(collection string, constraints ...nosql.FieldFi
 	}
 }
 
-func (it *Iterator) Iterate() iterator.Scanner {
+func (it *Iterator) Iterate(ctx context.Context) iterator.Scanner {
 	return it.qs.newIteratorNext(it.collection, it.constraint, it.limit)
 }
 
-func (it *Iterator) Lookup() iterator.Index {
+func (it *Iterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newIteratorContains(it.collection, it.constraint, it.links, it.limit)
 }
 
@@ -106,8 +106,10 @@ func (it *Iterator) getSize(ctx context.Context) (refs.Size, error) {
 	return it.size, nil
 }
 
-func (it *Iterator) Sorted() bool                                        { return true }
-func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool) { return it, false }
+func (it *Iterator) Sorted() bool { return true }
+func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
+}
 
 func (it *Iterator) String() string {
 	return fmt.Sprintf("NoSQL(%v)", it.collection)
@@ -142,7 +144,7 @@ func (qs *QuadStore) newIteratorNext(collection string, constraints []nosql.Fiel
 	}
 }
 
-func (it *iteratorNext) makeIterator() nosql.DocIterator {
+func (it *iteratorNext) makeIterator(ctx context.Context) nosql.DocIterator {
 	q := it.qs.db.Query(it.collection)
 	if len(it.constraint) != 0 {
 		q = q.WithFields(it.constraint...)
@@ -150,7 +152,7 @@ func (it *iteratorNext) makeIterator() nosql.DocIterator {
 	if it.limit > 0 {
 		q = q.Limit(int(it.limit))
 	}
-	return q.Iterate()
+	return q.Iterate(ctx)
 }
 
 func (it *iteratorNext) Close() error {
@@ -160,11 +162,11 @@ func (it *iteratorNext) Close() error {
 	return nil
 }
 
-func (it *iteratorNext) TagResults(dst map[string]graph.Ref) {}
+func (it *iteratorNext) TagResults(ctx context.Context, dst map[string]graph.Ref) error { return nil }
 
 func (it *iteratorNext) Next(ctx context.Context) bool {
 	if it.iter == nil {
-		it.iter = it.makeIterator()
+		it.iter = it.makeIterator(ctx)
 	}
 	var doc nosql.Document
 	for {
@@ -200,8 +202,8 @@ func (it *iteratorNext) Err() error {
 	return it.err
 }
 
-func (it *iteratorNext) Result() graph.Ref {
-	return it.result
+func (it *iteratorNext) Result(ctx context.Context) (graph.Ref, error) {
+	return it.result, it.err
 }
 
 func (it *iteratorNext) NextPath(ctx context.Context) bool {
@@ -236,7 +238,7 @@ func (qs *QuadStore) newIteratorContains(collection string, constraints []nosql.
 	}
 }
 
-func (it *iteratorContains) makeIterator() nosql.DocIterator {
+func (it *iteratorContains) makeIterator(ctx context.Context) nosql.DocIterator {
 	q := it.qs.db.Query(it.collection)
 	if len(it.constraint) != 0 {
 		q = q.WithFields(it.constraint...)
@@ -244,7 +246,7 @@ func (it *iteratorContains) makeIterator() nosql.DocIterator {
 	if it.limit > 0 {
 		q = q.Limit(int(it.limit))
 	}
-	return q.Iterate()
+	return q.Iterate(ctx)
 }
 
 func (it *iteratorContains) Close() error {
@@ -254,51 +256,56 @@ func (it *iteratorContains) Close() error {
 	return nil
 }
 
-func (it *iteratorContains) TagResults(dst map[string]graph.Ref) {}
+func (it *iteratorContains) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *iteratorContains) Err() error {
 	return it.err
 }
 
-func (it *iteratorContains) Result() graph.Ref {
-	return it.result
+func (it *iteratorContains) Result(ctx context.Context) (graph.Ref, error) {
+	return it.result, it.err
 }
 
 func (it *iteratorContains) NextPath(ctx context.Context) bool {
 	return false
 }
 
-func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
 	if len(it.links) != 0 {
 		qh := v.(QuadHash)
 		for _, l := range it.links {
 			if l.Val != NodeHash(qh.Get(l.Dir)) {
-				return false
+				return false, nil
 			}
 		}
 		it.result = v
-		return true
+		return true, nil
 	}
 	if len(it.constraint) == 0 {
 		it.result = v
-		return true
+		return true, nil
 	}
-	qv, err := it.qs.NameOf(v)
+	qv, err := it.qs.NameOf(ctx, v)
 	if err != nil {
 		it.err = err
-		return false
+		return false, err
 	}
 	if qv == nil {
-		return false
+		return false, nil
 	}
 	d := toDocumentValue(&it.qs.opt, qv)
 	for _, f := range it.constraint {
 		if !f.Matches(d) {
-			return false
+			return false, nil
 		}
 	}
 	it.result = v
-	return true
+	return true, nil
 }
 
 func (it *iteratorContains) Sorted() bool { return true }

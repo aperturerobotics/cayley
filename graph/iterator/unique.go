@@ -17,12 +17,12 @@ func NewUnique(subIt Shape) *Unique {
 	}
 }
 
-func (it *Unique) Iterate() Scanner {
-	return newUniqueNext(it.subIt.Iterate())
+func (it *Unique) Iterate(ctx context.Context) Scanner {
+	return newUniqueNext(it.subIt.Iterate(ctx))
 }
 
-func (it *Unique) Lookup() Index {
-	return newUniqueContains(it.subIt.Lookup())
+func (it *Unique) Lookup(ctx context.Context) Index {
+	return newUniqueContains(it.subIt.Lookup(ctx))
 }
 
 // SubIterators returns a slice of the sub iterators. The first iterator is the
@@ -31,12 +31,15 @@ func (it *Unique) SubIterators() []Shape {
 	return []Shape{it.subIt}
 }
 
-func (it *Unique) Optimize(ctx context.Context) (Shape, bool) {
-	newIt, optimized := it.subIt.Optimize(ctx)
+func (it *Unique) Optimize(ctx context.Context) (Shape, bool, error) {
+	newIt, optimized, err := it.subIt.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if optimized {
 		it.subIt = newIt
 	}
-	return it, false
+	return it, false, nil
 }
 
 const uniquenessFactor = 2
@@ -72,17 +75,24 @@ func newUniqueNext(subIt Scanner) *uniqueNext {
 	}
 }
 
-func (it *uniqueNext) TagResults(dst map[string]refs.Ref) {
-	if it.subIt != nil {
-		it.subIt.TagResults(dst)
+func (it *uniqueNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if it.subIt == nil {
+		return nil
 	}
+	return it.subIt.TagResults(ctx, dst)
 }
 
 // Next advances the subiterator, continuing until it returns a value which it
 // has not previously seen.
 func (it *uniqueNext) Next(ctx context.Context) bool {
 	for it.subIt.Next(ctx) {
-		curr := it.subIt.Result()
+		curr, err := it.subIt.Result(ctx)
+		if err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			return false
+		}
 		key := refs.ToKey(curr)
 		if ok := it.seen[key]; !ok {
 			it.result = curr
@@ -98,8 +108,8 @@ func (it *uniqueNext) Err() error {
 	return it.err
 }
 
-func (it *uniqueNext) Result() refs.Ref {
-	return it.result
+func (it *uniqueNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // NextPath for unique always returns false. If we were to return multiple
@@ -130,23 +140,24 @@ func newUniqueContains(subIt Index) *uniqueContains {
 	}
 }
 
-func (it *uniqueContains) TagResults(dst map[string]refs.Ref) {
-	if it.subIt != nil {
-		it.subIt.TagResults(dst)
+func (it *uniqueContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if it.subIt == nil {
+		return nil
 	}
+	return it.subIt.TagResults(ctx, dst)
 }
 
 func (it *uniqueContains) Err() error {
 	return it.subIt.Err()
 }
 
-func (it *uniqueContains) Result() refs.Ref {
-	return it.subIt.Result()
+func (it *uniqueContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.subIt.Result(ctx)
 }
 
 // Contains checks whether the passed value is part of the primary iterator,
 // which is irrelevant for uniqueness.
-func (it *uniqueContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *uniqueContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
 	return it.subIt.Contains(ctx, val)
 }
 

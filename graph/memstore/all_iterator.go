@@ -38,17 +38,17 @@ func (qs *QuadStore) newAllIterator(nodes bool, maxid int64) *allIterator {
 	}
 }
 
-func (it *allIterator) Iterate() iterator.Scanner {
+func (it *allIterator) Iterate(ctx context.Context) iterator.Scanner {
 	return it.qs.newAllIteratorNext(it.nodes, it.maxid, it.all)
 }
 
-func (it *allIterator) Lookup() iterator.Index {
+func (it *allIterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newAllIteratorContains(it.nodes, it.maxid)
 }
 
 func (it *allIterator) SubIterators() []iterator.Shape { return nil }
-func (it *allIterator) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	return it, false
+func (it *allIterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
 }
 
 func (it *allIterator) String() string {
@@ -125,14 +125,14 @@ func (it *allIteratorNext) Next(ctx context.Context) bool {
 	return false
 }
 
-func (it *allIteratorNext) Result() graph.Ref {
+func (it *allIteratorNext) Result(ctx context.Context) (graph.Ref, error) {
 	if it.cur == nil {
-		return nil
+		return nil, nil
 	}
 	if !it.cur.Quad.Zero() {
-		return qprim{p: it.cur}
+		return qprim{p: it.cur}, nil
 	}
-	return bnode(it.cur.ID)
+	return bnode(it.cur.ID), nil
 }
 
 func (it *allIteratorNext) Err() error { return nil }
@@ -142,7 +142,9 @@ func (it *allIteratorNext) Close() error {
 	return nil
 }
 
-func (it *allIteratorNext) TagResults(dst map[string]graph.Ref) {}
+func (it *allIteratorNext) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return it.Err()
+}
 
 func (it *allIteratorNext) String() string {
 	return "MemStoreAllNext"
@@ -169,42 +171,48 @@ func (it *allIteratorContains) ok(p *Primitive) bool {
 	return p.filter(it.nodes, it.maxid)
 }
 
-func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
 	it.cur = nil
 	if it.done {
-		return false
+		return false, nil
 	}
 	id, ok := asID(v)
 	if !ok {
-		return false
+		return false, nil
 	}
 	p := it.qs.prim[id]
 	if p.ID > it.maxid {
-		return false
+		return false, nil
 	}
 	if !it.ok(p) {
-		return false
+		return false, nil
 	}
 	it.cur = p
-	return true
+	return true, nil
 }
-func (it *allIteratorContains) Result() graph.Ref {
+func (it *allIteratorContains) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	if it.cur == nil {
-		return nil
+		return nil, nil
 	}
 	if !it.cur.Quad.Zero() {
-		return qprim{p: it.cur}
+		return qprim{p: it.cur}, nil
 	}
-	return bnode(it.cur.ID)
+	return bnode(it.cur.ID), nil
 }
 
 func (it *allIteratorContains) Err() error { return nil }
+
 func (it *allIteratorContains) Close() error {
 	it.done = true
 	return nil
 }
 
-func (it *allIteratorContains) TagResults(dst map[string]graph.Ref) {}
+func (it *allIteratorContains) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *allIteratorContains) String() string {
 	return "MemStoreAllContains"

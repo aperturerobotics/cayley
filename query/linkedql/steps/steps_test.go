@@ -31,7 +31,8 @@ func readData(data interface{}) ([]quad.Quad, error) {
 	}
 	b := bytes.NewBuffer(d)
 	reader := jsonld.NewReader(b)
-	quads, err := quad.ReadAll(reader)
+	ctx := context.Background()
+	quads, err := quad.ReadAll(ctx, reader)
 	if err != nil {
 		return nil, err
 	}
@@ -89,11 +90,13 @@ func TestLinkedQL(t *testing.T) {
 			store := memstore.New(data...)
 			voc := voc.Namespaces{}
 			ctx := context.TODO()
-			iterator, err := linkedql.BuildIterator(query, store, &voc)
+			iterator, err := linkedql.BuildIterator(ctx, query, store, &voc)
 			require.NoError(t, err)
 			var results []interface{}
 			for iterator.Next(ctx) {
-				results = append(results, iterator.Result())
+				resi, err := iterator.Result(ctx)
+				require.NoError(t, err)
+				results = append(results, resi)
 			}
 			require.NoError(t, iterator.Err())
 			require.Equal(t, nil, isomorphic(c.Results, results))

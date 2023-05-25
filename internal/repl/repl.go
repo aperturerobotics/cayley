@@ -60,7 +60,11 @@ func Run(ctx context.Context, qu string, ses query.REPLSession) error {
 	}
 	defer it.Close()
 	for it.Next(ctx) {
-		fmt.Print(it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		fmt.Print(res)
 		nResults++
 	}
 	if err := it.Err(); err != nil {
@@ -169,7 +173,7 @@ func Repl(ctx context.Context, h *graph.Handle, queryLanguage string, timeout ti
 			case ":a":
 				quad, err := nquads.Parse(args)
 				if err == nil {
-					err = h.QuadWriter.AddQuad(quad)
+					err = h.QuadWriter.AddQuad(ctx, quad)
 				}
 				if err != nil {
 					fmt.Printf("Error: not a valid quad: %v\n", err)
@@ -183,7 +187,7 @@ func Repl(ctx context.Context, h *graph.Handle, queryLanguage string, timeout ti
 					fmt.Printf("Error: not a valid quad: %v\n", err)
 					continue
 				}
-				err = h.QuadWriter.RemoveQuad(quad)
+				err = h.QuadWriter.RemoveQuad(ctx, quad)
 				if err != nil {
 					fmt.Printf("error deleting: %v\n", err)
 				}

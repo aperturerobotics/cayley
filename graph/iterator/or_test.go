@@ -25,19 +25,21 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 )
 
-func iterated(s Shape) []int {
-	ctx := context.TODO()
+func iterated(t *testing.T, s Shape) []int {
+	ctx := context.Background()
 	var res []int
-	it := s.Iterate()
+	it := s.Iterate(ctx)
 	defer it.Close()
 	for it.Next(ctx) {
-		res = append(res, int(it.Result().(Int64Node)))
+		resi, err := it.Result(ctx)
+		require.NoError(t, err)
+		res = append(res, int(resi.(Int64Node)))
 	}
 	return res
 }
 
 func TestOrIteratorBasics(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	or := NewOr()
 	f1 := NewFixed(
 		Int64Node(1),
@@ -58,25 +60,30 @@ func TestOrIteratorBasics(t *testing.T) {
 
 	expect := []int{1, 2, 3, 3, 9, 20, 21}
 	for i := 0; i < 2; i++ {
-		require.Equal(t, expect, iterated(or))
+		require.Equal(t, expect, iterated(t, or))
 	}
 
 	// Check that optimization works.
-	optOr, _ := or.Optimize(ctx)
-	require.Equal(t, expect, iterated(optOr))
+	optOr, _, err := or.Optimize(ctx)
+	require.NoError(t, err)
+	require.Equal(t, expect, iterated(t, optOr))
 
-	orc := or.Lookup()
+	orc := or.Lookup(ctx)
 	for _, v := range []int{2, 3, 21} {
-		require.True(t, orc.Contains(ctx, Int64Node(v)))
+		cnt, err := orc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 
 	for _, v := range []int{22, 5, 0} {
-		require.False(t, orc.Contains(ctx, Int64Node(v)))
+		cnt, err := orc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.False(t, cnt)
 	}
 }
 
 func TestShortCircuitingOrBasics(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	var or *Or
 
 	f1 := NewFixed(
@@ -106,24 +113,29 @@ func TestShortCircuitingOrBasics(t *testing.T) {
 	or.AddSubIterator(f2)
 	expect := []int{1, 2, 3}
 	for i := 0; i < 2; i++ {
-		require.Equal(t, expect, iterated(or))
+		require.Equal(t, expect, iterated(t, or))
 	}
 
 	// Check optimization works.
-	optOr, _ := or.Optimize(ctx)
-	require.Equal(t, expect, iterated(optOr))
+	optOr, _, err := or.Optimize(ctx)
+	require.NoError(t, err)
+	require.Equal(t, expect, iterated(t, optOr))
 
 	// Check that numbers in either iterator exist.
 	or = NewShortCircuitOr()
 	or.AddSubIterator(f1)
 	or.AddSubIterator(f2)
 
-	orc := or.Lookup()
+	orc := or.Lookup(ctx)
 	for _, v := range []int{2, 3, 21} {
-		require.True(t, orc.Contains(ctx, Int64Node(v)))
+		cnt, err := orc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 	for _, v := range []int{22, 5, 0} {
-		require.False(t, orc.Contains(ctx, Int64Node(v)))
+		cnt, err := orc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.False(t, cnt)
 	}
 
 	// Check that it pulls the second iterator's numbers if the first is empty.
@@ -133,15 +145,16 @@ func TestShortCircuitingOrBasics(t *testing.T) {
 
 	expect = []int{3, 9, 20, 21}
 	for i := 0; i < 2; i++ {
-		require.Equal(t, expect, iterated(or))
+		require.Equal(t, expect, iterated(t, or))
 	}
 	// Check optimization works.
-	optOr, _ = or.Optimize(ctx)
-	require.Equal(t, expect, iterated(optOr))
+	optOr, _, err = or.Optimize(ctx)
+	require.NoError(t, err)
+	require.Equal(t, expect, iterated(t, optOr))
 }
 
 func TestOrIteratorErr(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	orErr := newTestIterator(false, wantErr)
 
@@ -151,24 +164,26 @@ func TestOrIteratorErr(t *testing.T) {
 		fix1,
 		orErr,
 		newInt64(1, 5, true),
-	).Iterate()
+	).Iterate(ctx)
 
 	require.True(t, or.Next(ctx))
-	require.Equal(t, Int64Node(1), or.Result())
+	resi, err := or.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(1), resi)
 
 	require.False(t, or.Next(ctx))
 	require.Equal(t, wantErr, or.Err())
 }
 
 func TestShortCircuitOrIteratorErr(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	orErr := newTestIterator(false, wantErr)
 
 	or := NewOr(
 		orErr,
 		newInt64(1, 5, true),
-	).Iterate()
+	).Iterate(ctx)
 
 	require.False(t, or.Next(ctx))
 	require.Equal(t, wantErr, or.Err())

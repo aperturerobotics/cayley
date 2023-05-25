@@ -62,12 +62,12 @@ func NewHasA(qs QuadIndexer, subIt iterator.Shape, d quad.Direction) *HasA {
 	}
 }
 
-func (it *HasA) Iterate() iterator.Scanner {
-	return newHasANext(it.qs, it.primary.Iterate(), it.dir)
+func (it *HasA) Iterate(ctx context.Context) iterator.Scanner {
+	return newHasANext(it.qs, it.primary.Iterate(ctx), it.dir)
 }
 
-func (it *HasA) Lookup() iterator.Index {
-	return newHasAContains(it.qs, it.primary.Lookup(), it.dir)
+func (it *HasA) Lookup(ctx context.Context) iterator.Index {
+	return newHasAContains(it.qs, it.primary.Lookup(ctx), it.dir)
 }
 
 // SubIterators returns our sole subiterator.
@@ -80,15 +80,18 @@ func (it *HasA) Direction() quad.Direction { return it.dir }
 
 // Optimize pass the Optimize() call along to the subiterator. If it becomes Null,
 // then the HasA becomes Null (there are no quads that have any directions).
-func (it *HasA) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	newPrimary, changed := it.primary.Optimize(ctx)
+func (it *HasA) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	newPrimary, changed, err := it.primary.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if changed {
 		it.primary = newPrimary
 		if iterator.IsNull(it.primary) {
-			return it.primary, true
+			return it.primary, true, nil
 		}
 	}
-	return it, false
+	return it, false, nil
 }
 
 func (it *HasA) String() string {
@@ -144,8 +147,8 @@ func newHasANext(qs QuadIndexer, subIt iterator.Scanner, d quad.Direction) *hasA
 func (it *hasANext) Direction() quad.Direction { return it.dir }
 
 // Pass the TagResults down the chain.
-func (it *hasANext) TagResults(dst map[string]refs.Ref) {
-	it.primary.TagResults(dst)
+func (it *hasANext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primary.TagResults(ctx, dst)
 }
 
 func (it *hasANext) String() string {
@@ -161,11 +164,21 @@ func (it *hasANext) NextPath(ctx context.Context) bool {
 // subiterator we can get a value from, and we can take that resultant quad,
 // pull our direction out of it, and return that.
 func (it *hasANext) Next(ctx context.Context) bool {
-	if !it.primary.Next(ctx) {
+	if err := it.Err(); err != nil {
 		return false
 	}
-	var err error
-	it.result, err = it.qs.QuadDirection(it.primary.Result(), it.dir)
+	if !it.primary.Next(ctx) {
+		if it.err == nil {
+			it.err = it.primary.Err()
+		}
+		return false
+	}
+	res, err := it.primary.Result(ctx)
+	if err != nil {
+		it.err = err
+		return false
+	}
+	it.result, err = it.qs.QuadDirection(ctx, res, it.dir)
 	if err != nil {
 		it.err = err
 		return false
@@ -180,8 +193,8 @@ func (it *hasANext) Err() error {
 	return it.primary.Err()
 }
 
-func (it *hasANext) Result() refs.Ref {
-	return it.result
+func (it *hasANext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.Err()
 }
 
 // Close the subiterator, the result iterator (if any) and the HasA. It closes
@@ -216,8 +229,8 @@ func newHasAContains(qs QuadIndexer, subIt iterator.Index, d quad.Direction) ite
 func (it *hasAContains) Direction() quad.Direction { return it.dir }
 
 // Pass the TagResults down the chain.
-func (it *hasAContains) TagResults(dst map[string]refs.Ref) {
-	it.primary.TagResults(dst)
+func (it *hasAContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.primary.TagResults(ctx, dst)
 }
 
 func (it *hasAContains) String() string {
@@ -227,7 +240,11 @@ func (it *hasAContains) String() string {
 // Check a value against our internal iterator. In order to do this, we must first open a new
 // iterator of "quads that have `val` in our direction", given to us by the quad store,
 // and then Next() values out of that iterator and Contains() them against our subiterator.
-func (it *hasAContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *hasAContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
+
 	if clog.V(4) {
 		clog.Infof("Id is %v", val)
 	}
@@ -235,34 +252,48 @@ func (it *hasAContains) Contains(ctx context.Context, val refs.Ref) bool {
 	if it.results != nil {
 		it.results.Close()
 	}
-	it.results = it.qs.QuadIterator(it.dir, val).Iterate()
+	it.results = it.qs.QuadIterator(ctx, it.dir, val).Iterate(ctx)
 	ok := it.nextContains(ctx)
 	if it.err != nil {
-		return false
+		return false, it.err
 	}
-	return ok
+	return ok, nil
 }
 
 // nextContains() is shared code between Contains() and GetNextResult() -- calls next on the
 // result iterator (a quad iterator based on the last checked value) and returns true if
 // another match is made.
 func (it *hasAContains) nextContains(ctx context.Context) bool {
+	if err := it.Err(); err != nil {
+		return false
+	}
 	if it.results == nil {
 		return false
 	}
 	for it.results.Next(ctx) {
-		link := it.results.Result()
+		link, err := it.results.Result(ctx)
+		if err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			return false
+		}
 		if clog.V(4) {
-			qlv, err := it.qs.Quad(link)
+			qlv, err := it.qs.Quad(ctx, link)
 			if err == nil {
 				clog.Infof("Quad is %v", qlv)
 			} else {
 				clog.Warningf("Error looking up result quad: %v", err)
 			}
 		}
-		if it.primary.Contains(ctx, link) {
+		cnt, err := it.primary.Contains(ctx, link)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		if cnt {
 			var err error
-			it.result, err = it.qs.QuadDirection(link, it.dir)
+			it.result, err = it.qs.QuadDirection(ctx, link, it.dir)
 			if err != nil {
 				it.err = err
 				return false
@@ -307,8 +338,8 @@ func (it *hasAContains) Err() error {
 	return it.err
 }
 
-func (it *hasAContains) Result() refs.Ref {
-	return it.result
+func (it *hasAContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.Err()
 }
 
 // Close the subiterator, the result iterator (if any) and the HasA. It closes

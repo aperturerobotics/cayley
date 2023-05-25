@@ -15,6 +15,8 @@
 package writer
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/quad"
 )
@@ -52,37 +54,37 @@ func NewSingleReplication(qs graph.QuadStore, opts graph.Options) (graph.QuadWri
 	})
 }
 
-func (s *Single) AddQuad(q quad.Quad) error {
+func (s *Single) AddQuad(ctx context.Context, q quad.Quad) error {
 	deltas := make([]graph.Delta, 1)
 	deltas[0] = graph.Delta{
 		Quad:   q,
 		Action: graph.Add,
 	}
-	return s.qs.ApplyDeltas(deltas, s.ignoreOpts)
+	return s.qs.ApplyDeltas(ctx, deltas, s.ignoreOpts)
 }
 
-func (s *Single) AddQuadSet(set []quad.Quad) error {
+func (s *Single) AddQuadSet(ctx context.Context, set []quad.Quad) error {
 	tx := graph.NewTransactionN(len(set))
 	for _, q := range set {
 		tx.AddQuad(q)
 	}
-	return s.qs.ApplyDeltas(tx.Deltas, s.ignoreOpts)
+	return s.qs.ApplyDeltas(ctx, tx.Deltas, s.ignoreOpts)
 }
 
-func (s *Single) RemoveQuad(q quad.Quad) error {
+func (s *Single) RemoveQuad(ctx context.Context, q quad.Quad) error {
 	deltas := make([]graph.Delta, 1)
 	deltas[0] = graph.Delta{
 		Quad:   q,
 		Action: graph.Delete,
 	}
-	return s.qs.ApplyDeltas(deltas, s.ignoreOpts)
+	return s.qs.ApplyDeltas(ctx, deltas, s.ignoreOpts)
 }
 
 // RemoveNode removes all quads with the given value.
 //
 // It returns ErrNodeNotExists if node is missing.
-func (s *Single) RemoveNode(v quad.Value) error {
-	gv, err := s.qs.ValueOf(v)
+func (s *Single) RemoveNode(ctx context.Context, v quad.Value) error {
+	gv, err := s.qs.ValueOf(ctx, v)
 	if err != nil {
 		return err
 	}
@@ -95,15 +97,15 @@ func (s *Single) RemoveNode(v quad.Value) error {
 	total := 0
 	// TODO(dennwc): QuadStore may remove node without iterations. Consider optional interface for this.
 	for _, d := range []quad.Direction{quad.Subject, quad.Predicate, quad.Object, quad.Label} {
-		r := graph.NewResultReader(s.qs, s.qs.QuadIterator(d, gv).Iterate())
-		n, err := quad.Copy(del, r)
+		r := graph.NewResultReader(ctx, s.qs, s.qs.QuadIterator(ctx, d, gv).Iterate(ctx))
+		n, err := quad.Copy(ctx, del, r)
 		r.Close()
 		if err != nil {
 			return err
 		}
 		total += n
 	}
-	if err := del.Flush(); err != nil {
+	if err := del.Flush(ctx); err != nil {
 		return err
 	}
 	if total == 0 {
@@ -117,6 +119,6 @@ func (s *Single) Close() error {
 	return nil
 }
 
-func (s *Single) ApplyTransaction(t *graph.Transaction) error {
-	return s.qs.ApplyDeltas(t.Deltas, s.ignoreOpts)
+func (s *Single) ApplyTransaction(ctx context.Context, t *graph.Transaction) error {
+	return s.qs.ApplyDeltas(ctx, t.Deltas, s.ignoreOpts)
 }

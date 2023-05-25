@@ -123,7 +123,7 @@ func dedupProperties(ctx context.Context, h *graph.Handle, pred, typ quad.IRI) e
 		if txn == 0 {
 			return
 		}
-		err := h.ApplyTransaction(tx)
+		err := h.ApplyTransaction(ctx, tx)
 		if err == nil {
 			tx = graph.NewTransaction()
 			dedup += txn
@@ -139,18 +139,21 @@ func dedupProperties(ctx context.Context, h *graph.Handle, pred, typ quad.IRI) e
 			)
 		}
 	}
-	err := p.Iterate(ictx).Each(func(s graph.Ref) error {
+	err := p.Iterate(ictx).Each(ictx, func(s graph.Ref) error {
 		cnt++
-		it := qs.QuadIterator(quad.Subject, s).Iterate()
+		it := qs.QuadIterator(ctx, quad.Subject, s).Iterate(ctx)
 		defer it.Close()
 		m := make(map[interface{}]property)
 		for it.Next(ictx) {
-			q := it.Result()
-			p, err := qs.QuadDirection(q, quad.Predicate)
+			q, err := it.Result(ctx)
 			if err != nil {
 				return err
 			}
-			o, err := qs.QuadDirection(q, quad.Object)
+			p, err := qs.QuadDirection(ctx, q, quad.Predicate)
+			if err != nil {
+				return err
+			}
+			o, err := qs.QuadDirection(ctx, q, quad.Object)
 			if err != nil {
 				return err
 			}
@@ -187,15 +190,19 @@ func dedupProperties(ctx context.Context, h *graph.Handle, pred, typ quad.IRI) e
 }
 
 func dedupValueTx(ctx context.Context, h *graph.Handle, tx *graph.Transaction, a, b graph.Ref) error {
-	v, err := h.NameOf(b)
+	v, err := h.NameOf(ctx, b)
 	if err != nil {
 		return err
 	}
-	it := h.QuadIterator(quad.Object, a).Iterate()
+	it := h.QuadIterator(ctx, quad.Object, a).Iterate(ctx)
 	defer it.Close()
 	for it.Next(ctx) {
 		// TODO(dennwc): we should be able to add "raw" quads without getting values for directions
-		q, err := h.Quad(it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		q, err := h.Quad(ctx, res)
 		if err != nil {
 			return err
 		}
@@ -208,10 +215,14 @@ func dedupValueTx(ctx context.Context, h *graph.Handle, tx *graph.Transaction, a
 	}
 	it.Close()
 
-	it = h.QuadIterator(quad.Subject, a).Iterate()
+	it = h.QuadIterator(ctx, quad.Subject, a).Iterate(ctx)
 	defer it.Close()
 	for it.Next(ctx) {
-		q, err := h.Quad(it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		q, err := h.Quad(ctx, res)
 		if err != nil {
 			return err
 		}

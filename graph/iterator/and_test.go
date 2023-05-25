@@ -27,18 +27,21 @@ import (
 
 // Make sure that tags work on the And.
 func TestAndTag(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	fix1 := NewFixed(Int64Node(234))
 	fix2 := NewFixed(Int64Node(234))
 	var ands Shape = NewAnd(Tag(fix1, "foo")).AddOptionalIterator(Tag(fix2, "baz"))
 	ands = Tag(ands, "bar")
 
-	and := ands.Iterate()
+	and := ands.Iterate(ctx)
 	require.True(t, and.Next(ctx))
-	require.Equal(t, Int64Node(234), and.Result())
+	resi, err := and.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(234), resi)
 
 	tags := make(map[string]refs.Ref)
-	and.TagResults(tags)
+	err = and.TagResults(ctx, tags)
+	require.NoError(t, err)
 	require.Equal(t, map[string]refs.Ref{
 		"foo": Int64Node(234),
 		"bar": Int64Node(234),
@@ -48,7 +51,7 @@ func TestAndTag(t *testing.T) {
 
 // Do a simple itersection of fixed values.
 func TestAndAndFixedIterators(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	fix1 := NewFixed(
 		Int64Node(1),
 		Int64Node(2),
@@ -69,13 +72,17 @@ func TestAndAndFixedIterators(t *testing.T) {
 		Exact: true,
 	}, st.Size)
 
-	and := ands.Iterate()
+	and := ands.Iterate(ctx)
 
 	require.True(t, and.Next(ctx))
-	require.Equal(t, Int64Node(3), and.Result())
+	resi, err := and.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(3), resi)
 
 	require.True(t, and.Next(ctx))
-	require.Equal(t, Int64Node(4), and.Result())
+	resi, err = and.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(4), resi)
 
 	require.False(t, and.Next(ctx))
 }
@@ -83,7 +90,7 @@ func TestAndAndFixedIterators(t *testing.T) {
 // If there's no intersection, the size should still report the same,
 // but there should be nothing to Next()
 func TestNonOverlappingFixedIterators(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	fix1 := NewFixed(
 		Int64Node(1),
 		Int64Node(2),
@@ -104,34 +111,38 @@ func TestNonOverlappingFixedIterators(t *testing.T) {
 		Exact: true,
 	}, st.Size)
 
-	and := ands.Iterate()
+	and := ands.Iterate(ctx)
 	require.False(t, and.Next(ctx))
 }
 
 func TestAllIterators(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	all1 := newInt64(1, 5, true)
 	all2 := newInt64(4, 10, true)
-	and := NewAnd(all2, all1).Iterate()
+	and := NewAnd(all2, all1).Iterate(ctx)
 
 	require.True(t, and.Next(ctx))
-	require.Equal(t, Int64Node(4), and.Result())
+	resi, err := and.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(4), resi)
 
 	require.True(t, and.Next(ctx))
-	require.Equal(t, Int64Node(5), and.Result())
+	resi, err = and.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, Int64Node(5), resi)
 
 	require.False(t, and.Next(ctx))
 }
 
 func TestAndIteratorErr(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	allErr := newTestIterator(false, wantErr)
 
 	and := NewAnd(
 		allErr,
 		newInt64(1, 5, true),
-	).Iterate()
+	).Iterate(ctx)
 
 	require.False(t, and.Next(ctx))
 	require.Equal(t, wantErr, and.Err())

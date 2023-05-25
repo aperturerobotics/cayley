@@ -54,11 +54,11 @@ func RefsOf(ctx context.Context, qs refs.Namer, nodes []quad.Value) ([]Ref, erro
 
 type QuadIndexer interface {
 	// Given an opaque token, returns the quad for that token from the store.
-	Quad(Ref) (quad.Quad, error)
+	Quad(context.Context, Ref) (quad.Quad, error)
 
 	// Given a direction and a token, creates an iterator of links which have
 	// that node token in that directional field.
-	QuadIterator(quad.Direction, Ref) iterator.Shape
+	QuadIterator(context.Context, quad.Direction, Ref) iterator.Shape
 
 	// QuadIteratorSize returns an estimated size of an iterator.
 	QuadIteratorSize(ctx context.Context, d quad.Direction, v Ref) (refs.Size, error)
@@ -72,7 +72,7 @@ type QuadIndexer interface {
 	//
 	//  qs.ValueOf(qs.Quad(id).Get(dir))
 	//
-	QuadDirection(id Ref, d quad.Direction) (Ref, error)
+	QuadDirection(ctx context.Context, id Ref, d quad.Direction) (Ref, error)
 
 	// Stats returns the number of nodes and quads currently stored.
 	// Exact flag controls the correctness of the value. It can be an estimation, or a precise calculation.
@@ -93,20 +93,19 @@ type QuadStore interface {
 
 	// The only way in is through building a transaction, which
 	// is done by a replication strategy.
-	ApplyDeltas(in []Delta, opts IgnoreOpts) error
+	ApplyDeltas(ctx context.Context, in []Delta, opts IgnoreOpts) error
 
 	// NewQuadWriter starts a batch quad import process.
 	// The order of changes is not guaranteed, neither is the order and result of concurrent ApplyDeltas.
-	NewQuadWriter() (quad.WriteCloser, error)
+	NewQuadWriter(ctx context.Context) (quad.WriteCloser, error)
 
 	// Returns an iterator enumerating all nodes in the graph.
-	NodesAllIterator() iterator.Shape
+	NodesAllIterator(ctx context.Context) iterator.Shape
 
 	// Returns an iterator enumerating all links in the graph.
-	QuadsAllIterator() iterator.Shape
+	QuadsAllIterator(ctx context.Context) iterator.Shape
 
-	// Close the quad store and clean up. (Flush to disk, cleanly
-	// sever connections, etc)
+	// Closes the quad store and cleans up.
 	Close() error
 }
 

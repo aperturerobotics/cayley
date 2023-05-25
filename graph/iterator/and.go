@@ -41,24 +41,24 @@ func NewAnd(sub ...Shape) *And {
 	return it
 }
 
-func (it *And) Iterate() Scanner {
+func (it *And) Iterate(ctx context.Context) Scanner {
 	if len(it.sub) == 0 {
-		return NewNull().Iterate()
+		return NewNull().Iterate(ctx)
 	}
 	sub := make([]Index, 0, len(it.sub)-1)
 	for _, s := range it.sub[1:] {
-		sub = append(sub, s.Lookup())
+		sub = append(sub, s.Lookup(ctx))
 	}
 	opt := make([]Index, 0, len(it.opt))
 	for _, s := range it.opt {
-		opt = append(opt, s.Lookup())
+		opt = append(opt, s.Lookup(ctx))
 	}
-	return newAndNext(it.sub[0].Iterate(), newAndContains(sub, opt))
+	return newAndNext(it.sub[0].Iterate(ctx), newAndContains(sub, opt))
 }
 
-func (it *And) Lookup() Index {
+func (it *And) Lookup(ctx context.Context) Index {
 	if len(it.sub) == 0 {
-		return NewNull().Lookup()
+		return NewNull().Lookup(ctx)
 	}
 	sub := make([]Index, 0, len(it.sub))
 	check := it.checkList
@@ -66,11 +66,11 @@ func (it *And) Lookup() Index {
 		check = it.sub
 	}
 	for _, s := range check {
-		sub = append(sub, s.Lookup())
+		sub = append(sub, s.Lookup(ctx))
 	}
 	opt := make([]Index, 0, len(it.opt))
 	for _, s := range it.opt {
-		opt = append(opt, s.Lookup())
+		opt = append(opt, s.Lookup(ctx))
 	}
 	return newAndContains(sub, opt)
 }
@@ -113,6 +113,7 @@ type andNext struct {
 	primary   Scanner
 	secondary Index
 	result    refs.Ref
+	err       error
 }
 
 // NewAnd creates an And iterator. `qs` is only required when needing a handle
@@ -126,9 +127,14 @@ func newAndNext(pri Scanner, sec Index) Scanner {
 
 // An extended TagResults, as it needs to add it's own results and
 // recurse down it's subiterators.
-func (it *andNext) TagResults(dst map[string]refs.Ref) {
-	it.primary.TagResults(dst)
-	it.secondary.TagResults(dst)
+func (it *andNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if err := it.primary.TagResults(ctx, dst); err != nil {
+		return err
+	}
+	if err := it.secondary.TagResults(ctx, dst); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (it *andNext) String() string {
@@ -140,9 +146,21 @@ func (it *andNext) String() string {
 // this value against the subiterators. A productive choice of primary iterator
 // is therefore very important.
 func (it *andNext) Next(ctx context.Context) bool {
+	if it.Err() != nil {
+		return false
+	}
 	for it.primary.Next(ctx) {
-		cur := it.primary.Result()
-		if it.secondary.Contains(ctx, cur) {
+		cur, err := it.primary.Result(ctx)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		cnt, err := it.secondary.Contains(ctx, cur)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		if cnt {
 			it.result = cur
 			return true
 		}
@@ -151,6 +169,9 @@ func (it *andNext) Next(ctx context.Context) bool {
 }
 
 func (it *andNext) Err() error {
+	if err := it.err; err != nil {
+		return err
+	}
 	if err := it.primary.Err(); err != nil {
 		return err
 	}
@@ -160,8 +181,8 @@ func (it *andNext) Err() error {
 	return nil
 }
 
-func (it *andNext) Result() refs.Ref {
-	return it.result
+func (it *andNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // An And has no NextPath of its own -- that is, there are no other values
@@ -216,16 +237,21 @@ func newAndContains(sub, opt []Index) Index {
 
 // An extended TagResults, as it needs to add it's own results and
 // recurse down it's subiterators.
-func (it *andContains) TagResults(dst map[string]refs.Ref) {
+func (it *andContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
 	for _, sub := range it.sub {
-		sub.TagResults(dst)
+		if err := sub.TagResults(ctx, dst); err != nil {
+			return err
+		}
 	}
 	for i, sub := range it.opt {
 		if !it.optCheck[i] {
 			continue
 		}
-		sub.TagResults(dst)
+		if err := sub.TagResults(ctx, dst); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (it *andContains) String() string {
@@ -249,18 +275,26 @@ func (it *andContains) Err() error {
 	return nil
 }
 
-func (it *andContains) Result() refs.Ref {
-	return it.result
+func (it *andContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // Check a value against the entire iterator, in order.
-func (it *andContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *andContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
 	prev := it.result
 	for i, sub := range it.sub {
-		if !sub.Contains(ctx, val) {
+		cnt, err := sub.Contains(ctx, val)
+		if err != nil {
+			it.err = err
+			return false, err
+		}
+		if !cnt {
 			if err := sub.Err(); err != nil {
 				it.err = err
-				return false
+				return false, err
 			}
 			// One of the iterators has determined that this value doesn't
 			// match. However, the iterators that came before in the list
@@ -274,19 +308,24 @@ func (it *andContains) Contains(ctx context.Context, val refs.Ref) bool {
 					it.sub[j].Contains(ctx, prev)
 					if err := it.sub[j].Err(); err != nil {
 						it.err = err
-						return false
+						return false, err
 					}
 				}
 			}
-			return false
+			return false, nil
 		}
 	}
 	it.result = val
 	for i, sub := range it.opt {
 		// remember if we will need to call TagResults on it, nothing more
-		it.optCheck[i] = sub.Contains(ctx, val)
+		var err error
+		it.optCheck[i], err = sub.Contains(ctx, val)
+		if err != nil {
+			it.err = err
+			return false, err
+		}
 	}
-	return true
+	return true, nil
 }
 
 // An And has no NextPath of its own -- that is, there are no other values

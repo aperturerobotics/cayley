@@ -20,12 +20,12 @@ func NewNot(primaryIt, allIt Shape) *Not {
 	}
 }
 
-func (it *Not) Iterate() Scanner {
-	return newNotNext(it.primary.Lookup(), it.allIt.Iterate())
+func (it *Not) Iterate(ctx context.Context) Scanner {
+	return newNotNext(it.primary.Lookup(ctx), it.allIt.Iterate(ctx))
 }
 
-func (it *Not) Lookup() Index {
-	return newNotContains(it.primary.Lookup())
+func (it *Not) Lookup(ctx context.Context) Index {
+	return newNotContains(it.primary.Lookup(ctx))
 }
 
 // SubIterators returns a slice of the sub iterators.
@@ -35,14 +35,14 @@ func (it *Not) SubIterators() []Shape {
 	return []Shape{it.primary, it.allIt}
 }
 
-func (it *Not) Optimize(ctx context.Context) (Shape, bool) {
+func (it *Not) Optimize(ctx context.Context) (Shape, bool, error) {
 	// TODO - consider wrapping the primary with a MaterializeIt
-	optimizedPrimaryIt, optimized := it.primary.Optimize(ctx)
-	if optimized {
+	optimizedPrimaryIt, optimized, err := it.primary.Optimize(ctx)
+	if optimized && err == nil {
 		it.primary = optimizedPrimaryIt
 	}
 	it.primary = NewMaterialize(it.primary)
-	return it, false
+	return it, false, nil
 }
 
 func (it *Not) Stats(ctx context.Context) (Costs, error) {
@@ -71,6 +71,7 @@ type notNext struct {
 	primaryIt Index
 	allIt     Scanner
 	result    refs.Ref
+	err       error
 }
 
 func newNotNext(primaryIt Index, allIt Scanner) *notNext {
@@ -80,18 +81,36 @@ func newNotNext(primaryIt Index, allIt Scanner) *notNext {
 	}
 }
 
-func (it *notNext) TagResults(dst map[string]refs.Ref) {
-	if it.primaryIt != nil {
-		it.primaryIt.TagResults(dst)
+func (it *notNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if it.primaryIt == nil {
+		return nil
 	}
+	return it.primaryIt.TagResults(ctx, dst)
 }
 
 // Next advances the Not iterator. It returns whether there is another valid
 // new value. It fetches the next value of the all iterator which is not
 // contained by the primary iterator.
 func (it *notNext) Next(ctx context.Context) bool {
+	if err := it.err; err != nil {
+		return false
+	}
 	for it.allIt.Next(ctx) {
-		if curr := it.allIt.Result(); !it.primaryIt.Contains(ctx, curr) {
+		curr, err := it.allIt.Result(ctx)
+		if err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			return false
+		}
+		cnt, err := it.primaryIt.Contains(ctx, curr)
+		if err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			return false
+		}
+		if !cnt {
 			it.result = curr
 			return true
 		}
@@ -100,6 +119,9 @@ func (it *notNext) Next(ctx context.Context) bool {
 }
 
 func (it *notNext) Err() error {
+	if err := it.err; err != nil {
+		return err
+	}
 	if err := it.allIt.Err(); err != nil {
 		return err
 	}
@@ -109,8 +131,8 @@ func (it *notNext) Err() error {
 	return nil
 }
 
-func (it *notNext) Result() refs.Ref {
-	return it.result
+func (it *notNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // NextPath checks whether there is another path. Not applicable, hence it will
@@ -147,34 +169,42 @@ func newNotContains(primaryIt Index) *notContains {
 	}
 }
 
-func (it *notContains) TagResults(dst map[string]refs.Ref) {
-	if it.primaryIt != nil {
-		it.primaryIt.TagResults(dst)
+func (it *notContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if it.primaryIt == nil {
+		return nil
 	}
+	return it.primaryIt.TagResults(ctx, dst)
 }
 
 func (it *notContains) Err() error {
 	return it.err
 }
 
-func (it *notContains) Result() refs.Ref {
-	return it.result
+func (it *notContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // Contains checks whether the passed value is part of the primary iterator's
 // complement. For a valid value, it updates the Result returned by the iterator
 // to the value itself.
-func (it *notContains) Contains(ctx context.Context, val refs.Ref) bool {
-	if it.primaryIt.Contains(ctx, val) {
-		return false
+func (it *notContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	cnt, err := it.primaryIt.Contains(ctx, val)
+	if err != nil {
+		if it.err == nil {
+			it.err = err
+		}
+		return false, err
+	}
+	if cnt {
+		return false, nil
 	}
 	it.err = it.primaryIt.Err()
 	if it.err != nil {
 		// Explicitly return 'false', since an error occurred.
-		return false
+		return false, it.err
 	}
 	it.result = val
-	return true
+	return true, nil
 }
 
 // NextPath checks whether there is another path. Not applicable, hence it will

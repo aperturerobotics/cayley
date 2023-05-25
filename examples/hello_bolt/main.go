@@ -35,7 +35,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	store.AddQuad(quad.Make("phrase of the day", "is of course", "Hello BoltDB!", "demo graph"))
+	store.AddQuad(ctx, quad.Make("phrase of the day", "is of course", "Hello BoltDB!", "demo graph"))
 
 	// Now we create the path, to get to our data
 	p := cayley.StartPath(store, quad.String("phrase of the day")).Out(quad.String("is of course"))
@@ -45,16 +45,19 @@ func main() {
 
 	// Now we get an iterator for the path and optimize it.
 	// The second return is if it was optimized, but we don't care for now.
-	its, _ := p.BuildIterator(ctx).Optimize(ctx)
-	it := its.Iterate()
+	its, _, _ := p.BuildIterator(ctx).Optimize(ctx)
+	it := its.Iterate(ctx)
 
 	// remember to cleanup after yourself
 	defer it.Close()
 
 	// While we have items
 	for it.Next(ctx) {
-		token := it.Result()              // get a ref to a node (backend-specific)
-		value, err := store.NameOf(token) // get the value in the node (RDF)
+		token, err := it.Result(ctx) // get a ref to a node (backend-specific)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		value, err := store.NameOf(ctx, token) // get the value in the node (RDF)
 		if err != nil {
 			log.Fatalln(err)
 		}

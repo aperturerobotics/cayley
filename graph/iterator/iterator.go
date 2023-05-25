@@ -42,10 +42,10 @@ type Base interface {
 	String() string
 
 	// Fills a tag-to-result-value map.
-	TagResults(map[string]refs.Ref)
+	TagResults(ctx context.Context, res map[string]refs.Ref) error
 
-	// Returns the current result.
-	Result() refs.Ref
+	// Returns the current result or error.
+	Result(ctx context.Context) (refs.Ref, error)
 
 	// These methods are the heart and soul of the iterator, as they constitute
 	// the iteration interface.
@@ -70,8 +70,6 @@ type Base interface {
 	// Err returns any error that was encountered by the Iterator.
 	Err() error
 
-	// TODO: make a requirement that Err should return ErrClosed after Close is called
-
 	// Close the iterator and do internal cleanup.
 	Close() error
 }
@@ -94,7 +92,7 @@ type Index interface {
 	// Contains returns whether the value is within the set held by the iterator.
 	//
 	// It will set Result to the matching subtree. TagResults can be used to collect values from tree branches.
-	Contains(ctx context.Context, v refs.Ref) bool
+	Contains(ctx context.Context, v refs.Ref) (bool, error)
 }
 
 // TaggerShape is an interface for iterators that can tag values. Tags are returned as a part of TagResults call.
@@ -122,12 +120,12 @@ type Shape interface {
 	// Iterate starts this iterator in scanning mode. Resulting iterator will list all
 	// results sequentially, but not necessary in the sorted order. Caller must close
 	// the iterator.
-	Iterate() Scanner
+	Iterate(ctx context.Context) Scanner
 
 	// Lookup starts this iterator in an index lookup mode. Depending on the iterator type,
 	// this may still involve database scans. Resulting iterator allows to check an index
 	// contains a specified value. Caller must close the iterator.
-	Lookup() Index
+	Lookup(ctx context.Context) Index
 
 	// These methods relate to choosing the right iterator, or optimizing an
 	// iterator tree
@@ -141,13 +139,13 @@ type Shape interface {
 	// Optimizes an iterator. Can replace the iterator, or merely move things
 	// around internally. if it chooses to replace it with a better iterator,
 	// returns (the new iterator, true), if not, it returns (self, false).
-	Optimize(ctx context.Context) (Shape, bool)
+	Optimize(ctx context.Context) (Shape, bool, error)
 
 	// Return a slice of the subiterators for this iterator.
 	SubIterators() []Shape
 }
 
-type Morphism func(Shape) Shape
+type Morphism func(context.Context, Shape) Shape
 
 func IsNull(it Shape) bool {
 	if _, ok := it.(*Null); ok {
@@ -184,25 +182,25 @@ func NewNull() *Null {
 }
 
 // Iterate implements Iterator
-func (it *Null) Iterate() Scanner {
+func (it *Null) Iterate(ctx context.Context) Scanner {
 	return it
 }
 
 // Lookup implements Iterator
-func (it *Null) Lookup() Index {
+func (it *Null) Lookup(ctx context.Context) Index {
 	return it
 }
 
 // Fill the map based on the tags assigned to this iterator.
-func (it *Null) TagResults(dst map[string]refs.Ref) {}
+func (it *Null) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return nil }
 
-func (it *Null) Contains(ctx context.Context, v refs.Ref) bool {
-	return false
+func (it *Null) Contains(ctx context.Context, v refs.Ref) (bool, error) {
+	return false, nil
 }
 
 // A good iterator will close itself when it returns true.
 // Null has nothing it needs to do.
-func (it *Null) Optimize(ctx context.Context) (Shape, bool) { return it, false }
+func (it *Null) Optimize(ctx context.Context) (Shape, bool, error) { return it, false, it.Err() }
 
 func (it *Null) String() string {
 	return "Null"
@@ -216,8 +214,8 @@ func (it *Null) Err() error {
 	return nil
 }
 
-func (it *Null) Result() refs.Ref {
-	return nil
+func (it *Null) Result(ctx context.Context) (refs.Ref, error) {
+	return nil, it.Err()
 }
 
 func (it *Null) SubIterators() []Shape {
@@ -248,22 +246,22 @@ func NewError(err error) *Error {
 	return &Error{err: err}
 }
 
-func (it *Error) Iterate() Scanner {
+func (it *Error) Iterate(ctx context.Context) Scanner {
 	return it
 }
 
-func (it *Error) Lookup() Index {
+func (it *Error) Lookup(ctx context.Context) Index {
 	return it
 }
 
 // Fill the map based on the tags assigned to this iterator.
-func (it *Error) TagResults(dst map[string]refs.Ref) {}
+func (it *Error) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return it.err }
 
-func (it *Error) Contains(ctx context.Context, v refs.Ref) bool {
-	return false
+func (it *Error) Contains(ctx context.Context, v refs.Ref) (bool, error) {
+	return false, nil
 }
 
-func (it *Error) Optimize(ctx context.Context) (Shape, bool) { return it, false }
+func (it *Error) Optimize(ctx context.Context) (Shape, bool, error) { return it, false, nil }
 
 func (it *Error) String() string {
 	return fmt.Sprintf("Error(%v)", it.err)
@@ -277,8 +275,8 @@ func (it *Error) Err() error {
 	return it.err
 }
 
-func (it *Error) Result() refs.Ref {
-	return nil
+func (it *Error) Result(ctx context.Context) (refs.Ref, error) {
+	return nil, it.err
 }
 
 func (it *Error) SubIterators() []Shape {

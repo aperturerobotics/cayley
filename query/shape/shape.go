@@ -22,18 +22,18 @@ var (
 // Shape represent a query tree shape.
 type Shape interface {
 	// BuildIterator constructs an iterator tree from a given shapes and binds it to QuadStore.
-	BuildIterator(qs graph.QuadStore) iterator.Shape
+	BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape
 	// Optimize runs an optimization pass over a query shape.
 	//
 	// It returns a bool that indicates if shape was replaced and should always return a copy of shape in this case.
 	// In case no optimizations were made, it returns the same unmodified shape.
 	//
 	// If Optimizer is specified, it will be used instead of default optimizations.
-	Optimize(ctx context.Context, r Optimizer) (Shape, bool)
+	Optimize(ctx context.Context, r Optimizer) (Shape, bool, error)
 }
 
 type Optimizer interface {
-	OptimizeShape(ctx context.Context, s Shape) (Shape, bool)
+	OptimizeShape(ctx context.Context, s Shape) (Shape, bool, error)
 }
 
 // Composite shape can be simplified to a tree of more basic shapes.
@@ -49,49 +49,66 @@ type resolveValues struct {
 	qs graph.QuadStore
 }
 
-func (r resolveValues) OptimizeShape(ctx context.Context, s Shape) (Shape, bool) {
+func (r resolveValues) OptimizeShape(ctx context.Context, s Shape) (Shape, bool, error) {
 	if l, ok := s.(Lookup); ok {
-		lv, err := l.resolve(r.qs)
+		lv, err := l.resolve(ctx, r.qs)
 		if err == nil {
-			return lv, true
+			return lv, true, nil
 		}
 	}
-	return s, false
+	return s, false, nil
 }
 
 // Optimize applies generic optimizations for the tree.
 // If quad store is specified it will also resolve Lookups and apply any specific optimizations.
 // Should not be used with Simplify - it will fold query to a compact form again.
-func Optimize(ctx context.Context, s Shape, qs graph.QuadStore) (Shape, bool) {
+func Optimize(ctx context.Context, s Shape, qs graph.QuadStore) (Shape, bool, error) {
+	var opt bool
 	if s == nil {
-		return nil, false
+		return nil, false, nil
 	}
 	qs = graph.Unwrap(qs)
-	var opt bool
 	if qs != nil {
 		// resolve all lookups earlier
-		s, opt = s.Optimize(ctx, resolveValues{qs: qs})
+		optim, opt1, err := s.Optimize(ctx, resolveValues{qs: qs})
+		if err != nil {
+			return s, false, err
+		}
+		if opt1 {
+			opt = true
+			s = optim
+		}
 	}
 	if s == nil {
-		return Null{}, true
+		return Null{}, true, nil
 	}
 	// generic optimizations
-	var opt1 bool
-	s, opt1 = s.Optimize(ctx, nil)
-	if s == nil {
-		return Null{}, true
+	optim, opt1, err := s.Optimize(ctx, nil)
+	if err != nil {
+		return s, false, err
 	}
-	opt = opt || opt1
+	if opt1 {
+		opt = true
+		s = optim
+	}
+	if s == nil {
+		return Null{}, true, nil
+	}
 	// apply quadstore-specific optimizations
 	if so, ok := qs.(Optimizer); ok && s != nil {
-		var opt2 bool
-		s, opt2 = s.Optimize(ctx, so)
-		opt = opt || opt2
+		optim, opt2, err := s.Optimize(ctx, so)
+		if err != nil {
+			return s, opt, err
+		}
+		if opt2 {
+			opt = true
+			s = optim
+		}
 	}
 	if s == nil {
-		return Null{}, true
+		return Null{}, true, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 var rtShape = reflect.TypeOf((*Shape)(nil)).Elem()
@@ -215,41 +232,47 @@ func BuildIterator(ctx context.Context, qs graph.QuadStore, s Shape) iterator.Sh
 		if debugShapes || clog.V(2) {
 			clog.Infof("shape: %#v", s)
 		}
-		s, _ = Optimize(ctx, s, qs)
-		if debugOptimizer || clog.V(2) {
-			clog.Infof("optimized: %#v", s)
+		optim, opt, err := Optimize(ctx, s, qs)
+		if err != nil {
+			clog.Warningf("failed to optimize: %#v -> %v", s, err)
+		} else if opt {
+			s = optim
+			if debugOptimizer || clog.V(2) {
+				clog.Infof("optimized: %#v", s)
+			}
 		}
 	}
 	if IsNull(s) {
 		return iterator.NewNull()
 	}
-	return s.BuildIterator(qs)
+	return s.BuildIterator(ctx, qs)
 }
 
 // Null represent an empty set. Mostly used as a safe alias for nil shape.
 type Null struct{}
 
-func (Null) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (Null) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	return iterator.NewNull()
 }
-func (s Null) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Null) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
 	}
-	return nil, true
+	return nil, true, nil
 }
 
 // AllNodes represents all nodes in QuadStore.
 type AllNodes struct{}
 
-func (s AllNodes) BuildIterator(qs graph.QuadStore) iterator.Shape {
-	return qs.NodesAllIterator()
+func (s AllNodes) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
+	return qs.NodesAllIterator(ctx)
 }
-func (s AllNodes) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+
+func (s AllNodes) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
 	}
-	return s, false
+	return s, false, nil
 }
 
 // Except excludes a set on nodes from a source. If source is nil, AllNodes is assumed.
@@ -258,36 +281,48 @@ type Except struct {
 	From    Shape // a set of all nodes to exclude from; nil means AllNodes
 }
 
-func (s Except) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Except) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	var all iterator.Shape
 	if s.From != nil {
-		all = s.From.BuildIterator(qs)
+		all = s.From.BuildIterator(ctx, qs)
 	} else {
-		all = qs.NodesAllIterator()
+		all = qs.NodesAllIterator(ctx)
 	}
 	if IsNull(s.Exclude) {
 		return all
 	}
-	return iterator.NewNot(s.Exclude.BuildIterator(qs), all)
+	return iterator.NewNot(s.Exclude.BuildIterator(ctx, qs), all)
 }
-func (s Except) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
-	var opt bool
-	s.Exclude, opt = s.Exclude.Optimize(ctx, r)
+
+func (s Except) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
+	optim, opt, err := s.Exclude.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	s.Exclude = optim
 	if s.From != nil {
-		var opta bool
-		s.From, opta = s.From.Optimize(ctx, r)
-		opt = opt || opta
+		optim, opta, err := s.From.Optimize(ctx, r)
+		if err != nil {
+			return s, opt, err
+		}
+		if opta {
+			opt = true
+			s.From = optim
+		}
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, nil
+		}
+		return ns, opt || nopt, err
 	}
 	if IsNull(s.Exclude) {
-		return AllNodes{}, true
+		return AllNodes{}, true, nil
 	} else if _, ok := s.Exclude.(AllNodes); ok {
-		return nil, true
+		return nil, true, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 // ValueFilter is an interface for iterator wrappers that can filter node values.
@@ -301,32 +336,38 @@ type Filter struct {
 	Filters []ValueFilter // filters to apply
 }
 
-func (s Filter) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Filter) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.From) {
 		return iterator.NewNull()
 	}
-	it := s.From.BuildIterator(qs)
+	it := s.From.BuildIterator(ctx, qs)
 	for _, f := range s.Filters {
 		it = f.BuildIterator(qs, it)
 	}
 	return it
 }
-func (s Filter) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Filter) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
-	var opt bool
-	s.From, opt = s.From.Optimize(ctx, r)
+	optim, opt, err := s.From.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	s.From = optim
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	} else if len(s.Filters) == 0 {
-		return s.From, true
+		return s.From, true, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 var _ ValueFilter = Comparison{}
@@ -410,30 +451,36 @@ type Count struct {
 	Values Shape
 }
 
-func (s Count) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Count) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	var it iterator.Shape
 	if IsNull(s.Values) {
 		it = iterator.NewNull()
 	} else {
-		it = s.Values.BuildIterator(qs)
+		it = s.Values.BuildIterator(ctx, qs)
 	}
 	return iterator.NewCount(it, qs)
 }
-func (s Count) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Count) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Values) {
-		return Fixed{refs.PreFetched(quad.Int(0))}, true
+		return Fixed{refs.PreFetched(quad.Int(0))}, true, nil
 	}
-	var opt bool
-	s.Values, opt = s.Values.Optimize(ctx, r)
+	optim, opt, err := s.Values.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	s.Values = optim
 	if IsNull(s.Values) {
-		return Fixed{refs.PreFetched(quad.Int(0))}, true
+		return Fixed{refs.PreFetched(quad.Int(0))}, true, nil
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
 	// TODO: ask QS to estimate size - if it exact, then we can use it
-	return s, opt
+	return s, opt, nil
 }
 
 // QuadFilter is a constraint used to filter quads that have a certain set of values on a given direction.
@@ -444,16 +491,16 @@ type QuadFilter struct {
 }
 
 // buildIterator is not exposed to force to use Quads and group filters together.
-func (s QuadFilter) buildIterator(qs graph.QuadStore) iterator.Shape {
+func (s QuadFilter) buildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if s.Values == nil {
 		return iterator.NewNull()
 	} else if v, ok := One(s.Values); ok {
-		return qs.QuadIterator(s.Dir, v)
+		return qs.QuadIterator(ctx, s.Dir, v)
 	}
 	if s.Dir == quad.Any {
 		panic("direction is not set")
 	}
-	sub := s.Values.BuildIterator(qs)
+	sub := s.Values.BuildIterator(ctx, qs)
 	return graph.NewLinksTo(qs, sub, s.Dir)
 }
 
@@ -464,20 +511,20 @@ type Quads []QuadFilter
 func (s *Quads) Intersect(q ...QuadFilter) {
 	*s = append(*s, q...)
 }
-func (s Quads) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Quads) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if len(s) == 0 {
-		return qs.QuadsAllIterator()
+		return qs.QuadsAllIterator(ctx)
 	}
 	its := make([]iterator.Shape, 0, len(s))
 	for _, f := range s {
-		its = append(its, f.buildIterator(qs))
+		its = append(its, f.buildIterator(ctx, qs))
 	}
 	if len(its) == 1 {
 		return its[0]
 	}
 	return iterator.NewAnd(its...)
 }
-func (s Quads) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Quads) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	var opt bool
 	sw := 0
 	realloc := func() {
@@ -492,11 +539,14 @@ func (s Quads) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 	for i := 0; i < len(s); i++ {
 		f := s[i]
 		if f.Values == nil {
-			return nil, true
+			return nil, true, nil
 		}
-		v, ok := f.Values.Optimize(ctx, r)
+		v, ok, err := f.Values.Optimize(ctx, r)
+		if err != nil {
+			return s, false, err
+		}
 		if v == nil {
-			return nil, true
+			return nil, true, nil
 		}
 		if ok {
 			realloc()
@@ -510,10 +560,13 @@ func (s Quads) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 		}
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 // NodesFrom extracts nodes on a given direction from source quads. Similar to HasA iterator.
@@ -522,34 +575,42 @@ type NodesFrom struct {
 	Quads Shape
 }
 
-func (s NodesFrom) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s NodesFrom) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.Quads) {
 		return iterator.NewNull()
 	}
-	sub := s.Quads.BuildIterator(qs)
+	sub := s.Quads.BuildIterator(ctx, qs)
 	if s.Dir == quad.Any {
 		panic("direction is not set")
 	}
 	return graph.NewHasA(qs, sub, s.Dir)
 }
-func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Quads) {
-		return nil, true
+		return nil, true, nil
 	}
-	var opt bool
-	s.Quads, opt = s.Quads.Optimize(ctx, r)
+	optim, opt, err := s.Quads.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.Quads = optim
+	}
 	if r != nil {
 		// ignore default optimizations
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
 	q, ok := s.Quads.(Quads)
 	if !ok {
-		return s, opt
+		return s, opt, nil
 	}
 	// HasA(x, LinksTo(x, y)) == y
 	if len(q) == 1 && q[0].Dir == s.Dir {
-		return q[0].Values, true
+		return q[0].Values, true, nil
 	}
 	// collect all fixed tags and push them up the tree
 	var (
@@ -573,8 +634,11 @@ func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 	}
 	if tags != nil {
 		// re-run optimization without fixed tags
-		ns, _ := NodesFrom{Dir: s.Dir, Quads: q}.Optimize(ctx, r)
-		return FixedTags{On: ns, Tags: tags}, true
+		ns, _, err := NodesFrom{Dir: s.Dir, Quads: q}.Optimize(ctx, r)
+		if err != nil {
+			return s, opt, err
+		}
+		return FixedTags{On: ns, Tags: tags}, true, nil
 	}
 	var (
 		// if quad filter contains one fixed value, it will be added to the map
@@ -590,7 +654,7 @@ func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 				filt = make(map[quad.Direction]refs.Ref)
 			}
 			if _, ok := filt[f.Dir]; ok {
-				return s, opt // just to be safe
+				return s, opt, nil // just to be safe
 			}
 			filt[f.Dir] = v
 			n++
@@ -607,15 +671,17 @@ func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 	if n == len(q) {
 		// if all filters were recognized we can merge this tree as a single iterator with multiple
 		// constraints and multiple save commands over the same set of quads
-		ns, _ := QuadsAction{
+		ns, _, err := QuadsAction{
 			Result: s.Dir, // this is still a HasA, remember?
 			Filter: filt,
 			Save:   save,
 		}.Optimize(ctx, r)
-		return ns, true
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, true, nil
 	}
-	// TODO
-	return s, opt
+	return s, opt, nil
 }
 
 var _ Composite = QuadsAction{}
@@ -682,37 +748,37 @@ func (s QuadsAction) SimplifyFrom(quads Shape) Shape {
 func (s QuadsAction) Simplify() Shape {
 	return s.simplify()
 }
-func (s QuadsAction) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s QuadsAction) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	h := s.simplify()
-	return h.BuildIterator(qs)
+	return h.BuildIterator(ctx, qs)
 }
-func (s QuadsAction) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s QuadsAction) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
 	}
 	// if optimizer has stats for quad indexes we can use them to do more
 	ind, ok := r.(QuadIndexer)
 	if !ok {
-		return s, false
+		return s, false, nil
 	}
 	if s.Size > 0 { // already optimized; specific for QuadIndexer optimization
-		return s, false
+		return s, false, nil
 	}
 	sz, exact := ind.SizeOfIndex(s.Filter)
 	if !exact {
-		return s, false
+		return s, false, nil
 	}
 	s.Size = sz // computing size is already an optimization
 	if sz == 0 {
 		// nothing here, collapse the tree
-		return nil, true
+		return nil, true, nil
 	} else if sz == 1 {
 		// only one quad matches this set of filters
 		// try to load it from quad store, do all operations and bake result as a fixed node/tags
 		if q, ok := ind.LookupQuadIndex(s.Filter); ok {
 			fx := Fixed{q.Get(s.Result)}
 			if len(s.Save) == 0 {
-				return fx, true
+				return fx, true, nil
 			}
 			ft := FixedTags{On: fx, Tags: make(map[string]refs.Ref)}
 			for d, tags := range s.Save {
@@ -720,14 +786,14 @@ func (s QuadsAction) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 					ft.Tags[t] = q.Get(d)
 				}
 			}
-			return ft, true
+			return ft, true, nil
 		}
 	}
 	if sz < int64(MaterializeThreshold) {
 		// if this set is small enough - materialize it
-		return Materialize{Values: s, Size: int(sz)}, true
+		return Materialize{Values: s, Size: int(sz)}, true, nil
 	}
-	return s, true
+	return s, true, nil
 }
 
 // One checks if Shape represents a single fixed value and returns it.
@@ -747,7 +813,7 @@ type Fixed []refs.Ref
 func (s *Fixed) Add(v ...refs.Ref) {
 	*s = append(*s, v...)
 }
-func (s Fixed) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Fixed) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	it := iterator.NewFixed()
 	for _, v := range s {
 		if _, ok := v.(quad.Value); ok {
@@ -757,14 +823,14 @@ func (s Fixed) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	}
 	return it
 }
-func (s Fixed) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Fixed) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if len(s) == 0 {
-		return nil, true
+		return nil, true, nil
 	}
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
 	}
-	return s, false
+	return s, false, nil
 }
 
 // FixedTags adds a set of fixed tag values to query results. It does not affect query execution in any other way.
@@ -775,25 +841,30 @@ type FixedTags struct {
 	On   Shape
 }
 
-func (s FixedTags) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s FixedTags) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.On) {
 		return iterator.NewNull()
 	}
-	it := s.On.BuildIterator(qs)
+	it := s.On.BuildIterator(ctx, qs)
 	sv := iterator.NewSave(it)
 	for k, v := range s.Tags {
 		sv.AddFixedTag(k, v)
 	}
 	return sv
 }
-func (s FixedTags) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s FixedTags) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.On) {
-		return nil, true
+		return nil, true, nil
 	}
 	var opt bool
-	s.On, opt = s.On.Optimize(ctx, r)
+	var err error
+	optim, opt, err := s.On.Optimize(ctx, r)
+	if err != nil {
+		return s.On, false, err
+	}
+	s.On = optim
 	if len(s.Tags) == 0 {
-		return s.On, true
+		return s.On, true, nil
 	} else if s2, ok := s.On.(FixedTags); ok {
 		tags := make(map[string]refs.Ref, len(s.Tags)+len(s2.Tags))
 		for k, v := range s.Tags {
@@ -805,10 +876,12 @@ func (s FixedTags) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 		s, opt = FixedTags{On: s2.On, Tags: tags}, true
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err == nil {
+			return ns, opt || nopt, nil
+		}
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 // Lookup is a static set of values that must be resolved to nodes by QuadStore.
@@ -821,14 +894,14 @@ func (s *Lookup) Add(v ...quad.Value) {
 var _ valueResolver = graph.QuadStore(nil)
 
 type valueResolver interface {
-	ValueOf(v quad.Value) (refs.Ref, error)
+	ValueOf(ctx context.Context, v quad.Value) (refs.Ref, error)
 }
 
-func (s Lookup) resolve(qs valueResolver) (Shape, error) {
+func (s Lookup) resolve(ctx context.Context, qs valueResolver) (Shape, error) {
 	// TODO: check if QS supports batch lookup
 	vals := make([]refs.Ref, 0, len(s))
 	for _, v := range s {
-		gv, err := qs.ValueOf(v)
+		gv, err := qs.ValueOf(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -841,31 +914,34 @@ func (s Lookup) resolve(qs valueResolver) (Shape, error) {
 	}
 	return Fixed(vals), nil
 }
-func (s Lookup) BuildIterator(qs graph.QuadStore) iterator.Shape {
-	f, err := s.resolve(qs)
+func (s Lookup) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
+	f, err := s.resolve(ctx, qs)
 	if err != nil {
 		return iterator.NewError(err)
 	}
 	if IsNull(f) {
 		return iterator.NewNull()
 	}
-	return f.BuildIterator(qs)
+	return f.BuildIterator(ctx, qs)
 }
-func (s Lookup) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Lookup) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r == nil {
-		return s, false
+		return s, false, nil
 	}
-	ns, opt := r.OptimizeShape(ctx, s)
+	ns, opt, err := r.OptimizeShape(ctx, s)
+	if err != nil {
+		return s, false, err
+	}
 	if opt {
-		return ns, true
+		return ns, true, nil
 	}
 	if qs, ok := r.(valueResolver); ok {
-		res, err := s.resolve(qs)
+		res, err := s.resolve(ctx, qs)
 		if err == nil {
 			ns, opt = res, true
 		}
 	}
-	return ns, opt
+	return ns, opt, nil
 }
 
 var MaterializeThreshold = 100 // TODO: tune
@@ -876,24 +952,32 @@ type Materialize struct {
 	Values Shape
 }
 
-func (s Materialize) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Materialize) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.Values) {
 		return iterator.NewNull()
 	}
-	it := s.Values.BuildIterator(qs)
+	it := s.Values.BuildIterator(ctx, qs)
 	return iterator.NewMaterializeWithSize(it, int64(s.Size))
 }
-func (s Materialize) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Materialize) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Values) {
-		return nil, true
+		return nil, true, nil
 	}
-	var opt bool
-	s.Values, opt = s.Values.Optimize(ctx, r)
+	optim, opt, err := s.Values.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.Values = optim
+	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 func clearFixedTags(arr []Shape) ([]Shape, map[string]refs.Ref) {
@@ -918,22 +1002,22 @@ func clearFixedTags(arr []Shape) ([]Shape, map[string]refs.Ref) {
 // Intersect computes an intersection of nodes between multiple queries. Similar to And iterator.
 type Intersect []Shape
 
-func (s Intersect) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Intersect) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if len(s) == 0 {
 		return iterator.NewNull()
 	}
 	sub := make([]iterator.Shape, 0, len(s))
 	for _, c := range s {
-		sub = append(sub, c.BuildIterator(qs))
+		sub = append(sub, c.BuildIterator(ctx, qs))
 	}
 	if len(sub) == 1 {
 		return sub[0]
 	}
 	return iterator.NewAnd(sub...)
 }
-func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt bool) {
+func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt bool, rerr error) {
 	if len(s) == 0 {
-		return nil, true
+		return nil, true, nil
 	}
 	// function to lazily reallocate a copy of Intersect slice
 	realloc := func() {
@@ -947,26 +1031,36 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		if IsNull(c) {
-			return nil, true
+			return nil, true, nil
 		}
-		v, ok := c.Optimize(ctx, r)
+		v, ok, err := c.Optimize(ctx, r)
+		if err != nil {
+			// ignore optimization error here.
+			continue
+		}
 		if !ok {
 			continue
 		}
 		realloc()
 		opt = true
 		if IsNull(v) {
-			return nil, true
+			return nil, true, nil
 		}
 		s[i] = v
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
 	if arr, ft := clearFixedTags([]Shape(s)); ft != nil {
-		ns, _ := FixedTags{On: Intersect(arr), Tags: ft}.Optimize(ctx, r)
-		return ns, true
+		ns, _, err := FixedTags{On: Intersect(arr), Tags: ft}.Optimize(ctx, r)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, true, nil
 	}
 	var (
 		onlyAll  = true // contains only AllNodes shapes
@@ -1022,7 +1116,7 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 		onlyAll = false
 	}
 	if onlyAll {
-		return AllNodes{}, true
+		return AllNodes{}, true, nil
 	}
 	if len(tags) != 0 {
 		// don't forget to move Save outside of Intersect at the end
@@ -1032,7 +1126,7 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 			}
 			sv := Save{From: sout, Tags: tags}
 			var topt bool
-			sout, topt = sv.Optimize(ctx, r)
+			sout, topt, rerr = sv.Optimize(ctx, r)
 			opt = opt || topt
 		}()
 	}
@@ -1049,16 +1143,21 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 				out.Sub = Intersect{sout}
 			}
 			var topt bool
-			sout, topt = out.Optimize(ctx, r)
+			sout, topt, rerr = out.Optimize(ctx, r)
 			opt = opt || topt
 		}()
 	}
 	if quads != nil {
-		nq, qopt := quads.Optimize(ctx, r)
-		if IsNull(nq) {
-			return nil, true
+		nq, qopt, err := quads.Optimize(ctx, r)
+		// ignore optimization failure here
+		if qopt && err == nil {
+			opt = true
+		} else {
+			nq = quads
 		}
-		opt = opt || qopt
+		if IsNull(nq) {
+			return nil, true, nil
+		}
 		s = append(s, nq)
 	}
 	// TODO: intersect fixed
@@ -1077,15 +1176,19 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 					if v := sf.Filter[sf.Result]; v != nil {
 						// we have the same direction set as a fixed constraint - do filtering
 						if refs.ToKey(v) != refs.ToKey(fv) {
-							return nil, true
+							return nil, true, nil
 						}
-						return sf, true
+						return sf, true, nil
 					}
 					sf = sf.Clone()
 					sf.SetFilter(sf.Result, fv) // LinksTo(HasA.Dir, fixed)
 					sf.Size = 0                 // re-calculate size
-					ns, _ := sf.Optimize(ctx, r)
-					return ns, true
+					ns, _, err := sf.Optimize(ctx, r)
+					if err == nil {
+						return ns, true, nil
+					} else {
+						return sf, true, nil
+					}
 				}
 			case NodesFrom:
 				if sq, ok := sf.Quads.(Quads); ok {
@@ -1110,7 +1213,7 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 						qf := &sq[qi]
 						qf.Values = IntersectShapes(fix, qf.Values)
 					}
-					return sf, true
+					return sf, true, nil
 				}
 			}
 		}
@@ -1128,14 +1231,14 @@ func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt b
 	}
 	if len(s) == 0 {
 		if hasAll {
-			return AllNodes{}, true
+			return AllNodes{}, true, nil
 		}
-		return nil, true
+		return nil, true, nil
 	} else if len(s) == 1 {
-		return s[0], true
+		return s[0], true, nil
 	}
 	// TODO: optimize order
-	return s, opt
+	return s, opt, nil
 }
 
 // IntersectOpt is like Intersect but it also joins optional query shapes to the main query.
@@ -1152,7 +1255,7 @@ func (s *IntersectOpt) AddOptional(arr ...Shape) {
 	s.Opt = append(s.Opt, arr...)
 }
 
-func (s IntersectOpt) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s IntersectOpt) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if len(s.Sub) == 0 && len(s.Opt) == 0 {
 		return iterator.NewNull()
 	}
@@ -1165,10 +1268,10 @@ func (s IntersectOpt) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	sub := make([]iterator.Shape, 0, len(s.Sub))
 	opt := make([]iterator.Shape, 0, len(s.Opt))
 	for _, c := range s.Sub {
-		sub = append(sub, c.BuildIterator(qs))
+		sub = append(sub, c.BuildIterator(ctx, qs))
 	}
 	for _, c := range s.Opt {
-		opt = append(opt, c.BuildIterator(qs))
+		opt = append(opt, c.BuildIterator(ctx, qs))
 	}
 	if len(sub) == 1 && len(opt) == 0 {
 		return sub[0]
@@ -1180,7 +1283,7 @@ func (s IntersectOpt) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	return it
 }
 
-func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt bool) {
+func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt bool, rerr error) {
 	// optimize optional shapes first, reallocate if necessary
 	newSlice := false
 	realloc := func() {
@@ -1199,10 +1302,11 @@ func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt b
 			i--
 			continue
 		}
-		o, opt2 := o.Optimize(ctx, r)
-		if !opt2 {
+		optim, opt2, err := o.Optimize(ctx, r)
+		if !opt2 || err != nil {
 			continue
 		}
+		o = optim
 		realloc()
 		if IsNull(o) {
 			s.Opt = append(s.Opt[:i], s.Opt[i+1:]...)
@@ -1213,17 +1317,23 @@ func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt b
 	}
 	if len(s.Opt) == 0 {
 		// no optional - replace with a regular intersection
-		si, _ := s.Sub.Optimize(ctx, r)
-		return si, true
+		si, _, err := s.Sub.Optimize(ctx, r)
+		if err != nil {
+			return s.Sub, true, err
+		}
+		return si, true, nil
 	}
 	if len(s.Sub) == 0 {
 		// force at least All to be in the intersection
 		s.Sub = Intersect{AllNodes{}}
 		opt = true
 	} else {
-		sub, opt2 := s.Sub.Optimize(ctx, r)
+		sub, opt2, err := s.Sub.Optimize(ctx, r)
+		if err != nil {
+			return s, opt, err
+		}
 		if IsNull(sub) {
-			return nil, true
+			return nil, true, nil
 		}
 		opt = opt || opt2
 		switch sub := sub.(type) {
@@ -1239,29 +1349,32 @@ func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt b
 		}
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 // Union joins results of multiple queries together. It does not make results unique.
 type Union []Shape
 
-func (s Union) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Union) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if len(s) == 0 {
 		return iterator.NewNull()
 	}
 	sub := make([]iterator.Shape, 0, len(s))
 	for _, c := range s {
-		sub = append(sub, c.BuildIterator(qs))
+		sub = append(sub, c.BuildIterator(ctx, qs))
 	}
 	if len(sub) == 1 {
 		return sub[0]
 	}
 	return iterator.NewOr(sub...)
 }
-func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	var opt bool
 	realloc := func() {
 		if !opt {
@@ -1276,8 +1389,8 @@ func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 		if c == nil {
 			continue
 		}
-		v, ok := c.Optimize(ctx, r)
-		if !ok {
+		v, ok, err := c.Optimize(ctx, r)
+		if !ok || err != nil {
 			continue
 		}
 		realloc()
@@ -1285,12 +1398,15 @@ func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 		s[i] = v
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
 	if arr, ft := clearFixedTags([]Shape(s)); ft != nil {
-		ns, _ := FixedTags{On: Union(arr), Tags: ft}.Optimize(ctx, r)
-		return ns, true
+		ns, _, err := FixedTags{On: Union(arr), Tags: ft}.Optimize(ctx, r)
+		return ns, true, err
 	}
 	// second pass - remove Null
 	for i := 0; i < len(s); i++ {
@@ -1302,12 +1418,12 @@ func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
 		}
 	}
 	if len(s) == 0 {
-		return nil, true
+		return nil, true, nil
 	} else if len(s) == 1 {
-		return s[0], true
+		return s[0], true, nil
 	}
 	// TODO: join Fixed
-	return s, opt
+	return s, opt, nil
 }
 
 // Page provides a simple form of pagination. Can be used to skip or limit results.
@@ -1317,11 +1433,11 @@ type Page struct {
 	Limit int64 // zero means unlimited
 }
 
-func (s Page) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Page) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.From) {
 		return iterator.NewNull()
 	}
-	it := s.From.BuildIterator(qs)
+	it := s.From.BuildIterator(ctx, qs)
 	if s.Skip > 0 {
 		it = iterator.NewSkip(it, s.Skip)
 	}
@@ -1330,28 +1446,36 @@ func (s Page) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	}
 	return it
 }
-func (s Page) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Page) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
-	var opt bool
-	s.From, opt = s.From.Optimize(ctx, r)
+	optim, opt, err := s.From.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.From = optim
+	}
 	if s.Skip <= 0 && s.Limit <= 0 {
-		return s.From, true
+		return s.From, true, nil
 	}
 	if p, ok := s.From.(Page); ok {
 		p2 := p.ApplyPage(s)
 		if p2 == nil {
-			return nil, true
+			return nil, true, nil
 		}
 		s, opt = *p2, true
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, nil
+		}
+		return ns, opt || nopt, nil
 	}
 	// TODO: check size
-	return s, opt
+	return s, opt, nil
 }
 func (s Page) ApplyPage(p Page) *Page {
 	s.Skip += p.Skip
@@ -1374,27 +1498,35 @@ type Unique struct {
 	From Shape
 }
 
-func (s Unique) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Unique) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.From) {
 		return iterator.NewNull()
 	}
-	it := s.From.BuildIterator(qs)
+	it := s.From.BuildIterator(ctx, qs)
 	return iterator.NewUnique(it)
 }
-func (s Unique) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Unique) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
-	var opt bool
-	s.From, opt = s.From.Optimize(ctx, r)
+	optim, opt, err := s.From.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.From = optim
+	}
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 // Save tags a results of query with provided tags.
@@ -1403,32 +1535,41 @@ type Save struct {
 	From Shape
 }
 
-func (s Save) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Save) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.From) {
 		return iterator.NewNull()
 	}
-	it := s.From.BuildIterator(qs)
+	it := s.From.BuildIterator(ctx, qs)
 	if len(s.Tags) != 0 {
 		return iterator.NewSave(it, s.Tags...)
 	}
 	return it
 }
-func (s Save) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Save) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
 	var opt bool
-	s.From, opt = s.From.Optimize(ctx, r)
+	optim, opt, err := s.From.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.From = optim
+	}
 	if len(s.Tags) == 0 {
-		return s.From, true
+		return s.From, true, nil
 	} else if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, nil
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }
 
 func FilterQuads(subject, predicate, object, label []quad.Value) Shape {
@@ -1452,25 +1593,34 @@ type Sort struct {
 	From Shape
 }
 
-func (s Sort) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Sort) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if IsNull(s.From) {
 		return iterator.NewNull()
 	}
-	it := s.From.BuildIterator(qs)
+	it := s.From.BuildIterator(ctx, qs)
 	return iterator.NewSort(qs, it)
 }
-func (s Sort) Optimize(ctx context.Context, r Optimizer) (Shape, bool) {
+func (s Sort) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
 	var opt bool
-	s.From, opt = s.From.Optimize(ctx, r)
+	optim, opt, err := s.From.Optimize(ctx, r)
+	if err != nil {
+		return s, false, err
+	}
+	if opt {
+		s.From = optim
+	}
 	if IsNull(s.From) {
-		return nil, true
+		return nil, true, nil
 	}
 	if r != nil {
-		ns, nopt := r.OptimizeShape(ctx, s)
-		return ns, opt || nopt
+		ns, nopt, err := r.OptimizeShape(ctx, s)
+		if err != nil {
+			return s, opt, err
+		}
+		return ns, opt || nopt, nil
 	}
-	return s, opt
+	return s, opt, nil
 }

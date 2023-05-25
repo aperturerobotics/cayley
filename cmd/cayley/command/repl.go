@@ -125,7 +125,11 @@ func NewQueryCmd() *cobra.Command {
 			}
 			defer it.Close()
 			for i := 0; it.Next(ctx) && (limit <= 0 || i < limit); i++ {
-				if err = enc.Encode(it.Result()); err != nil {
+				res, err := it.Result(ctx)
+				if err != nil {
+					return err
+				}
+				if err = enc.Encode(res); err != nil {
 					return err
 				}
 			}

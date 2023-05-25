@@ -10,7 +10,6 @@ import (
 )
 
 func TestCount(t *testing.T) {
-	ctx := context.TODO()
 	fixed := NewFixed(
 		refs.PreFetched(quad.String("a")),
 		refs.PreFetched(quad.String("b")),
@@ -20,14 +19,21 @@ func TestCount(t *testing.T) {
 	)
 	its := NewCount(fixed, nil)
 
-	itn := its.Iterate()
+	ctx := context.Background()
+	itn := its.Iterate(ctx)
 	require.True(t, itn.Next(ctx))
-	require.Equal(t, refs.PreFetched(quad.Int(5)), itn.Result())
+	resi, err := itn.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, refs.PreFetched(quad.Int(5)), resi)
 	require.False(t, itn.Next(ctx))
 
-	itc := its.Lookup()
-	require.True(t, itc.Contains(ctx, refs.PreFetched(quad.Int(5))))
-	require.False(t, itc.Contains(ctx, refs.PreFetched(quad.Int(3))))
+	itc := its.Lookup(ctx)
+	tc1, err := itc.Contains(ctx, refs.PreFetched(quad.Int(5)))
+	require.NoError(t, err)
+	require.True(t, tc1)
+	tc2, err := itc.Contains(ctx, refs.PreFetched(quad.Int(3)))
+	require.NoError(t, err)
+	require.False(t, tc2)
 
 	fixed2 := NewFixed(
 		refs.PreFetched(quad.String("b")),
@@ -35,12 +41,18 @@ func TestCount(t *testing.T) {
 	)
 	its = NewCount(NewAnd(fixed, fixed2), nil)
 
-	itn = its.Iterate()
+	itn = its.Iterate(ctx)
 	require.True(t, itn.Next(ctx))
-	require.Equal(t, refs.PreFetched(quad.Int(2)), itn.Result())
+	resi, err = itn.Result(ctx)
+	require.NoError(t, err)
+	require.Equal(t, refs.PreFetched(quad.Int(2)), resi)
 	require.False(t, itn.Next(ctx))
 
-	itc = its.Lookup()
-	require.False(t, itc.Contains(ctx, refs.PreFetched(quad.Int(5))))
-	require.True(t, itc.Contains(ctx, refs.PreFetched(quad.Int(2))))
+	itc = its.Lookup(ctx)
+	tc1, err = itc.Contains(ctx, refs.PreFetched(quad.Int(5)))
+	require.NoError(t, err)
+	require.False(t, tc1)
+	tc2, err = itc.Contains(ctx, refs.PreFetched(quad.Int(2)))
+	require.NoError(t, err)
+	require.True(t, tc2)
 }

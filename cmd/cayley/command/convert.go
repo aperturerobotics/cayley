@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ type lazyReader struct {
 	open func() (quad.ReadCloser, error)
 }
 
-func (r *lazyReader) ReadQuad() (quad.Quad, error) {
+func (r *lazyReader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	if r.rc == nil {
 		rc, err := r.open()
 		if err != nil {
@@ -29,7 +30,7 @@ func (r *lazyReader) ReadQuad() (quad.Quad, error) {
 		}
 		r.rc = rc
 	}
-	return r.rc.ReadQuad()
+	return r.rc.ReadQuad(ctx)
 }
 func (r *lazyReader) Close() (err error) {
 	if r.rc != nil {
@@ -43,13 +44,13 @@ type multiReader struct {
 	i  int
 }
 
-func (r *multiReader) ReadQuad() (quad.Quad, error) {
+func (r *multiReader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	for {
 		if r.i >= len(r.rc) {
 			return quad.Quad{}, io.EOF
 		}
 		rc := r.rc[r.i]
-		q, err := rc.ReadQuad()
+		q, err := rc.ReadQuad(ctx)
 		if err == io.EOF {
 			rc.Close()
 			r.i++
@@ -105,7 +106,8 @@ func NewConvertCmd() *cobra.Command {
 				}))
 			}
 			// TODO: print additional stats
-			return writerQuadsTo(dump, dumpf, &multi)
+			ctx := cmd.Context()
+			return writerQuadsTo(ctx, dump, dumpf, &multi)
 		},
 	}
 	registerLoadFlags(cmd)

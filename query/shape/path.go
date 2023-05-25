@@ -239,5 +239,5 @@ func Compare(nodes Shape, op iterator.Operator, v quad.Value) Shape {
 
 func Iterate(ctx context.Context, qs graph.QuadStore, s Shape) *iterator.Chain {
 	it := BuildIterator(ctx, qs, s)
-	return iterator.Iterate(ctx, it).On(qs)
+	return iterator.Iterate(it).On(qs)
 }

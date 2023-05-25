@@ -1,6 +1,7 @@
 package steps
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cayleygraph/cayley/query/path"
@@ -87,10 +88,11 @@ var patternTestCases = []struct {
 }
 
 func TestBuildPath(t *testing.T) {
+	ctx := context.Background()
 	for _, c := range patternTestCases {
 		t.Run(c.name, func(t *testing.T) {
 			ns := voc.Namespaces{}
-			quads, err := parsePattern(c.pattern, &ns)
+			quads, err := parsePattern(ctx, c.pattern, &ns)
 			require.NoError(t, err)
 			p := buildPatternPath(quads, &ns)
 			expectedShape := c.expected.Shape()

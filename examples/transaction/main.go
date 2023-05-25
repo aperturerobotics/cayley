@@ -27,14 +27,14 @@ func main() {
 	t.AddQuad(quad.Make("cats", "want to", "kill you", nil))
 
 	// Apply the transaction
-	err = store.ApplyTransaction(t)
+	err = store.ApplyTransaction(ctx, t)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	p := cayley.StartPath(store, quad.String("cats")).Out(quad.String("are"))
 
-	err = p.Iterate(nil).EachValue(nil, func(v quad.Value) error {
+	err = p.Iterate(nil).EachValue(ctx, nil, func(v quad.Value) error {
 		fmt.Println("cats are", v.Native())
 		return nil
 	})

@@ -202,8 +202,8 @@ _Note: this definitions in this glossary are sequenced so that they build on eac
 
    ```go
     type Shape interface {
-        BuildIterator(qs graph.QuadStore) graph.Iterator
-        Optimize(ctx context.Context, r Optimizer) (Shape, bool)
+        BuildIterator(ctx context.Context, qs graph.QuadStore) graph.Iterator
+        Optimize(ctx context.Context, r Optimizer) (Shape, bool, error)
     }
    ```
 

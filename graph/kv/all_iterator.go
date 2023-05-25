@@ -16,6 +16,7 @@ package kv
 
 import (
 	"context"
+	"errors"
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
@@ -46,11 +47,11 @@ func (qs *QuadStore) newAllIterator(nodes bool, cons *constraint) *allIterator {
 	}
 }
 
-func (it *allIterator) Iterate() iterator.Scanner {
+func (it *allIterator) Iterate(ctx context.Context) iterator.Scanner {
 	return it.qs.newAllIteratorNext(it.nodes, it.cons)
 }
 
-func (it *allIterator) Lookup() iterator.Index {
+func (it *allIterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newAllIteratorContains(it.nodes, it.cons)
 }
 
@@ -65,19 +66,20 @@ func (it *allIterator) String() string {
 
 func (it *allIterator) Sorted() bool { return false }
 
-func (it *allIterator) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	return it, false
+func (it *allIterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
 }
 
 func (it *allIterator) Stats(ctx context.Context) (iterator.Costs, error) {
+	sz, err := it.qs.Size(ctx)
 	return iterator.Costs{
 		ContainsCost: 1,
 		NextCost:     2,
 		Size: refs.Size{
-			Value: it.qs.Size(),
+			Value: sz,
 			Exact: false,
 		},
-	}, nil
+	}, err
 }
 
 type allIteratorNext struct {
@@ -103,7 +105,9 @@ func (qs *QuadStore) newAllIteratorNext(nodes bool, cons *constraint) *allIterat
 	}
 }
 
-func (it *allIteratorNext) TagResults(dst map[string]graph.Ref) {}
+func (it *allIteratorNext) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *allIteratorNext) Close() error {
 	return nil
@@ -113,17 +117,20 @@ func (it *allIteratorNext) Err() error {
 	return it.err
 }
 
-func (it *allIteratorNext) Result() graph.Ref {
+func (it *allIteratorNext) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	if it.id > uint64(it.horizon) {
-		return nil
+		return nil, nil
 	}
 	if it.nodes {
-		return Int64Value(it.id)
+		return Int64Value(it.id), nil
 	}
 	if it.prim == nil {
-		return nil
+		return nil, nil
 	}
-	return it.prim
+	return it.prim, nil
 }
 
 const nextBatch = 100
@@ -209,7 +216,9 @@ func (qs *QuadStore) newAllIteratorContains(nodes bool, cons *constraint) *allIt
 	}
 }
 
-func (it *allIteratorContains) TagResults(dst map[string]graph.Ref) {}
+func (it *allIteratorContains) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *allIteratorContains) Close() error {
 	return nil
@@ -219,49 +228,55 @@ func (it *allIteratorContains) Err() error {
 	return it.err
 }
 
-func (it *allIteratorContains) Result() graph.Ref {
+func (it *allIteratorContains) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	if it.id > uint64(it.horizon) {
-		return nil
+		return nil, nil
 	}
 	if it.nodes {
-		return Int64Value(it.id)
+		return Int64Value(it.id), nil
 	}
 	if it.prim == nil {
-		return nil
+		return nil, nil
 	}
-	return it.prim
+	return it.prim, nil
 }
 
 func (it *allIteratorContains) NextPath(ctx context.Context) bool {
 	return false
 }
 
-func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
 	// TODO(dennwc): This method doesn't check if the primitive still exists in the store.
 	//               It's okay if we assume we provide the snapshot of data, though.
 	//               However, passing a hand-crafted Ref will cause invalid results.
 	//               Same is true for QuadIterator.
+	if it.err != nil {
+		return false, it.err
+	}
 	if it.nodes {
 		x, ok := v.(Int64Value)
 		if !ok {
-			return false
+			return false, nil
 		}
 		it.id = uint64(x)
-		return it.id <= uint64(it.horizon)
+		return it.id <= uint64(it.horizon), nil
 	}
 	p, ok := v.(*proto.Primitive)
 	if !ok {
-		return false
+		return false, errors.New("ref must be a proto.Primitive")
 	}
 	it.prim = p
 	it.id = it.prim.ID
 	if it.cons == nil {
-		return true
+		return true, nil
 	}
 	if Int64Value(it.prim.GetDirection(it.cons.dir)) != it.cons.val {
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (it *allIteratorContains) String() string {

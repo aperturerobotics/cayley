@@ -10,7 +10,7 @@ import (
 )
 
 func TestSkipIteratorBasics(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	allIt := NewFixed(
 		Int64Node(1),
 		Int64Node(2),
@@ -24,29 +24,37 @@ func TestSkipIteratorBasics(t *testing.T) {
 	sz, _ := u.Stats(ctx)
 	require.Equal(t, expectSz.Size.Value, sz.Size.Value)
 
-	require.Equal(t, []int{1, 2, 3, 4, 5}, iterated(u))
+	require.Equal(t, []int{1, 2, 3, 4, 5}, iterated(t, u))
 
 	u = NewSkip(allIt, 3)
 	expectSz.Size.Value = 2
 	if sz, _ := u.Stats(ctx); sz.Size.Value != expectSz.Size.Value {
 		t.Errorf("Failed to check Skip size: got:%v expected:%v", sz.Size, expectSz.Size)
 	}
-	require.Equal(t, []int{4, 5}, iterated(u))
+	require.Equal(t, []int{4, 5}, iterated(t, u))
 
-	uc := u.Lookup()
+	uc := u.Lookup(ctx)
 	for _, v := range []int{1, 2, 3} {
-		require.False(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.False(t, cnt)
 	}
 	for _, v := range []int{4, 5} {
-		require.True(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 
-	uc = u.Lookup()
+	uc = u.Lookup(ctx)
 	for _, v := range []int{5, 4, 3} {
-		require.False(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.False(t, cnt)
 	}
 	for _, v := range []int{1, 2} {
-		require.True(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 
 	// TODO(dennwc): check with NextPath

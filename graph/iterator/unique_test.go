@@ -23,11 +23,13 @@ func TestUniqueIteratorBasics(t *testing.T) {
 
 	expect := []int{1, 2, 3}
 	for i := 0; i < 2; i++ {
-		require.Equal(t, expect, iterated(u))
+		require.Equal(t, expect, iterated(t, u))
 	}
 
-	uc := u.Lookup()
+	uc := u.Lookup(ctx)
 	for _, v := range []int{1, 2, 3} {
-		require.True(t, uc.Contains(ctx, Int64Node(v)))
+		cnt, err := uc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 }

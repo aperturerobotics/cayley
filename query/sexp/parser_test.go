@@ -169,19 +169,22 @@ func TestSexp(t *testing.T) {
 			s, _ := BuildShape(ctx, test.query)
 			require.Equal(t, test.shape, s, "%s\n%#v\nvs\n%#v", test.message, test.shape, s)
 
-			it := BuildIteratorTreeForQuery(ctx, qs, test.query).Iterate()
+			it := BuildIteratorTreeForQuery(ctx, qs, test.query).Iterate(ctx)
 			if it.Next(ctx) != (test.expect != "") {
 				t.Errorf("Failed to %s", test.message)
 			}
 			if test.expect != "" {
-				qv, err := qs.ValueOf(quad.StringToValue(test.expect))
+				qv, err := qs.ValueOf(ctx, quad.StringToValue(test.expect))
 				require.NoError(t, err)
-				require.Equal(t, qv, it.Result())
+				resi, err := it.Result(ctx)
+				require.NoError(t, err)
+				require.Equal(t, qv, resi)
 
 				tags := make(map[string]graph.Ref)
-				it.TagResults(tags)
+				err = it.TagResults(ctx, tags)
+				require.NoError(t, err)
 				for k, v := range test.tags {
-					name, err := qs.NameOf(tags[k])
+					name, err := qs.NameOf(ctx, tags[k])
 					require.NoError(t, err)
 					require.Equal(t, v, quad.ToString(name))
 				}

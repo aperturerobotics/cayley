@@ -32,17 +32,21 @@ func TestResolverIteratorIterate(t *testing.T) {
 	expected := make(map[quad.Value]refs.Ref)
 	for _, node := range nodes {
 		var err error
-		expected[node], err = qs.ValueOf(node)
+		expected[node], err = qs.ValueOf(ctx, node)
 		require.NoError(t, err)
 	}
-	it := iterator.NewResolver(qs, nodes...).Iterate()
+	it := iterator.NewResolver(qs, nodes...).Iterate(ctx)
 	for _, node := range nodes {
 		require.True(t, it.Next(ctx))
 		require.NoError(t, it.Err())
-		require.Equal(t, expected[node], it.Result())
+		resi, err := it.Result(ctx)
+		require.NoError(t, err)
+		require.Equal(t, expected[node], resi)
 	}
 	require.False(t, it.Next(ctx))
-	require.Nil(t, it.Result())
+	resi, err := it.Result(ctx)
+	require.NoError(t, err)
+	require.Nil(t, resi)
 }
 
 func TestResolverIteratorNotFoundError(t *testing.T) {
@@ -67,13 +71,15 @@ func TestResolverIteratorNotFoundError(t *testing.T) {
 		Data: data,
 	}
 	count := 0
-	it := iterator.NewResolver(qs, nodes...).Iterate()
+	it := iterator.NewResolver(qs, nodes...).Iterate(ctx)
 	for it.Next(ctx) {
 		count++
 	}
 	require.Equal(t, 0, count)
 	require.Error(t, it.Err())
-	require.Nil(t, it.Result())
+	resi, err := it.Result(ctx)
+	require.Error(t, err)
+	require.Nil(t, resi)
 }
 
 func TestResolverIteratorContains(t *testing.T) {
@@ -113,8 +119,10 @@ func TestResolverIteratorContains(t *testing.T) {
 			qs := &graphmock.Store{
 				Data: data,
 			}
-			it := iterator.NewResolver(qs, test.nodes...).Lookup()
-			require.Equal(t, test.contains, it.Contains(ctx, refs.PreFetched(test.subject)))
+			it := iterator.NewResolver(qs, test.nodes...).Lookup(ctx)
+			cnt, err := it.Contains(ctx, refs.PreFetched(test.subject))
+			require.NoError(t, err)
+			require.Equal(t, test.contains, cnt)
 		})
 	}
 }

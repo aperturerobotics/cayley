@@ -46,12 +46,12 @@ func NewMaterializeWithSize(sub Shape, size int64) *Materialize {
 	}
 }
 
-func (it *Materialize) Iterate() Scanner {
-	return newMaterializeNext(it.sub)
+func (it *Materialize) Iterate(ctx context.Context) Scanner {
+	return newMaterializeNext(ctx, it.sub)
 }
 
-func (it *Materialize) Lookup() Index {
-	return newMaterializeContains(it.sub)
+func (it *Materialize) Lookup(ctx context.Context) Index {
+	return newMaterializeContains(ctx, it.sub)
 }
 
 func (it *Materialize) String() string {
@@ -62,15 +62,18 @@ func (it *Materialize) SubIterators() []Shape {
 	return []Shape{it.sub}
 }
 
-func (it *Materialize) Optimize(ctx context.Context) (Shape, bool) {
-	newSub, changed := it.sub.Optimize(ctx)
+func (it *Materialize) Optimize(ctx context.Context) (Shape, bool, error) {
+	newSub, changed, err := it.sub.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if changed {
 		it.sub = newSub
 		if IsNull(it.sub) {
-			return it.sub, true
+			return it.sub, true, nil
 		}
 	}
-	return it, false
+	return it, false, nil
 }
 
 // The entire point of Materialize is to amortize the cost by
@@ -104,11 +107,11 @@ type materializeNext struct {
 	err         error
 }
 
-func newMaterializeNext(sub Shape) *materializeNext {
+func newMaterializeNext(ctx context.Context, sub Shape) *materializeNext {
 	return &materializeNext{
 		containsMap: make(map[interface{}]int),
 		sub:         sub,
-		next:        sub.Iterate(),
+		next:        sub.Iterate(ctx),
 		index:       -1,
 	}
 }
@@ -120,40 +123,46 @@ func (it *materializeNext) Close() error {
 	return it.next.Close()
 }
 
-func (it *materializeNext) TagResults(dst map[string]refs.Ref) {
+func (it *materializeNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
 	if !it.hasRun {
-		return
+		return it.err
 	}
 	if it.aborted {
-		it.next.TagResults(dst)
-		return
+		if err := it.next.TagResults(ctx, dst); err != nil {
+			return err
+		}
+		return it.err
 	}
-	if it.Result() == nil {
-		return
+	res, err := it.Result(ctx)
+	if err != nil {
+		return err
 	}
-	for tag, value := range it.values[it.index][it.subindex].tags {
-		dst[tag] = value
+	if res != nil {
+		for tag, value := range it.values[it.index][it.subindex].tags {
+			dst[tag] = value
+		}
 	}
+	return nil
 }
 
 func (it *materializeNext) String() string {
 	return "Materialize"
 }
 
-func (it *materializeNext) Result() refs.Ref {
+func (it *materializeNext) Result(ctx context.Context) (refs.Ref, error) {
 	if it.aborted {
-		return it.next.Result()
+		return it.next.Result(ctx)
 	}
 	if len(it.values) == 0 {
-		return nil
+		return nil, it.err
 	}
 	if it.index == -1 {
-		return nil
+		return nil, it.err
 	}
 	if it.index >= len(it.values) {
-		return nil
+		return nil, it.err
 	}
-	return it.values[it.index][it.subindex].id
+	return it.values[it.index][it.subindex].id, nil
 }
 
 func (it *materializeNext) Next(ctx context.Context) bool {
@@ -204,13 +213,20 @@ func (it *materializeNext) NextPath(ctx context.Context) bool {
 func (it *materializeNext) materializeSet(ctx context.Context) {
 	i := 0
 	mn := 0
+outer:
 	for it.next.Next(ctx) {
 		i++
 		if i > MaterializeLimit {
 			it.aborted = true
 			break
 		}
-		id := it.next.Result()
+		id, err := it.next.Result(ctx)
+		if err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			break
+		}
 		val := refs.ToKey(id)
 		if _, ok := it.containsMap[val]; !ok {
 			it.containsMap[val] = len(it.values)
@@ -218,7 +234,12 @@ func (it *materializeNext) materializeSet(ctx context.Context) {
 		}
 		index := it.containsMap[val]
 		tags := make(map[string]refs.Ref, mn)
-		it.next.TagResults(tags)
+		if err := it.next.TagResults(ctx, tags); err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			break
+		}
 		if n := len(tags); n > mn {
 			mn = n
 		}
@@ -230,14 +251,21 @@ func (it *materializeNext) materializeSet(ctx context.Context) {
 				break
 			}
 			tags := make(map[string]refs.Ref, mn)
-			it.next.TagResults(tags)
+			if err := it.next.TagResults(ctx, tags); err != nil {
+				if it.err == nil {
+					it.err = err
+				}
+				break outer
+			}
 			if n := len(tags); n > mn {
 				mn = n
 			}
 			it.values[index] = append(it.values[index], result{id: id, tags: tags})
 		}
 	}
-	it.err = it.next.Err()
+	if it.err == nil {
+		it.err = it.next.Err()
+	}
 	if it.err == nil && it.aborted {
 		if clog.V(2) {
 			clog.Infof("Aborting subiterator")
@@ -245,7 +273,7 @@ func (it *materializeNext) materializeSet(ctx context.Context) {
 		it.values = nil
 		it.containsMap = nil
 		_ = it.next.Close()
-		it.next = it.sub.Iterate()
+		it.next = it.sub.Iterate(ctx)
 	}
 	it.hasRun = true
 }
@@ -255,9 +283,9 @@ type materializeContains struct {
 	sub  Index // only set if aborted
 }
 
-func newMaterializeContains(sub Shape) *materializeContains {
+func newMaterializeContains(ctx context.Context, sub Shape) *materializeContains {
 	return &materializeContains{
-		next: newMaterializeNext(sub),
+		next: newMaterializeNext(ctx, sub),
 	}
 }
 
@@ -271,23 +299,22 @@ func (it *materializeContains) Close() error {
 	return err
 }
 
-func (it *materializeContains) TagResults(dst map[string]refs.Ref) {
+func (it *materializeContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
 	if it.sub != nil {
-		it.sub.TagResults(dst)
-		return
+		return it.sub.TagResults(ctx, dst)
 	}
-	it.next.TagResults(dst)
+	return it.next.TagResults(ctx, dst)
 }
 
 func (it *materializeContains) String() string {
 	return "MaterializeContains"
 }
 
-func (it *materializeContains) Result() refs.Ref {
+func (it *materializeContains) Result(ctx context.Context) (refs.Ref, error) {
 	if it.sub != nil {
-		return it.sub.Result()
+		return it.sub.Result(ctx)
 	}
-	return it.next.Result()
+	return it.next.Result(ctx)
 }
 
 func (it *materializeContains) Err() error {
@@ -302,16 +329,16 @@ func (it *materializeContains) Err() error {
 func (it *materializeContains) run(ctx context.Context) {
 	it.next.materializeSet(ctx)
 	if it.next.aborted {
-		it.sub = it.next.sub.Lookup()
+		it.sub = it.next.sub.Lookup(ctx)
 	}
 }
 
-func (it *materializeContains) Contains(ctx context.Context, v refs.Ref) bool {
+func (it *materializeContains) Contains(ctx context.Context, v refs.Ref) (bool, error) {
 	if !it.next.hasRun {
 		it.run(ctx)
 	}
-	if it.next.Err() != nil {
-		return false
+	if err := it.Err(); err != nil {
+		return false, err
 	}
 	if it.sub != nil {
 		return it.sub.Contains(ctx, v)
@@ -320,9 +347,9 @@ func (it *materializeContains) Contains(ctx context.Context, v refs.Ref) bool {
 	if i, ok := it.next.containsMap[key]; ok {
 		it.next.index = i
 		it.next.subindex = 0
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
 func (it *materializeContains) NextPath(ctx context.Context) bool {

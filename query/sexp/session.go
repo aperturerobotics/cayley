@@ -78,7 +78,7 @@ func (s *Session) Execute(ctx context.Context, input string, opt query.Options) 
 	default:
 		return nil, &query.ErrUnsupportedCollation{Collation: opt.Collation}
 	}
-	it := BuildIteratorTreeForQuery(ctx, s.qs, input).Iterate()
+	it := BuildIteratorTreeForQuery(ctx, s.qs, input).Iterate(ctx)
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
@@ -112,11 +112,16 @@ func (it *results) Next(ctx context.Context) bool {
 	return false
 }
 
-func (it *results) Result() interface{} {
+func (it *results) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	m := make(map[string]graph.Ref)
-	it.it.TagResults(m)
+	if err := it.it.TagResults(ctx, m); err != nil {
+		return nil, err
+	}
 	if it.col == query.Raw {
-		return m
+		return m, nil
 	}
 	out := "****\n"
 	tagKeys := make([]string, len(m))
@@ -130,14 +135,14 @@ func (it *results) Result() interface{} {
 		if k == "$_" {
 			continue
 		}
-		knv, err := it.s.qs.NameOf(m[k])
+		knv, err := it.s.qs.NameOf(ctx, m[k])
 		if err != nil {
 			it.err = err
-			return nil
+			return nil, err
 		}
 		out += fmt.Sprintf("%s : %s\n", k, knv)
 	}
-	return out
+	return out, nil
 }
 
 func (it *results) Err() error {

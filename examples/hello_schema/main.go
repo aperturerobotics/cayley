@@ -79,7 +79,7 @@ func main() {
 		Name: "Bob", Age: 32,
 	}
 	fmt.Printf("saving: %+v\n", bob)
-	id, err := sch.WriteAsQuads(qw, bob)
+	id, err := sch.WriteAsQuads(ctx, qw, bob)
 	checkErr(err)
 	err = qw.Close()
 	checkErr(err)
@@ -107,7 +107,7 @@ func main() {
 	}
 	qw = graph.NewWriter(store)
 	for _, c := range coords {
-		id, err = sch.WriteAsQuads(qw, c)
+		id, err = sch.WriteAsQuads(ctx, qw, c)
 		checkErr(err)
 		fmt.Println("generated id:", id)
 	}
@@ -122,9 +122,13 @@ func main() {
 
 	// Print quads
 	fmt.Println("\nquads:")
-	it := store.QuadsAllIterator().Iterate()
+	it := store.QuadsAllIterator(ctx).Iterate(ctx)
 	defer it.Close()
 	for it.Next(ctx) {
-		fmt.Println(store.Quad(it.Result()))
+		res, err := it.Result(ctx)
+		checkErr(err)
+		q, err := store.Quad(ctx, res)
+		checkErr(err)
+		fmt.Println(q)
 	}
 }

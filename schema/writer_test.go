@@ -1,6 +1,7 @@
 package schema_test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -11,22 +12,23 @@ import (
 
 type quadSlice []quad.Quad
 
-func (s *quadSlice) WriteQuad(q quad.Quad) error {
+func (s *quadSlice) WriteQuad(ctx context.Context, q quad.Quad) error {
 	*s = append(*s, q)
 	return nil
 }
 
-func (s *quadSlice) WriteQuads(buf []quad.Quad) (int, error) {
+func (s *quadSlice) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	*s = append(*s, buf...)
 	return len(buf), nil
 }
 
 func TestWriteAsQuads(t *testing.T) {
+	ctx := context.Background()
 	sch := schema.NewConfig()
 	for _, c := range testWriteValueCases {
 		t.Run(c.name, func(t *testing.T) {
 			var out quadSlice
-			id, err := sch.WriteAsQuads(&out, c.obj)
+			id, err := sch.WriteAsQuads(ctx, &out, c.obj)
 			if err != c.err {
 				t.Errorf("unexpected error: %v (expected: %v)", err, c.err)
 			} else if c.err != nil {

@@ -42,11 +42,11 @@ func NewFixed(vals ...refs.Ref) *Fixed {
 	}
 }
 
-func (it *Fixed) Iterate() Scanner {
+func (it *Fixed) Iterate(ctx context.Context) Scanner {
 	return newFixedNext(it.values)
 }
 
-func (it *Fixed) Lookup() Index {
+func (it *Fixed) Lookup(ctx context.Context) Index {
 	return newFixedContains(it.values)
 }
 
@@ -73,12 +73,12 @@ func (it *Fixed) SubIterators() []Shape {
 // Optimize() for a Fixed iterator is simple. Returns a Null iterator if it's empty
 // (so that other iterators upstream can treat this as null) or there is no
 // optimization.
-func (it *Fixed) Optimize(ctx context.Context) (Shape, bool) {
+func (it *Fixed) Optimize(ctx context.Context) (Shape, bool, error) {
 	if len(it.values) == 1 && it.values[0] == nil {
-		return NewNull(), true
+		return NewNull(), true, nil
 	}
 
-	return it, false
+	return it, false, nil
 }
 
 // As we right now have to scan the entire list, Next and Contains are linear with the
@@ -113,7 +113,7 @@ func (it *fixedNext) Close() error {
 	return nil
 }
 
-func (it *fixedNext) TagResults(dst map[string]refs.Ref) {}
+func (it *fixedNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return nil }
 
 func (it *fixedNext) String() string {
 	return fmt.Sprintf("Fixed(%v)", it.values)
@@ -134,8 +134,8 @@ func (it *fixedNext) Err() error {
 	return nil
 }
 
-func (it *fixedNext) Result() refs.Ref {
-	return it.result
+func (it *fixedNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, nil
 }
 
 func (it *fixedNext) NextPath(ctx context.Context) bool {
@@ -166,14 +166,14 @@ func (it *fixedContains) Close() error {
 	return nil
 }
 
-func (it *fixedContains) TagResults(dst map[string]refs.Ref) {}
+func (it *fixedContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return nil }
 
 func (it *fixedContains) String() string {
 	return fmt.Sprintf("Fixed(%v)", it.values)
 }
 
 // Check if the passed value is equal to one of the values stored in the iterator.
-func (it *fixedContains) Contains(ctx context.Context, v refs.Ref) bool {
+func (it *fixedContains) Contains(ctx context.Context, v refs.Ref) (bool, error) {
 	// Could be optimized by keeping it sorted or using a better datastructure.
 	// However, for fixed iterators, which are by definition kind of tiny, this
 	// isn't a big issue.
@@ -181,18 +181,18 @@ func (it *fixedContains) Contains(ctx context.Context, v refs.Ref) bool {
 	for i, x := range it.keys {
 		if x == vk {
 			it.result = it.values[i]
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (it *fixedContains) Err() error {
 	return nil
 }
 
-func (it *fixedContains) Result() refs.Ref {
-	return it.result
+func (it *fixedContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, nil
 }
 
 func (it *fixedContains) NextPath(ctx context.Context) bool {

@@ -303,7 +303,7 @@ func (s Select) Columns() []string {
 	return names
 }
 
-func (s Select) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s Select) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	sq, ok := qs.(*QuadStore)
 	if !ok {
 		return iterator.NewError(fmt.Errorf("not a SQL quadstore: %T", qs))
@@ -311,9 +311,9 @@ func (s Select) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	return sq.newIterator(s)
 }
 
-func (s Select) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
+func (s Select) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
 	// TODO: call optimize on sub-tables? but what if it decides to de-optimize our SQL shape?
-	return s, false
+	return s, false, nil
 }
 
 func (s *Select) AppendParam(o Value) Expr {

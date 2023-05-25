@@ -43,12 +43,13 @@ import (
 //              +---+
 //
 
-func makeTestSession(data []quad.Quad) *Session {
+func makeTestSession(ts testing.TB, data []quad.Quad) *Session {
 	ctx := context.Background()
 	qs, _ := graph.NewQuadStore(ctx, "memstore", "", nil)
 	w, _ := graph.NewQuadWriter("single", qs, nil)
 	for _, t := range data {
-		w.AddQuad(t)
+		err := w.AddQuad(ctx, t)
+		require.NoError(ts, err)
 	}
 	return NewSession(qs)
 }
@@ -163,8 +164,8 @@ var testQueries = []struct {
 }
 
 func runQuery(t testing.TB, g []quad.Quad, qu string) interface{} {
-	s := makeTestSession(g)
-	ctx := context.TODO()
+	s := makeTestSession(t, g)
+	ctx := context.Background()
 	it, err := s.Execute(ctx, qu, query.Options{Collation: query.JSON})
 	if err != nil {
 		t.Fatal(err)
@@ -172,7 +173,9 @@ func runQuery(t testing.TB, g []quad.Quad, qu string) interface{} {
 	defer it.Close()
 	var out []interface{}
 	for it.Next(ctx) {
-		out = append(out, it.Result())
+		resi, err := it.Result(ctx)
+		require.NoError(t, err)
+		out = append(out, resi)
 	}
 	return out
 }

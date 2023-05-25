@@ -77,10 +77,10 @@ func sortDirs(dirs []quad.Direction) {
 	})
 }
 
-func (opt *Optimizer) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool) {
+func (opt *Optimizer) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool, error) {
 	switch s := s.(type) {
 	case shape.AllNodes:
-		return AllNodes(), true
+		return AllNodes(), true, nil
 	case shape.Lookup:
 		return opt.optimizeLookup(s)
 	case shape.Filter:
@@ -98,7 +98,7 @@ func (opt *Optimizer) OptimizeShape(ctx context.Context, s shape.Shape) (shape.S
 	case shape.Page:
 		return opt.optimizePage(s)
 	default:
-		return s, false
+		return s, false, nil
 	}
 }
 
@@ -204,16 +204,16 @@ func SelectValue(v quad.Value, op CmpOp) *Select {
 	return &sel
 }
 
-func (opt *Optimizer) optimizeLookup(s shape.Lookup) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeLookup(s shape.Lookup) (shape.Shape, bool, error) {
 	if len(s) != 1 {
 		// TODO: support for IN
-		return s, false
+		return s, false, nil
 	}
 	sel := SelectValue(s[0], OpEqual)
 	if sel == nil {
-		return s, false
+		return s, false, nil
 	}
-	return *sel, true
+	return *sel, true, nil
 }
 
 func convRegexp(re string) string {
@@ -266,19 +266,19 @@ func (opt *Optimizer) optimizeFilter(from shape.Shape, f shape.ValueFilter) ([]W
 		return nil, nil, false
 	}
 }
-func (opt *Optimizer) optimizeFilters(s shape.Filter) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeFilters(s shape.Filter) (shape.Shape, bool, error) {
 	switch from := s.From.(type) {
 	case shape.AllNodes:
 	case Select:
 		if !from.isAll() {
-			return s, false
+			return s, false, nil
 		}
 		t, ok := from.From[0].(Table)
 		if !ok || t.Name != "nodes" {
-			return s, false
+			return s, false, nil
 		}
 	default:
-		return s, false
+		return s, false, nil
 	}
 	var (
 		where  []Where
@@ -296,17 +296,17 @@ func (opt *Optimizer) optimizeFilters(s shape.Filter) (shape.Shape, bool) {
 		}
 	}
 	if len(where) == 0 {
-		return s, false
+		return s, false, nil
 	}
 	sel := Nodes(where, params)
 	if len(left.Filters) == 0 {
-		return sel, true
+		return sel, true, nil
 	}
 	left.From = sel
-	return left, true
+	return left, true, nil
 }
 
-func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool, error) {
 	t1 := opt.nextTable()
 	sel := AllQuads(t1)
 	for _, f := range s {
@@ -319,7 +319,7 @@ func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 		case shape.Fixed:
 			if len(fv) != 1 {
 				// TODO: support IN, or generate SELECT equivalent
-				return s, false
+				return s, false, nil
 			}
 			wr.Value = sel.AppendParam(fv[0].(Value))
 			sel.Where = append(sel.Where, wr)
@@ -339,7 +339,7 @@ func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 				continue
 			} else if fv.onlyAsSubquery() {
 				// TODO: generic subquery: pass all tags to main query, set WHERE on specific direction, drop __* tags
-				return s, false
+				return s, false, nil
 			}
 			opt.ensureAliases(&fv)
 			// add all tables from subquery to the main one, but skip __node field - we should add it to WHERE
@@ -349,7 +349,7 @@ func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 					for _, w := range fv.Where {
 						if w.Table == f.Table && w.Field == f.Alias {
 							// TODO: if __node was used in WHERE of subquery, we should rewrite it
-							return s, false
+							return s, false, nil
 						}
 					}
 					f.Alias = ""
@@ -360,7 +360,7 @@ func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 			}
 			if head.Table == "" {
 				// something is wrong
-				return s, false
+				return s, false, nil
 			}
 			sel.From = append(sel.From, fv.From...)
 			sel.Where = append(sel.Where, fv.Where...)
@@ -371,16 +371,16 @@ func (opt *Optimizer) optimizeQuads(s shape.Quads) (shape.Shape, bool) {
 			}
 			sel.Where = append(sel.Where, wr)
 		default:
-			return s, false
+			return s, false, nil
 		}
 	}
-	return sel, true
+	return sel, true, nil
 }
 
-func (opt *Optimizer) optimizeNodesFrom(s shape.NodesFrom) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeNodesFrom(s shape.NodesFrom) (shape.Shape, bool, error) {
 	sel, ok := s.Quads.(Select)
 	if !ok {
-		return s, false
+		return s, false, nil
 	}
 	sel.Fields = append([]Field{}, sel.Fields...)
 
@@ -398,14 +398,14 @@ func (opt *Optimizer) optimizeNodesFrom(s shape.NodesFrom) (shape.Shape, bool) {
 		}
 	}
 	if !found {
-		return s, false
+		return s, false, nil
 	}
 	// NodesFrom implies that the iterator will use NextPath
 	sel.nextPath = true
-	return sel, true
+	return sel, true, nil
 }
 
-func (opt *Optimizer) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, bool, error) {
 	sel := Select{
 		Fields: []Field{
 			{Name: dirField(s.Result), Alias: tagNode},
@@ -437,13 +437,13 @@ func (opt *Optimizer) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, boo
 		v := s.Filter[d]
 		sel.WhereEq("", dirField(d), v.(Value))
 	}
-	return sel, true
+	return sel, true, nil
 }
 
-func (opt *Optimizer) optimizeSave(s shape.Save) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeSave(s shape.Save) (shape.Shape, bool, error) {
 	sel, ok := s.From.(Select)
 	if !ok {
-		return s, false
+		return s, false, nil
 	}
 	// find primary value used by iterators
 	fi := -1
@@ -454,7 +454,7 @@ func (opt *Optimizer) optimizeSave(s shape.Save) (shape.Shape, bool) {
 		}
 	}
 	if fi < 0 {
-		return s, false
+		return s, false, nil
 	}
 	// add SELECT fields as aliases for primary field
 	f := sel.Fields[fi]
@@ -466,17 +466,17 @@ func (opt *Optimizer) optimizeSave(s shape.Save) (shape.Shape, bool) {
 	// add other fields
 	fields = append(fields, sel.Fields...)
 	sel.Fields = fields
-	return sel, true
+	return sel, true, nil
 }
 
-func (opt *Optimizer) optimizePage(s shape.Page) (shape.Shape, bool) {
+func (opt *Optimizer) optimizePage(s shape.Page) (shape.Shape, bool, error) {
 	sel, ok := s.From.(Select)
 	if !ok {
-		return s, false
+		return s, false, nil
 	}
 	// do not optimize if db only can use offset with limit, and we have no limits set
 	if opt.noOffsetWithoutLimit && sel.Limit == 0 && s.Limit == 0 {
-		return s, false
+		return s, false, nil
 	}
 	// call shapes optimizer to calculate correct skip and limit
 	p := shape.Page{
@@ -485,14 +485,14 @@ func (opt *Optimizer) optimizePage(s shape.Page) (shape.Shape, bool) {
 	}.ApplyPage(s)
 	if p == nil {
 		// no intersection - no results
-		return nil, true
+		return nil, true, nil
 	}
 	sel.Limit = p.Limit
 	sel.Offset = p.Skip
-	return sel, true
+	return sel, true, nil
 }
 
-func (opt *Optimizer) optimizeIntersect(s shape.Intersect) (shape.Shape, bool) {
+func (opt *Optimizer) optimizeIntersect(s shape.Intersect) (shape.Shape, bool, error) {
 	var (
 		sels  []Select
 		other shape.Intersect
@@ -508,7 +508,7 @@ func (opt *Optimizer) optimizeIntersect(s shape.Intersect) (shape.Shape, bool) {
 		}
 	}
 	if len(sels) <= 1 {
-		return s, false
+		return s, false, nil
 	}
 	for i := range sels {
 		sels[i] = sels[i].Clone()
@@ -523,7 +523,7 @@ func (opt *Optimizer) optimizeIntersect(s shape.Intersect) (shape.Shape, bool) {
 		}
 	}
 	if head == nil {
-		return s, false
+		return s, false, nil
 	}
 	sec := sels[1:]
 
@@ -553,13 +553,13 @@ func (opt *Optimizer) optimizeIntersect(s shape.Intersect) (shape.Shape, bool) {
 			}
 		}
 		if !ok {
-			return s, false
+			return s, false, nil
 		}
 	}
 	if len(other) == 1 {
 		pri.nextPath = pri.nextPath || nextPath
-		return pri, true
+		return pri, true, nil
 	}
 	other[0] = pri
-	return other, true
+	return other, true, nil
 }

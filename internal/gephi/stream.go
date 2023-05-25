@@ -214,16 +214,21 @@ type graphStreamEvent struct {
 }
 
 func (s *GraphStreamHandler) serveRawQuads(ctx context.Context, gs *GraphStream, quads shape.Shape, limit int) {
-	it := shape.BuildIterator(ctx, s.QS, quads).Iterate()
+	it := shape.BuildIterator(ctx, s.QS, quads).Iterate(ctx)
 	defer it.Close()
 
 	var sh, oh valHash
 	for i := 0; (limit < 0 || i < limit) && it.Next(ctx); i++ {
-		qv := it.Result()
+		qv, err := it.Result(ctx)
+		if err != nil {
+			// TODO: no error handling
+			clog.Warningf("error fetching quad value: %v", err)
+			continue
+		}
 		if qv == nil {
 			continue
 		}
-		q, err := s.QS.Quad(qv)
+		q, err := s.QS.Quad(ctx, qv)
 		if err != nil {
 			// TODO: no error handling
 			clog.Warningf("error fetching quad value: %v", err)
@@ -255,7 +260,7 @@ func (s *GraphStreamHandler) serveNodesWithProps(ctx context.Context, gs *GraphS
 
 	// list of predicates marked as inline properties for gephi
 	inline := make(map[quad.Value]struct{})
-	err := propsPath.Iterate(ctx).EachValue(s.QS, func(v quad.Value) error {
+	err := propsPath.Iterate(ctx).EachValue(ctx, s.QS, func(v quad.Value) error {
 		inline[v] = struct{}{}
 		return nil
 	})
@@ -271,15 +276,15 @@ func (s *GraphStreamHandler) serveNodesWithProps(ctx context.Context, gs *GraphS
 
 	ignore := make(map[quad.Value]struct{})
 
-	nodes := iterator.NewNot(propsPath.BuildIterator(ctx), s.QS.NodesAllIterator())
+	nodes := iterator.NewNot(propsPath.BuildIterator(ctx), s.QS.NodesAllIterator(ctx))
 
 	ictx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	itc := iterator.Iterate(ictx, nodes).On(s.QS).Limit(limit)
+	itc := iterator.Iterate(nodes).On(s.QS).Limit(limit)
 
 	qi := 0
-	_ = itc.EachValuePair(s.QS, func(v graph.Ref, nv quad.Value) error {
+	_ = itc.EachValuePair(ctx, s.QS, func(v graph.Ref, nv quad.Value) error {
 		if _, skip := ignore[nv]; skip {
 			return nil
 		}
@@ -292,16 +297,20 @@ func (s *GraphStreamHandler) serveNodesWithProps(ctx context.Context, gs *GraphS
 		)
 		quad.HashTo(nv, h[:])
 
-		predIt := s.QS.QuadIterator(quad.Subject, v).Iterate()
+		predIt := s.QS.QuadIterator(ctx, quad.Subject, v).Iterate(ctx)
 		defer predIt.Close()
 		for predIt.Next(ictx) {
 			// this check helps us ignore nodes with no links
 			if sid == "" {
 				sid = gs.addNode(nv, h, props)
 			}
-			q, err := s.QS.Quad(predIt.Result())
+			res, err := predIt.Result(ctx)
 			if err != nil {
-				continue
+				return err
+			}
+			q, err := s.QS.Quad(ctx, res)
+			if err != nil {
+				return err
 			}
 			if _, ok := inline[q.Predicate]; ok {
 				props[q.Predicate] = q.Object

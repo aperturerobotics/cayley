@@ -354,7 +354,7 @@ func NodeValues(h NodeHash, v quad.Value) (ValueType, []interface{}, error) {
 	return nodeKey, values, nil
 }
 
-func (qs *QuadStore) NewQuadWriter() (quad.WriteCloser, error) {
+func (qs *QuadStore) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	return &quadWriter{qs: qs}, nil
 }
 
@@ -363,12 +363,12 @@ type quadWriter struct {
 	deltas []graph.Delta
 }
 
-func (w *quadWriter) WriteQuad(q quad.Quad) error {
-	_, err := w.WriteQuads([]quad.Quad{q})
+func (w *quadWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
+	_, err := w.WriteQuads(ctx, []quad.Quad{q})
 	return err
 }
 
-func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
+func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	// TODO(dennwc): write an optimized implementation
 	w.deltas = w.deltas[:0]
 	if cap(w.deltas) < len(buf) {
@@ -379,7 +379,7 @@ func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
 			Quad: q, Action: graph.Add,
 		})
 	}
-	err := w.qs.ApplyDeltas(w.deltas, graph.IgnoreOpts{
+	err := w.qs.ApplyDeltas(ctx, w.deltas, graph.IgnoreOpts{
 		IgnoreDup: true,
 	})
 	w.deltas = w.deltas[:0]
@@ -394,7 +394,7 @@ func (w *quadWriter) Close() error {
 	return nil
 }
 
-func (qs *QuadStore) ApplyDeltas(in []graph.Delta, opts graph.IgnoreOpts) error {
+func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, opts graph.IgnoreOpts) error {
 	// first calculate values ref deltas
 	deltas := graphlog.SplitDeltas(in)
 
@@ -509,27 +509,27 @@ func (qs *QuadStore) ApplyDeltas(in []graph.Delta, opts graph.IgnoreOpts) error 
 	return tx.Commit()
 }
 
-func (qs *QuadStore) Quad(val graph.Ref) (quad.Quad, error) {
+func (qs *QuadStore) Quad(ctx context.Context, val graph.Ref) (quad.Quad, error) {
 	h := val.(QuadHashes)
 	var q quad.Quad
 	var err error
-	q.Subject, err = qs.NameOf(h.Get(quad.Subject))
+	q.Subject, err = qs.NameOf(ctx, h.Get(quad.Subject))
 	if err != nil {
 		return q, err
 	}
-	q.Predicate, err = qs.NameOf(h.Get(quad.Predicate))
+	q.Predicate, err = qs.NameOf(ctx, h.Get(quad.Predicate))
 	if err != nil {
 		return q, err
 	}
-	q.Object, err = qs.NameOf(h.Get(quad.Object))
+	q.Object, err = qs.NameOf(ctx, h.Get(quad.Object))
 	if err != nil {
 		return q, err
 	}
-	q.Label, err = qs.NameOf(h.Get(quad.Label))
+	q.Label, err = qs.NameOf(ctx, h.Get(quad.Label))
 	return q, err
 }
 
-func (qs *QuadStore) QuadIterator(d quad.Direction, val graph.Ref) iterator.Shape {
+func (qs *QuadStore) QuadIterator(ctx context.Context, d quad.Direction, val graph.Ref) iterator.Shape {
 	v, ok := val.(Value)
 	if !ok {
 		return iterator.NewNull()
@@ -564,15 +564,15 @@ func (qs *QuadStore) QuadIteratorSize(ctx context.Context, d quad.Direction, val
 	return qs.querySize(ctx, sel)
 }
 
-func (qs *QuadStore) NodesAllIterator() iterator.Shape {
+func (qs *QuadStore) NodesAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newIterator(AllNodes())
 }
 
-func (qs *QuadStore) QuadsAllIterator() iterator.Shape {
+func (qs *QuadStore) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newIterator(AllQuads(""))
 }
 
-func (qs *QuadStore) ValueOf(s quad.Value) (graph.Ref, error) {
+func (qs *QuadStore) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
 	return NodeHash(HashOf(s)), nil
 }
 
@@ -613,7 +613,7 @@ func (nt NullTime) Value() (driver.Value, error) {
 	return nt.Time, nil
 }
 
-func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
+func (qs *QuadStore) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	if v == nil {
 		return nil, nil
 	} else if v, ok := v.(refs.PreFetchedValue); ok {
@@ -705,7 +705,7 @@ func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
 	} else if vtime.Valid {
 		val = quad.Time(vtime.Time)
 	} else {
-		qv, err := pquads.UnmarshalValue(data)
+		qv, err := pquads.UnmarshalValue(ctx, data)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal value: %w", err)
 		}
@@ -758,7 +758,7 @@ func (qs *QuadStore) Close() error {
 	return qs.db.Close()
 }
 
-func (qs *QuadStore) QuadDirection(in graph.Ref, d quad.Direction) (graph.Ref, error) {
+func (qs *QuadStore) QuadDirection(ctx context.Context, in graph.Ref, d quad.Direction) (graph.Ref, error) {
 	return NodeHash{in.(QuadHashes).Get(d)}, nil
 }
 

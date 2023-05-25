@@ -45,19 +45,19 @@ type Traits = nosql.Traits
 func init() {
 	for _, reg := range nosql.List() {
 		Register(reg.Name, Registration{
-			NewFunc: func(addr string, options graph.Options) (nosql.Database, error) {
-				return reg.Open(addr, DefaultDBName, nosql.Options(options))
+			NewFunc: func(ctx context.Context, addr string, options graph.Options) (nosql.Database, error) {
+				return reg.Open(ctx, addr, DefaultDBName, nosql.Options(options))
 			},
-			InitFunc: func(addr string, options graph.Options) (nosql.Database, error) {
-				return reg.New(addr, DefaultDBName, nosql.Options(options))
+			InitFunc: func(ctx context.Context, addr string, options graph.Options) (nosql.Database, error) {
+				return reg.New(ctx, addr, DefaultDBName, nosql.Options(options))
 			},
 			IsPersistent: !reg.Volatile, Traits: reg.Traits,
 		})
 	}
 }
 
-type InitFunc func(string, graph.Options) (nosql.Database, error)
-type NewFunc func(string, graph.Options) (nosql.Database, error)
+type InitFunc func(context.Context, string, graph.Options) (nosql.Database, error)
+type NewFunc func(context.Context, string, graph.Options) (nosql.Database, error)
 
 func Register(name string, r Registration) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{
@@ -65,7 +65,7 @@ func Register(name string, r Registration) {
 			if !r.IsPersistent {
 				return nil
 			}
-			db, err := r.InitFunc(addr, opt)
+			db, err := r.InitFunc(ctx, addr, opt)
 			if err != nil {
 				return err
 			}
@@ -76,7 +76,7 @@ func Register(name string, r Registration) {
 			return db.Close()
 		},
 		NewFunc: func(ctx context.Context, addr string, opt graph.Options) (graph.QuadStore, error) {
-			db, err := r.NewFunc(addr, opt)
+			db, err := r.NewFunc(ctx, addr, opt)
 			if err != nil {
 				return nil, err
 			}
@@ -333,7 +333,7 @@ func (qs *QuadStore) appendLog(ctx context.Context, deltas []graph.Delta) ([]nos
 	return w.Keys(), err
 }
 
-func (qs *QuadStore) NewQuadWriter() (quad.WriteCloser, error) {
+func (qs *QuadStore) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	return &quadWriter{qs: qs}, nil
 }
 
@@ -342,12 +342,12 @@ type quadWriter struct {
 	deltas []graph.Delta
 }
 
-func (w *quadWriter) WriteQuad(q quad.Quad) error {
-	_, err := w.WriteQuads([]quad.Quad{q})
+func (w *quadWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
+	_, err := w.WriteQuads(ctx, []quad.Quad{q})
 	return err
 }
 
-func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
+func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	// TODO(dennwc): write an optimized implementation
 	w.deltas = w.deltas[:0]
 	if cap(w.deltas) < len(buf) {
@@ -358,7 +358,7 @@ func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
 			Quad: q, Action: graph.Add,
 		})
 	}
-	err := w.qs.ApplyDeltas(w.deltas, graph.IgnoreOpts{
+	err := w.qs.ApplyDeltas(ctx, w.deltas, graph.IgnoreOpts{
 		IgnoreDup: true,
 	})
 	w.deltas = w.deltas[:0]
@@ -373,8 +373,7 @@ func (w *quadWriter) Close() error {
 	return nil
 }
 
-func (qs *QuadStore) ApplyDeltas(deltas []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
-	ctx := context.TODO()
+func (qs *QuadStore) ApplyDeltas(ctx context.Context, deltas []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
 	ids := make(map[quad.Value]int)
 
 	var validDeltas []graph.Delta
@@ -610,27 +609,27 @@ func toQuadValue(opt *Traits, d nosql.Document) (quad.Value, error) {
 	return nil, fmt.Errorf("unsupported value: %#v", d)
 }
 
-func (qs *QuadStore) Quad(val graph.Ref) (quad.Quad, error) {
+func (qs *QuadStore) Quad(ctx context.Context, val graph.Ref) (quad.Quad, error) {
 	h := val.(QuadHash)
 	var q quad.Quad
 	var err error
-	q.Subject, err = qs.NameOf(NodeHash(h.Get(quad.Subject)))
+	q.Subject, err = qs.NameOf(ctx, NodeHash(h.Get(quad.Subject)))
 	if err != nil {
 		return q, err
 	}
-	q.Predicate, err = qs.NameOf(NodeHash(h.Get(quad.Predicate)))
+	q.Predicate, err = qs.NameOf(ctx, NodeHash(h.Get(quad.Predicate)))
 	if err != nil {
 		return q, err
 	}
-	q.Object, err = qs.NameOf(NodeHash(h.Get(quad.Object)))
+	q.Object, err = qs.NameOf(ctx, NodeHash(h.Get(quad.Object)))
 	if err != nil {
 		return q, err
 	}
-	q.Label, err = qs.NameOf(NodeHash(h.Get(quad.Label)))
+	q.Label, err = qs.NameOf(ctx, NodeHash(h.Get(quad.Label)))
 	return q, err
 }
 
-func (qs *QuadStore) QuadIterator(d quad.Direction, val graph.Ref) iterator.Shape {
+func (qs *QuadStore) QuadIterator(ctx context.Context, d quad.Direction, val graph.Ref) iterator.Shape {
 	h, ok := val.(NodeHash)
 	if !ok {
 		return iterator.NewNull()
@@ -653,11 +652,11 @@ func (qs *QuadStore) QuadIteratorSize(ctx context.Context, d quad.Direction, v g
 	}, nil
 }
 
-func (qs *QuadStore) NodesAllIterator() iterator.Shape {
+func (qs *QuadStore) NodesAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newIterator("nodes")
 }
 
-func (qs *QuadStore) QuadsAllIterator() iterator.Shape {
+func (qs *QuadStore) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newIterator("quads")
 }
 
@@ -665,14 +664,14 @@ func (qs *QuadStore) hashOf(s quad.Value) NodeHash {
 	return NodeHash(hashOf(s))
 }
 
-func (qs *QuadStore) ValueOf(s quad.Value) (graph.Ref, error) {
+func (qs *QuadStore) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
 	if s == nil {
 		return nil, nil
 	}
 	return qs.hashOf(s), nil
 }
 
-func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
+func (qs *QuadStore) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	if v == nil {
 		return nil, nil
 	} else if v, ok := v.(refs.PreFetchedValue); ok {
@@ -737,7 +736,7 @@ func (qs *QuadStore) Close() error {
 	return qs.db.Close()
 }
 
-func (qs *QuadStore) QuadDirection(in graph.Ref, d quad.Direction) (graph.Ref, error) {
+func (qs *QuadStore) QuadDirection(ctx context.Context, in graph.Ref, d quad.Direction) (graph.Ref, error) {
 	return NodeHash(in.(QuadHash).Get(d)), nil
 }
 

@@ -2,6 +2,7 @@ package cayleyhttp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -32,17 +33,17 @@ func makeServerV2(t testing.TB, quads ...quad.Quad) *APIv2 {
 	return NewAPIv2(h)
 }
 
-func writeQuads(q []quad.Quad, w io.Writer) error {
+func writeQuads(ctx context.Context, q []quad.Quad, w io.Writer) error {
 	writer := jsonld.NewWriter(w)
 	reader := quad.NewReader(quads)
-	_, err := quad.Copy(writer, reader)
+	_, err := quad.Copy(ctx, writer, reader)
 	writer.Close()
 	return err
 }
 
-func newQuadsBuffer(quads []quad.Quad) (*bytes.Buffer, error) {
+func newQuadsBuffer(ctx context.Context, quads []quad.Quad) (*bytes.Buffer, error) {
 	buf := bytes.NewBuffer(nil)
-	err := writeQuads(quads, buf)
+	err := writeQuads(ctx, quads, buf)
 	return buf, err
 }
 
@@ -55,7 +56,8 @@ var quads = []quad.Quad{
 
 func TestV2Write(t *testing.T) {
 	api := makeServerV2(t)
-	buf, err := newQuadsBuffer(quads)
+	ctx := context.Background()
+	buf, err := newQuadsBuffer(ctx, quads)
 
 	req, err := http.NewRequest(http.MethodGet, prefix+"/write", buf)
 	require.NoError(t, err)
@@ -90,7 +92,8 @@ func TestV2Read(t *testing.T) {
 	require.Equal(t, http.StatusOK, rr.Code, rr.Body.String())
 
 	reader := jsonld.NewReader(rr.Body)
-	receivedQuads, err := quad.ReadAll(reader)
+	ctx := context.Background()
+	receivedQuads, err := quad.ReadAll(ctx, reader)
 	require.NoError(t, err)
 	sort.Sort(quad.ByQuadString(receivedQuads))
 	sort.Sort(quad.ByQuadString(quads))
@@ -100,7 +103,8 @@ func TestV2Read(t *testing.T) {
 
 func TestV2Delete(t *testing.T) {
 	api := makeServerV2(t, quads...)
-	buf, err := newQuadsBuffer(quads)
+	ctx := context.Background()
+	buf, err := newQuadsBuffer(ctx, quads)
 	require.NoError(t, err)
 
 	req, err := http.NewRequest(http.MethodGet, prefix+"/delete", buf)

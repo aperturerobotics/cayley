@@ -58,18 +58,18 @@ func NewShortCircuitOr(sub ...Shape) *Or {
 	return it
 }
 
-func (it *Or) Iterate() Scanner {
+func (it *Or) Iterate(ctx context.Context) Scanner {
 	sub := make([]Scanner, 0, len(it.sub))
 	for _, s := range it.sub {
-		sub = append(sub, s.Iterate())
+		sub = append(sub, s.Iterate(ctx))
 	}
 	return newOrNext(sub, it.isShortCircuiting)
 }
 
-func (it *Or) Lookup() Index {
+func (it *Or) Lookup(ctx context.Context) Index {
 	sub := make([]Index, 0, len(it.sub))
 	for _, s := range it.sub {
-		sub = append(sub, s.Lookup())
+		sub = append(sub, s.Lookup(ctx))
 	}
 	return newOrContains(sub, it.isShortCircuiting)
 }
@@ -88,9 +88,12 @@ func (it *Or) AddSubIterator(sub Shape) {
 	it.sub = append(it.sub, sub)
 }
 
-func (it *Or) Optimize(ctx context.Context) (Shape, bool) {
+func (it *Or) Optimize(ctx context.Context) (Shape, bool, error) {
 	old := it.SubIterators()
-	optIts := optimizeSubIterators(ctx, old)
+	optIts, err := optimizeSubIterators(ctx, old)
+	if err != nil {
+		return it, false, err
+	}
 	newOr := NewOr()
 	newOr.isShortCircuiting = it.isShortCircuiting
 
@@ -98,7 +101,7 @@ func (it *Or) Optimize(ctx context.Context) (Shape, bool) {
 	for _, o := range optIts {
 		newOr.AddSubIterator(o)
 	}
-	return newOr, true
+	return newOr, true, nil
 }
 
 // Returns the approximate size of the Or iterator. Because we're dealing
@@ -153,8 +156,8 @@ func newOrNext(sub []Scanner, shortCircuit bool) *orNext {
 
 // Overrides BaseIterator TagResults, as it needs to add it's own results and
 // recurse down it's subiterators.
-func (it *orNext) TagResults(dst map[string]refs.Ref) {
-	it.sub[it.curInd].TagResults(dst)
+func (it *orNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.sub[it.curInd].TagResults(ctx, dst)
 }
 
 func (it *orNext) String() string {
@@ -177,7 +180,12 @@ func (it *orNext) Next(ctx context.Context) bool {
 		curIt := it.sub[it.curInd]
 
 		if curIt.Next(ctx) {
-			it.result = curIt.Result()
+			res, err := curIt.Result(ctx)
+			if err != nil {
+				it.err = err
+				return false
+			}
+			it.result = res
 			return true
 		}
 
@@ -202,8 +210,8 @@ func (it *orNext) Err() error {
 	return it.err
 }
 
-func (it *orNext) Result() refs.Ref {
-	return it.result
+func (it *orNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // An Or has no NextPath of its own -- that is, there are no other values
@@ -255,8 +263,8 @@ func newOrContains(sub []Index, shortCircuit bool) *orContains {
 
 // Overrides BaseIterator TagResults, as it needs to add it's own results and
 // recurse down it's subiterators.
-func (it *orContains) TagResults(dst map[string]refs.Ref) {
-	it.sub[it.curInd].TagResults(dst)
+func (it *orContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.sub[it.curInd].TagResults(ctx, dst)
 }
 
 func (it *orContains) String() string {
@@ -267,21 +275,25 @@ func (it *orContains) Err() error {
 	return it.err
 }
 
-func (it *orContains) Result() refs.Ref {
-	return it.result
+func (it *orContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 // Checks a value against the iterators, in order.
 func (it *orContains) subItsContain(ctx context.Context, val refs.Ref) (bool, error) {
 	subIsGood := false
 	for i, sub := range it.sub {
-		subIsGood = sub.Contains(ctx, val)
+		var err error
+		subIsGood, err = sub.Contains(ctx, val)
+		if err != nil {
+			return false, err
+		}
 		if subIsGood {
 			it.curInd = i
 			break
 		}
 
-		err := sub.Err()
+		err = sub.Err()
 		if err != nil {
 			return false, err
 		}
@@ -290,16 +302,16 @@ func (it *orContains) subItsContain(ctx context.Context, val refs.Ref) (bool, er
 }
 
 // Check a value against the entire iterator, in order.
-func (it *orContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *orContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
 	anyGood, err := it.subItsContain(ctx, val)
 	if err != nil {
 		it.err = err
-		return false
+		return false, err
 	} else if !anyGood {
-		return false
+		return false, nil
 	}
 	it.result = val
-	return true
+	return true, nil
 }
 
 // An Or has no NextPath of its own -- that is, there are no other values

@@ -248,7 +248,8 @@ func (api *APIv2) ServeWrite(w http.ResponseWriter, r *http.Request) {
 	}
 	qw := graph.NewWriter(h.QuadWriter)
 	defer qw.Close()
-	n, err := quad.CopyBatch(qw, qr, api.batch)
+	ctx := r.Context()
+	n, err := quad.CopyBatch(ctx, qw, qr, api.batch)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, err)
 		return
@@ -292,7 +293,8 @@ func (api *APIv2) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	qw := graph.NewRemover(h.QuadWriter)
 	defer qw.Close()
-	n, err := quad.CopyBatch(qw, qr, api.batch)
+	ctx := r.Context()
+	n, err := quad.CopyBatch(ctx, qw, qr, api.batch)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, err)
 		return
@@ -324,7 +326,8 @@ func (api *APIv2) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusBadRequest, fmt.Errorf("request data is too large"))
 		return
 	}
-	v, err := format.UnmarshalValue(data)
+	ctx := r.Context()
+	v, err := format.UnmarshalValue(ctx, data)
 	if err != nil {
 		jsonResponse(w, http.StatusBadRequest, err)
 		return
@@ -337,7 +340,7 @@ func (api *APIv2) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusBadRequest, err)
 		return
 	}
-	err = h.RemoveNode(v)
+	err = h.RemoveNode(ctx, v)
 	if err != nil {
 		jsonResponse(w, http.StatusInternalServerError, err)
 		return
@@ -387,8 +390,9 @@ func (api *APIv2) ServeRead(w http.ResponseWriter, r *http.Request) {
 		valuesFromString(r.FormValue("obj")),
 		valuesFromString(r.FormValue("label")),
 	)
-	it := values.BuildIterator(h.QuadStore).Iterate()
-	qr := graph.NewResultReader(h.QuadStore, it)
+	ctx := r.Context()
+	it := values.BuildIterator(ctx, h.QuadStore).Iterate(ctx)
+	qr := graph.NewResultReader(ctx, h.QuadStore, it)
 
 	defer qr.Close()
 
@@ -415,9 +419,9 @@ func (api *APIv2) ServeRead(w http.ResponseWriter, r *http.Request) {
 		qw = quad.IRIWriter(qw, opts)
 	}
 	if bw, ok := qw.(quad.BatchWriter); ok {
-		_, err = quad.CopyBatch(bw, qr, api.batch)
+		_, err = quad.CopyBatch(ctx, bw, qr, api.batch)
 	} else {
-		_, err = quad.Copy(qw, qr)
+		_, err = quad.Copy(ctx, qw, qr)
 	}
 	if err != nil && !cw.written {
 		jsonResponse(w, http.StatusInternalServerError, err)
@@ -572,7 +576,12 @@ func (api *APIv2) ServeQuery(w http.ResponseWriter, r *http.Request) {
 
 	var out []interface{}
 	for it.Next(ctx) {
-		out = append(out, it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			errFunc(w, err)
+			return
+		}
+		out = append(out, res)
 	}
 	if err = it.Err(); err != nil {
 		errFunc(w, err)

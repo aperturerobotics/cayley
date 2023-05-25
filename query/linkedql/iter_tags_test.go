@@ -1,6 +1,7 @@
 package linkedql
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -60,12 +61,13 @@ var testCases = []struct {
 }
 
 func TestToSubject(t *testing.T) {
+	ctx := context.Background()
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			store := memstore.New(testCase.data)
-			r, err := store.ValueOf(testCase.value)
+			r, err := store.ValueOf(ctx, testCase.value)
 			require.NoError(t, err)
-			s, err := toSubject(store, r)
+			s, err := toSubject(ctx, store, r)
 			if testCase.err == nil {
 				require.NoError(t, err)
 				require.Equal(t, testCase.expected, s)

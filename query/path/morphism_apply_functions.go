@@ -247,7 +247,7 @@ type iteratorShape struct {
 	sent bool
 }
 
-func (s *iteratorShape) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s *iteratorShape) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if s.sent {
 		return iterator.NewError(fmt.Errorf("iterator already used in query"))
 	}
@@ -255,8 +255,8 @@ func (s *iteratorShape) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	s.it, s.sent = nil, true
 	return it
 }
-func (s *iteratorShape) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
-	return s, false
+func (s *iteratorShape) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
+	return s, false, nil
 }
 
 // iteratorMorphism simply tacks the input iterator onto the chain.
@@ -308,13 +308,13 @@ func followMorphism(p *Path) morphism {
 	}
 }
 
-type iteratorBuilder func(qs graph.QuadStore) iterator.Shape
+type iteratorBuilder func(ctx context.Context, qs graph.QuadStore) iterator.Shape
 
-func (s iteratorBuilder) BuildIterator(qs graph.QuadStore) iterator.Shape {
-	return s(qs)
+func (s iteratorBuilder) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
+	return s(ctx, qs)
 }
-func (s iteratorBuilder) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
-	return s, false
+func (s iteratorBuilder) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
+	return s, false, nil
 }
 
 func followRecursiveMorphism(p *Path, maxDepth int, depthTags []string) morphism {
@@ -323,8 +323,8 @@ func followRecursiveMorphism(p *Path, maxDepth int, depthTags []string) morphism
 			return followRecursiveMorphism(p.Reverse(), maxDepth, depthTags), ctx
 		},
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
-			return iteratorBuilder(func(qs graph.QuadStore) iterator.Shape {
-				in := in.BuildIterator(qs)
+			return iteratorBuilder(func(ctx context.Context, qs graph.QuadStore) iterator.Shape {
+				in := in.BuildIterator(ctx, qs)
 				it := iterator.NewRecursive(in, p.MorphismFor(qs), maxDepth)
 				for _, s := range depthTags {
 					it.AddDepthTag(s)

@@ -24,7 +24,8 @@ func TestSaveNamespaces(t *testing.T) {
 		ns.Register(n)
 	}
 	qs := memstore.New()
-	err := sch.WriteNamespaces(qs, &ns)
+	ctx := context.Background()
+	err := sch.WriteNamespaces(ctx, qs, &ns)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,8 +40,8 @@ func TestSaveNamespaces(t *testing.T) {
 	if !reflect.DeepEqual(save, got) {
 		t.Fatalf("wrong namespaces returned: got: %v, expect: %v", got, save)
 	}
-	qr := graph.NewQuadStoreReader(qs)
-	q, err := quad.ReadAll(qr)
+	qr := graph.NewQuadStoreReader(ctx, qs)
+	q, err := quad.ReadAll(ctx, qr)
 	qr.Close()
 	if err != nil {
 		t.Fatal(err)

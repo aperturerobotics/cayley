@@ -27,6 +27,7 @@ import (
 	"github.com/cayleygraph/cayley/query"
 	_ "github.com/cayleygraph/cayley/writer"
 	"github.com/cayleygraph/quad"
+	"github.com/stretchr/testify/require"
 
 	// register global namespace for tests
 	_ "github.com/cayleygraph/quad/voc/rdf"
@@ -50,7 +51,7 @@ func makeTestSession(ctx context.Context, data []quad.Quad) *Session {
 	qs, _ := graph.NewQuadStore(ctx, "memstore", "", nil)
 	w, _ := graph.NewQuadWriter("single", qs, nil)
 	for _, t := range data {
-		w.AddQuad(t)
+		w.AddQuad(ctx, t)
 	}
 	return NewSession(qs)
 }
@@ -706,10 +707,14 @@ func runQueryGetTag(ctx context.Context, rec func(), g []quad.Quad, qu string, t
 
 	var results []string
 	for it.Next(ctx) {
-		data := it.Result().(*Result)
+		resi, err := it.Result(ctx)
+		if err != nil {
+			return nil, err
+		}
+		data := resi.(*Result)
 		if data.Val == nil {
 			if val := data.Tags[tag]; val != nil {
-				nv, err := js.qs.NameOf(val)
+				nv, err := js.qs.NameOf(ctx, val)
 				if err != nil {
 					return nil, err
 				}
@@ -816,7 +821,9 @@ func TestIssue160(t *testing.T) {
 					t.Errorf("Unexpected panic: %v", r)
 				}
 			}()
-			got = append(got, it.Result().(string))
+			resi, err := it.Result(ctx)
+			require.NoError(t, err)
+			got = append(got, resi.(string))
 		}()
 	}
 	sort.Strings(got)

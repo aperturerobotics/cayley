@@ -160,7 +160,7 @@ func TestApplyDeltas(t *testing.T) {
 	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
 	require.NoError(t, err)
 
-	err = qw.AddQuad(quad.MakeIRI("a", "b", "c", ""))
+	err = qw.AddQuad(ctx, quad.MakeIRI("a", "b", "c", ""))
 	require.NoError(t, err)
 
 	expect(Ops{
@@ -192,7 +192,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key("sp", b64Col(1, 2)), hex("04"), nil},
 	})
 
-	err = qw.AddQuad(quad.MakeIRI("a", "b", "e", ""))
+	err = qw.AddQuad(ctx, quad.MakeIRI("a", "b", "e", ""))
 	require.NoError(t, err)
 
 	expect(Ops{
@@ -223,7 +223,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key("sp", b64Col(1, 2)), hex("0406"), nil},
 	})
 
-	err = qw.RemoveQuad(quad.MakeIRI("a", "b", "c", ""))
+	err = qw.RemoveQuad(ctx, quad.MakeIRI("a", "b", "c", ""))
 	expect(Ops{
 		{opGet, key("sp", b64Col(1, 2)), hex("0406"), nil},
 		{opGet, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
@@ -315,12 +315,20 @@ func (h *kvHook) Close() error {
 	return h.db.Close()
 }
 
-func (h *kvHook) Tx(rw bool) (hkv.Tx, error) {
-	tx, err := h.db.Tx(rw)
+func (h *kvHook) Tx(ctx context.Context, rw bool) (hkv.Tx, error) {
+	tx, err := h.db.Tx(ctx, rw)
 	if err != nil {
 		return nil, err
 	}
 	return txHook{h: h, tx: tx}, nil
+}
+
+func (h *kvHook) View(ctx context.Context, fn func(tx hkv.Tx) error) error {
+	return hkv.View(ctx, h, fn)
+}
+
+func (h *kvHook) Update(ctx context.Context, fn func(tx hkv.Tx) error) error {
+	return hkv.Update(ctx, h, fn)
 }
 
 type txHook struct {
@@ -360,8 +368,8 @@ func (h txHook) Get(ctx context.Context, k hkv.Key) (hkv.Value, error) {
 	return v, err
 }
 
-func (h txHook) Put(k hkv.Key, v hkv.Value) error {
-	err := h.tx.Put(k, v)
+func (h txHook) Put(ctx context.Context, k hkv.Key, v hkv.Value) error {
+	err := h.tx.Put(ctx, k, v)
 	h.h.addOp(kvOp{
 		typ: opPut,
 		key: k.Clone(),
@@ -371,8 +379,8 @@ func (h txHook) Put(k hkv.Key, v hkv.Value) error {
 	return err
 }
 
-func (h txHook) Del(k hkv.Key) error {
-	err := h.tx.Del(k)
+func (h txHook) Del(ctx context.Context, k hkv.Key) error {
+	err := h.tx.Del(ctx, k)
 	h.h.addOp(kvOp{
 		typ: opDel,
 		key: k.Clone(),
@@ -381,6 +389,6 @@ func (h txHook) Del(k hkv.Key) error {
 	return err
 }
 
-func (h txHook) Scan(pref hkv.Key) hkv.Iterator {
-	return h.tx.Scan(pref)
+func (h txHook) Scan(ctx context.Context, opts ...hkv.IteratorOption) hkv.Iterator {
+	return h.tx.Scan(ctx, opts...)
 }

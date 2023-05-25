@@ -24,17 +24,17 @@ func newTestIterator(next bool, err error) Shape {
 	}
 }
 
-func (it *testIterator) Iterate() Scanner {
+func (it *testIterator) Iterate(ctx context.Context) Scanner {
 	return &testIteratorNext{
-		Scanner: it.Shape.Iterate(),
+		Scanner: it.Shape.Iterate(ctx),
 		NextVal: it.NextVal,
 		ErrVal:  it.ErrVal,
 	}
 }
 
-func (it *testIterator) Lookup() Index {
+func (it *testIterator) Lookup(ctx context.Context) Index {
 	return &testIteratorContains{
-		Index:   it.Shape.Lookup(),
+		Index:   it.Shape.Lookup(ctx),
 		NextVal: it.NextVal,
 		ErrVal:  it.ErrVal,
 	}
@@ -64,8 +64,8 @@ type testIteratorContains struct {
 	ErrVal  error
 }
 
-func (it *testIteratorContains) Contains(ctx context.Context, v refs.Ref) bool {
-	return it.NextVal
+func (it *testIteratorContains) Contains(ctx context.Context, v refs.Ref) (bool, error) {
+	return it.NextVal, it.Err()
 }
 
 func (it *testIteratorContains) Err() error {
@@ -86,11 +86,11 @@ type Int64 struct {
 	max, min int64
 }
 
-func (it *Int64) Iterate() Scanner {
+func (it *Int64) Iterate(ctx context.Context) Scanner {
 	return newInt64Next(it.min, it.max, it.node)
 }
 
-func (it *Int64) Lookup() Index {
+func (it *Int64) Lookup(ctx context.Context) Index {
 	return newInt64Contains(it.min, it.max, it.node)
 }
 
@@ -127,7 +127,7 @@ func valToInt64(v refs.Ref) int64 {
 }
 
 // There's nothing to optimize about this little iterator.
-func (it *Int64) Optimize(ctx context.Context) (Shape, bool) { return it, false }
+func (it *Int64) Optimize(ctx context.Context) (Shape, bool, error) { return it, false, nil }
 
 // Stats for an Int64 are simple. Super cheap to do any operation,
 // and as big as the range.
@@ -165,7 +165,7 @@ func (it *int64Next) Close() error {
 	return nil
 }
 
-func (it *int64Next) TagResults(dst map[string]refs.Ref) {}
+func (it *int64Next) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return nil }
 
 func (it *int64Next) String() string {
 	return fmt.Sprintf("Int64(%d-%d)", it.min, it.max)
@@ -197,8 +197,8 @@ func (it *int64Next) toValue(v int64) refs.Ref {
 	return Int64Quad(v)
 }
 
-func (it *int64Next) Result() refs.Ref {
-	return it.toValue(it.result)
+func (it *int64Next) Result(ctx context.Context) (refs.Ref, error) {
+	return it.toValue(it.result), it.Err()
 }
 
 func (it *int64Next) NextPath(ctx context.Context) bool {
@@ -227,7 +227,9 @@ func (it *int64Contains) Close() error {
 	return nil
 }
 
-func (it *int64Contains) TagResults(dst map[string]refs.Ref) {}
+func (it *int64Contains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.Err()
+}
 
 func (it *int64Contains) String() string {
 	return fmt.Sprintf("Int64(%d-%d)", it.min, it.max)
@@ -244,8 +246,8 @@ func (it *int64Contains) toValue(v int64) refs.Ref {
 	return Int64Quad(v)
 }
 
-func (it *int64Contains) Result() refs.Ref {
-	return it.toValue(it.result)
+func (it *int64Contains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.toValue(it.result), it.Err()
 }
 
 func (it *int64Contains) NextPath(ctx context.Context) bool {
@@ -259,11 +261,14 @@ func (it *int64Contains) SubIterators() []Shape {
 
 // Contains() for an Int64 is merely seeing if the passed value is
 // within the range, assuming the value is an int64.
-func (it *int64Contains) Contains(ctx context.Context, tsv refs.Ref) bool {
+func (it *int64Contains) Contains(ctx context.Context, tsv refs.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
 	v := valToInt64(tsv)
 	if it.min <= v && v <= it.max {
 		it.result = v
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }

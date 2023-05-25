@@ -23,23 +23,20 @@ func toConfig(c nosql.Traits) graphtest.Config {
 }
 
 func NewQuadStore(t testing.TB, gen nosqltest.Database) (graph.QuadStore, graph.Options, func()) {
-	db, closer := gen.Run(t)
+	db := gen.Run(t)
 	err := gnosql.Init(db, nil)
 	if err != nil {
 		db.Close()
-		closer()
 		require.Fail(t, "init failed", "%v", err)
 	}
 	tr := gen.Traits
 	kdb, err := gnosql.NewQuadStore(db, &tr, nil)
 	if err != nil {
 		db.Close()
-		closer()
 		require.Fail(t, "create failed", "%v", err)
 	}
 	return kdb, nil, func() {
 		kdb.Close()
-		closer()
 	}
 }
 

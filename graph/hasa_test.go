@@ -28,11 +28,11 @@ import (
 
 func TestHasAIteratorErr(t *testing.T) {
 	wantErr := errors.New("unique")
-	ctx := context.TODO()
+	ctx := context.Background()
 	errIt := iterator.NewError(wantErr)
 
 	// TODO(andrew-d): pass a non-nil quadstore
-	hasa := graph.NewHasA(nil, errIt, quad.Subject).Iterate()
+	hasa := graph.NewHasA(nil, errIt, quad.Subject).Iterate(ctx)
 
 	require.False(t, hasa.Next(ctx), "HasA iterator did not pass through initial 'false'")
 	require.Equal(t, wantErr, hasa.Err(), "HasA iterator did not pass through underlying Err")

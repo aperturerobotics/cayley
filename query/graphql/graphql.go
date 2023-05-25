@@ -90,15 +90,18 @@ func (it *results) Next(ctx context.Context) bool {
 	return it.err == nil && len(it.res) != 0
 }
 
-func (it *results) Result() interface{} {
+func (it *results) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	if len(it.res) == 0 {
-		return nil
+		return nil, nil
 	}
 	if it.col != query.REPL {
-		return it.res
+		return it.res, nil
 	}
 	data, _ := json.MarshalIndent(it.res, "", "   ")
-	return string(data)
+	return string(data), nil
 }
 
 func (it *results) Err() error {
@@ -149,7 +152,11 @@ type object struct {
 }
 
 func buildIterator(ctx context.Context, qs graph.QuadStore, p *path.Path) iterator.Shape {
-	it, _ := p.BuildIterator(ctx).Optimize(ctx)
+	it := p.BuildIterator(ctx)
+	optim, opt, err := it.Optimize(ctx)
+	if err == nil && opt {
+		return optim
+	}
 	return it
 }
 
@@ -209,7 +216,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 	if f.AllFields {
 		tail()
 
-		it := buildIterator(ctx, qs, p).Iterate()
+		it := buildIterator(ctx, qs, p).Iterate(ctx)
 		defer it.Close()
 
 		// we don't care about alternative paths to nodes here, so we will not call NextPath
@@ -223,16 +230,23 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 			if !it.Next(ctx) {
 				break
 			}
-			nv := it.Result()
-			obj := make(map[string]interface{})
-			var err error
-			obj[ValueKey], err = qs.NameOf(nv)
+			nv, err := it.Result(ctx)
 			if err != nil {
 				return nil, err
 			}
-			sit := qs.QuadIterator(quad.Subject, nv).Iterate()
+			obj := make(map[string]interface{})
+			obj[ValueKey], err = qs.NameOf(ctx, nv)
+			if err != nil {
+				return nil, err
+			}
+			sit := qs.QuadIterator(ctx, quad.Subject, nv).Iterate(ctx)
 			for sit.Next(ctx) {
-				q, err := qs.Quad(sit.Result())
+				res, err := sit.Result(ctx)
+				if err != nil {
+					sit.Close()
+					return nil, err
+				}
+				q, err := qs.Quad(ctx, res)
 				if err != nil {
 					sit.Close()
 					return nil, err
@@ -283,7 +297,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 	tail()
 
 	// first, collect result node ids and any tags associated with it (flat values)
-	it := buildIterator(ctx, qs, p).Iterate()
+	it := buildIterator(ctx, qs, p).Iterate(ctx)
 	defer it.Close()
 
 	var results []object
@@ -299,7 +313,9 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 		fields := make(map[string][]graph.Ref)
 
 		tags := make(map[string]graph.Ref)
-		it.TagResults(tags)
+		if err := it.TagResults(ctx, tags); err != nil {
+			return nil, err
+		}
 		for k, v := range tags {
 			fields[k] = []graph.Ref{v}
 		}
@@ -310,7 +326,9 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 			default:
 			}
 			tags = make(map[string]graph.Ref)
-			it.TagResults(tags)
+			if err := it.TagResults(ctx, tags); err != nil {
+				return nil, err
+			}
 		dedup:
 			for k, v := range tags {
 				vals := fields[k]
@@ -322,7 +340,11 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 				fields[k] = append(vals, v)
 			}
 		}
-		obj := object{id: it.Result()}
+		res, err := it.Result(ctx)
+		if err != nil {
+			return nil, err
+		}
+		obj := object{id: res}
 		if len(fields) > 0 {
 			obj.fields = make(map[string]interface{}, len(fields))
 			for k, arr := range fields {

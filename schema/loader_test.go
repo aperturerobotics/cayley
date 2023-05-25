@@ -1,6 +1,7 @@
 package schema_test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -72,6 +73,7 @@ func TestLoadLoop(t *testing.T) {
 }
 
 func TestLoadIteratorTo(t *testing.T) {
+	ctx := context.Background()
 	sch := schema.NewConfig()
 	for i, c := range testFillValueCases {
 		t.Run(c.name, func(t *testing.T) {
@@ -87,7 +89,7 @@ func TestLoadIteratorTo(t *testing.T) {
 			if c.from != nil {
 				fixed := iterator.NewFixed()
 				for _, id := range c.from {
-					qsv, err := qs.ValueOf(id)
+					qsv, err := qs.ValueOf(ctx, id)
 					require.NoError(t, err)
 					fixed.Add(qsv)
 				}

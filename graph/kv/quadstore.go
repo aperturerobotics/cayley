@@ -164,7 +164,7 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 
 func (qs *QuadStore) getMetaInt(ctx context.Context, key string) (int64, error) {
 	var v int64
-	err := kv.View(qs.db, func(tx kv.Tx) error {
+	err := kv.View(ctx, qs.db, func(tx kv.Tx) error {
 		val, err := tx.Get(ctx, metaBucket.AppendBytes([]byte(key)))
 		if err == kv.ErrNotFound {
 			return ErrNoBucket
@@ -188,10 +188,8 @@ func (qs *QuadStore) getSize(ctx context.Context) (int64, error) {
 	return sz, err
 }
 
-func (qs *QuadStore) Size() int64 {
-	ctx := context.TODO()
-	sz, _ := qs.getSize(ctx)
-	return sz
+func (qs *QuadStore) Size(ctx context.Context) (int64, error) {
+	return qs.getSize(ctx)
 }
 
 func (qs *QuadStore) Stats(ctx context.Context, exact bool) (graph.Stats, error) {
@@ -212,7 +210,7 @@ func (qs *QuadStore) Stats(ctx context.Context, exact bool) (graph.Stats, error)
 	if exact {
 		// calculate the exact number of nodes
 		st.Nodes.Value = 0
-		it := qs.NodesAllIterator().Iterate()
+		it := qs.NodesAllIterator(ctx).Iterate(ctx)
 		defer it.Close()
 		for it.Next(ctx) {
 			st.Nodes.Value++
@@ -280,7 +278,7 @@ func (qs *QuadStore) ValuesOf(ctx context.Context, vals []graph.Ref) ([]quad.Val
 		if p == nil || !p.IsNode() {
 			continue
 		}
-		qv, err := pquads.UnmarshalValue(p.Value)
+		qv, err := pquads.UnmarshalValue(ctx, p.Value)
 		if err != nil {
 			last = err
 			continue
@@ -292,7 +290,7 @@ func (qs *QuadStore) ValuesOf(ctx context.Context, vals []graph.Ref) ([]quad.Val
 
 func (qs *QuadStore) RefsOf(ctx context.Context, nodes []quad.Value) ([]graph.Ref, error) {
 	values := make([]graph.Ref, len(nodes))
-	err := kv.View(qs.db, func(tx kv.Tx) error {
+	err := kv.View(ctx, qs.db, func(tx kv.Tx) error {
 		for i, node := range nodes {
 			value, err := qs.resolveQuadValue(ctx, tx, node)
 			if err != nil {
@@ -308,8 +306,7 @@ func (qs *QuadStore) RefsOf(ctx context.Context, nodes []quad.Value) ([]graph.Re
 	return values, nil
 }
 
-func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
-	ctx := context.TODO()
+func (qs *QuadStore) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	vals, err := qs.ValuesOf(ctx, []graph.Ref{v})
 	if err != nil {
 		return nil, fmt.Errorf("error getting NameOf %d: %w", v, err)
@@ -317,14 +314,13 @@ func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
 	return vals[0], nil
 }
 
-func (qs *QuadStore) Quad(k graph.Ref) (quad.Quad, error) {
+func (qs *QuadStore) Quad(ctx context.Context, k graph.Ref) (quad.Quad, error) {
 	key, ok := k.(*proto.Primitive)
 	if !ok {
 		return quad.Quad{}, fmt.Errorf("passed value was not a quad primitive: %T", k)
 	}
-	ctx := context.TODO()
 	var v quad.Quad
-	err := kv.View(qs.db, func(tx kv.Tx) error {
+	err := kv.View(ctx, qs.db, func(tx kv.Tx) error {
 		var err error
 		v, err = qs.primitiveToQuad(ctx, tx, key)
 		return err
@@ -359,13 +355,12 @@ func (qs *QuadStore) getValFromLog(ctx context.Context, tx kv.Tx, k uint64) (qua
 	if err != nil {
 		return nil, err
 	}
-	return pquads.UnmarshalValue(p.Value)
+	return pquads.UnmarshalValue(ctx, p.Value)
 }
 
-func (qs *QuadStore) ValueOf(s quad.Value) (graph.Ref, error) {
-	ctx := context.TODO()
+func (qs *QuadStore) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
 	var out Int64Value
-	err := kv.View(qs.db, func(tx kv.Tx) error {
+	err := kv.View(ctx, qs.db, func(tx kv.Tx) error {
 		v, err := qs.resolveQuadValue(ctx, tx, s)
 		out = Int64Value(v)
 		return err
@@ -379,7 +374,7 @@ func (qs *QuadStore) ValueOf(s quad.Value) (graph.Ref, error) {
 	return out, nil
 }
 
-func (qs *QuadStore) QuadDirection(val graph.Ref, d quad.Direction) (graph.Ref, error) {
+func (qs *QuadStore) QuadDirection(ctx context.Context, val graph.Ref, d quad.Direction) (graph.Ref, error) {
 	p, ok := val.(*proto.Primitive)
 	if !ok {
 		return nil, nil
@@ -401,7 +396,7 @@ func (qs *QuadStore) QuadDirection(val graph.Ref, d quad.Direction) (graph.Ref, 
 }
 
 func (qs *QuadStore) getPrimitives(ctx context.Context, vals []uint64) ([]*proto.Primitive, error) {
-	tx, err := qs.db.Tx(false)
+	tx, err := qs.db.Tx(ctx, false)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/query/linkedql"
 	"github.com/cayleygraph/cayley/query/path"
@@ -22,6 +24,6 @@ func (s *Placeholder) Description() string {
 }
 
 // BuildPath implements linkedql.PathStep.
-func (s *Placeholder) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (s *Placeholder) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	return path.StartMorphism(), nil
 }

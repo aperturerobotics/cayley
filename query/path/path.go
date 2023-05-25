@@ -26,9 +26,11 @@ import (
 
 type applyMorphism func(shape.Shape, *pathContext) (shape.Shape, *pathContext)
 
+type revMorphism func(*pathContext) (morphism, *pathContext)
+
 type morphism struct {
 	IsTag    bool
-	Reversal func(*pathContext) (morphism, *pathContext)
+	Reversal revMorphism
 	Apply    applyMorphism
 	tags     []string
 }
@@ -135,10 +137,10 @@ func (p *Path) clone() *Path {
 // Reverse returns a new Path that is the reverse of the current one.
 func (p *Path) Reverse() *Path {
 	newPath := NewPath(p.qs)
-	ctx := &newPath.baseContext
+	pctx := &newPath.baseContext
 	for i := len(p.stack) - 1; i >= 0; i-- {
 		var revMorphism morphism
-		revMorphism, ctx = p.stack[i].Reversal(ctx)
+		revMorphism, pctx = p.stack[i].Reversal(pctx)
 		newPath.stack = append(newPath.stack, revMorphism)
 	}
 	return newPath
@@ -502,7 +504,7 @@ func (p *Path) LabelContextWithTags(tags []string, via ...interface{}) *Path {
 func (p *Path) Back(tag string) *Path {
 	newPath := NewPath(p.qs)
 	i := len(p.stack) - 1
-	ctx := &newPath.baseContext
+	pctx := &newPath.baseContext
 	for {
 		if i < 0 {
 			return p.Reverse()
@@ -517,7 +519,7 @@ func (p *Path) Back(tag string) *Path {
 			}
 		}
 		var revMorphism morphism
-		revMorphism, ctx = p.stack[i].Reversal(ctx)
+		revMorphism, pctx = p.stack[i].Reversal(pctx)
 		newPath.stack = append(newPath.stack, revMorphism)
 		i--
 	}
@@ -544,8 +546,8 @@ func (p *Path) BuildIteratorOn(ctx context.Context, qs graph.QuadStore) iterator
 // that yields the subset of values from the existing iterator matched by the
 // current Path.
 func (p *Path) MorphismFor(qs graph.QuadStore) iterator.Morphism {
-	return func(it iterator.Shape) iterator.Shape {
-		return p.ShapeFrom(&iteratorShape{it: it}).BuildIterator(qs)
+	return func(ctx context.Context, it iterator.Shape) iterator.Shape {
+		return p.ShapeFrom(&iteratorShape{it: it}).BuildIterator(ctx, qs)
 	}
 }
 
@@ -576,14 +578,16 @@ func (p *Path) Count() *Path {
 func (p *Path) Iterate(ctx context.Context) *iterator.Chain {
 	return shape.Iterate(ctx, p.qs, p.Shape())
 }
+
 func (p *Path) Shape() shape.Shape {
 	return p.ShapeFrom(shape.AllNodes{})
 }
+
 func (p *Path) ShapeFrom(from shape.Shape) shape.Shape {
 	s := from
-	ctx := &p.baseContext
+	pctx := &p.baseContext
 	for _, m := range p.stack {
-		s, ctx = m.Apply(s, ctx)
+		s, pctx = m.Apply(s, pctx)
 	}
 	return s
 }

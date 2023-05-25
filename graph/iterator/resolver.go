@@ -39,11 +39,11 @@ func NewResolver(qs refs.Namer, nodes ...quad.Value) *Resolver {
 	return it
 }
 
-func (it *Resolver) Iterate() Scanner {
+func (it *Resolver) Iterate(ctx context.Context) Scanner {
 	return newResolverNext(it.qs, it.order)
 }
 
-func (it *Resolver) Lookup() Index {
+func (it *Resolver) Lookup(ctx context.Context) Index {
 	return newResolverContains(it.qs, it.order)
 }
 
@@ -57,11 +57,11 @@ func (it *Resolver) SubIterators() []Shape {
 
 // Returns a Null iterator if it's empty so that upstream iterators can optimize it
 // away, otherwise there is no optimization.
-func (it *Resolver) Optimize(ctx context.Context) (Shape, bool) {
+func (it *Resolver) Optimize(ctx context.Context) (Shape, bool, error) {
 	if len(it.order) == 0 {
-		return NewNull(), true
+		return NewNull(), true, nil
 	}
-	return it, false
+	return it, false, nil
 }
 
 func (it *Resolver) Stats(ctx context.Context) (Costs, error) {
@@ -102,7 +102,7 @@ func (it *resolverNext) Close() error {
 	return nil
 }
 
-func (it *resolverNext) TagResults(dst map[string]refs.Ref) {}
+func (it *resolverNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error { return it.err }
 
 func (it *resolverNext) String() string {
 	return fmt.Sprintf("ResolverNext(%v, %v)", it.order, it.values)
@@ -144,8 +144,8 @@ func (it *resolverNext) Err() error {
 	return it.err
 }
 
-func (it *resolverNext) Result() refs.Ref {
-	return it.result
+func (it *resolverNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 func (it *resolverNext) NextPath(ctx context.Context) bool {
@@ -177,7 +177,9 @@ func (it *resolverContains) Close() error {
 	return nil
 }
 
-func (it *resolverContains) TagResults(dst map[string]refs.Ref) {}
+func (it *resolverContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.err
+}
 
 func (it *resolverContains) String() string {
 	return fmt.Sprintf("ResolverContains(%v, %v)", it.order, it.nodes)
@@ -202,26 +204,29 @@ func (it *resolverContains) resolve(ctx context.Context) error {
 }
 
 // Check if the passed value is equal to one of the order stored in the iterator.
-func (it *resolverContains) Contains(ctx context.Context, value refs.Ref) bool {
+func (it *resolverContains) Contains(ctx context.Context, value refs.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
 	if !it.cached {
 		it.err = it.resolve(ctx)
 		if it.err != nil {
-			return false
+			return false, it.err
 		}
 	}
 	_, ok := it.nodes[value.Key()]
 	if ok {
 		it.result = value
 	}
-	return ok
+	return ok, nil
 }
 
 func (it *resolverContains) Err() error {
 	return it.err
 }
 
-func (it *resolverContains) Result() refs.Ref {
-	return it.result
+func (it *resolverContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result, it.err
 }
 
 func (it *resolverContains) NextPath(ctx context.Context) bool {

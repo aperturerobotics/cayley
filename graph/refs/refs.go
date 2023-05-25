@@ -33,10 +33,10 @@ type Ref interface {
 type Namer interface {
 	// Given a node ID, return the opaque token used by the QuadStore
 	// to represent that id. Returns nil, nil on not found.
-	ValueOf(quad.Value) (Ref, error)
+	ValueOf(context.Context, quad.Value) (Ref, error)
 	// Given an opaque token, return the node that it represents.
 	// Returns nil, nil on not found.
-	NameOf(Ref) (quad.Value, error)
+	NameOf(context.Context, Ref) (quad.Value, error)
 }
 
 type BatchNamer interface {
@@ -148,7 +148,7 @@ func ValuesOf(ctx context.Context, qs Namer, vals []Ref) ([]quad.Value, error) {
 	out := make([]quad.Value, len(vals))
 	var err error
 	for i, v := range vals {
-		out[i], err = qs.NameOf(v)
+		out[i], err = qs.NameOf(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +162,7 @@ func RefsOf(ctx context.Context, qs Namer, nodes []quad.Value) ([]Ref, error) {
 	}
 	values := make([]Ref, len(nodes))
 	for i, node := range nodes {
-		value, err := qs.ValueOf(node)
+		value, err := qs.ValueOf(ctx, node)
 		if err != nil {
 			return nil, err
 		}

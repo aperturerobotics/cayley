@@ -21,11 +21,11 @@ func NewCount(it Shape, qs refs.Namer) *Count {
 	}
 }
 
-func (it *Count) Iterate() Scanner {
+func (it *Count) Iterate(ctx context.Context) Scanner {
 	return newCountNext(it.it)
 }
 
-func (it *Count) Lookup() Index {
+func (it *Count) Lookup(ctx context.Context) Index {
 	return newCountContains(it.it, it.qs)
 }
 
@@ -34,10 +34,13 @@ func (it *Count) SubIterators() []Shape {
 	return []Shape{it.it}
 }
 
-func (it *Count) Optimize(ctx context.Context) (Shape, bool) {
-	sub, optimized := it.it.Optimize(ctx)
+func (it *Count) Optimize(ctx context.Context) (Shape, bool, error) {
+	sub, optimized, err := it.it.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	it.it = sub
-	return it, optimized
+	return it, optimized, nil
 }
 
 func (it *Count) Stats(ctx context.Context) (Costs, error) {
@@ -73,7 +76,9 @@ func newCountNext(it Shape) *countNext {
 	}
 }
 
-func (it *countNext) TagResults(dst map[string]refs.Ref) {}
+func (it *countNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.err
+}
 
 // Next counts a number of results in underlying iterator.
 func (it *countNext) Next(ctx context.Context) bool {
@@ -87,7 +92,7 @@ func (it *countNext) Next(ctx context.Context) bool {
 		return false
 	}
 	if !st.Size.Exact {
-		sit := it.it.Iterate()
+		sit := it.it.Iterate(ctx)
 		defer sit.Close()
 		for st.Size.Value = 0; sit.Next(ctx); st.Size.Value++ {
 			// TODO(dennwc): it's unclear if we should call it here or not
@@ -105,11 +110,11 @@ func (it *countNext) Err() error {
 	return it.err
 }
 
-func (it *countNext) Result() refs.Ref {
-	if it.result == nil {
-		return nil
+func (it *countNext) Result(ctx context.Context) (refs.Ref, error) {
+	if it.result == nil || it.err != nil {
+		return nil, it.err
 	}
-	return refs.PreFetched(it.result)
+	return refs.PreFetched(it.result), nil
 }
 
 func (it *countNext) NextPath(ctx context.Context) bool {
@@ -138,7 +143,9 @@ func newCountContains(it Shape, qs refs.Namer) *countContains {
 	}
 }
 
-func (it *countContains) TagResults(dst map[string]refs.Ref) {}
+func (it *countContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	return it.err
+}
 
 func (it *countContains) Err() error {
 	if it.err != nil {
@@ -147,26 +154,32 @@ func (it *countContains) Err() error {
 	return it.it.Err()
 }
 
-func (it *countContains) Result() refs.Ref {
-	return it.it.Result()
+func (it *countContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.it.Result(ctx)
 }
 
-func (it *countContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *countContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
 	if !it.it.done {
-		it.it.Next(ctx)
+		_ = it.it.Next(ctx)
+		if err := it.it.Err(); err != nil {
+			if it.err == nil {
+				it.err = err
+			}
+			return false, err
+		}
 	}
 	if v, ok := val.(refs.PreFetchedValue); ok {
-		return v.NameOf() == it.it.result
+		return v.NameOf() == it.it.result, nil
 	}
 	if it.qs != nil {
-		valName, err := it.qs.NameOf(val)
+		valName, err := it.qs.NameOf(ctx, val)
 		if err != nil {
 			it.err = err
-			return false
+			return false, nil
 		}
-		return valName == it.it.result
+		return valName == it.it.result, nil
 	}
-	return false
+	return false, nil
 }
 
 func (it *countContains) NextPath(ctx context.Context) bool {

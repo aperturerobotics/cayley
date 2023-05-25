@@ -15,6 +15,7 @@
 package mql
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -22,14 +23,14 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func (q *Query) treeifyResult(tags map[string]graph.Ref) (map[ResultPath]string, error) {
+func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (map[ResultPath]string, error) {
 	// Transform the map into something a little more interesting.
 	results := make(map[Path]string)
 	for k, v := range tags {
 		if v == nil {
 			continue
 		}
-		nv, err := q.ses.qs.NameOf(v)
+		nv, err := q.ses.qs.NameOf(ctx, v)
 		if err != nil {
 			return nil, err
 		}

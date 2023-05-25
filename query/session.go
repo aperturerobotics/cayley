@@ -41,10 +41,10 @@ type Iterator interface {
 	// error was encountered during iteration.  Err should be consulted to distinguish
 	// between the two cases.
 	Next(ctx context.Context) bool
-	// Results returns the current result. The type depends on the collation mode of the query.
-	Result() interface{}
 	// Err returns any error that was encountered by the Iterator.
 	Err() error
+	// Result returns the current result. The type depends on the collation mode of the query.
+	Result(ctx context.Context) (interface{}, error)
 	// Close the iterator and do internal cleanup.
 	Close() error
 }

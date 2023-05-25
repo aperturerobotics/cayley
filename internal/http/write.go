@@ -90,7 +90,8 @@ func (api *API) ServeV1Write(w http.ResponseWriter, r *http.Request, _ httproute
 		jsonResponse(w, 400, err)
 		return
 	}
-	if err = h.QuadWriter.AddQuadSet(quads); err != nil {
+	ctx := r.Context()
+	if err = h.QuadWriter.AddQuadSet(ctx, quads); err != nil {
 		jsonResponse(w, 400, err)
 		return
 	}
@@ -126,7 +127,8 @@ func (api *API) ServeV1WriteNQuad(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 	qw := graph.NewWriter(h.QuadWriter)
-	n, err := quad.CopyBatch(qw, dec, blockSize)
+	ctx := r.Context()
+	n, err := quad.CopyBatch(ctx, qw, dec, blockSize)
 	if err != nil {
 		jsonResponse(w, 400, err)
 		return
@@ -159,8 +161,9 @@ func (api *API) ServeV1Delete(w http.ResponseWriter, r *http.Request, params htt
 		jsonResponse(w, 400, err)
 		return
 	}
+	ctx := r.Context()
 	for _, q := range quads {
-		err = h.QuadWriter.RemoveQuad(q)
+		err = h.QuadWriter.RemoveQuad(ctx, q)
 		if err != nil && !graph.IsQuadNotExist(err) {
 			jsonResponse(w, 400, err)
 			return

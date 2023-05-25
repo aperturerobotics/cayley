@@ -29,7 +29,9 @@ func TestNullIteratorAnd(t *testing.T) {
 	all := newInt64(1, 3, true)
 	null := NewNull()
 	a := NewAnd(all, null)
-	newIt, changed := a.Optimize(context.TODO())
+	ctx := context.Background()
+	newIt, changed, err := a.Optimize(ctx)
+	require.NoError(t, err)
 	if !changed {
 		t.Error("Didn't change")
 	}
@@ -51,7 +53,8 @@ func TestReorderWithTag(t *testing.T) {
 	a.AddSubIterator(all2)
 	a.AddSubIterator(all)
 
-	_, changed := a.Optimize(context.TODO())
+	_, changed, err := a.Optimize(context.Background())
+	require.NoError(t, err)
 	require.True(t, changed, "expected new iterator")
 }
 
@@ -62,9 +65,10 @@ func TestAndStatistics(t *testing.T) {
 	// Make all2 the default iterator
 	a.AddSubIterator(all2)
 	a.AddSubIterator(all)
-	ctx := context.TODO()
+	ctx := context.Background()
 	stats1, _ := a.Stats(ctx)
-	newIt, changed := a.Optimize(ctx)
+	newIt, changed, err := a.Optimize(ctx)
+	require.NoError(t, err)
 	require.True(t, changed, "didn't optimize")
 
 	stats2, _ := newIt.Stats(ctx)

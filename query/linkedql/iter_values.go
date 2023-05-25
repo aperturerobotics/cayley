@@ -30,8 +30,8 @@ func NewValueIterator(p *path.Path, namer refs.Namer) *ValueIterator {
 
 // NewValueIteratorFromPathStep attempts to build a path from PathStep and return a new ValueIterator of it.
 // If BuildPath fails returns error.
-func NewValueIteratorFromPathStep(step PathStep, qs graph.QuadStore, ns *voc.Namespaces) (*ValueIterator, error) {
-	p, err := step.BuildPath(qs, ns)
+func NewValueIteratorFromPathStep(ctx context.Context, step PathStep, qs graph.QuadStore, ns *voc.Namespaces) (*ValueIterator, error) {
+	p, err := step.BuildPath(ctx, qs, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -41,27 +41,42 @@ func NewValueIteratorFromPathStep(step PathStep, qs graph.QuadStore, ns *voc.Nam
 // Next implements query.Iterator.
 func (it *ValueIterator) Next(ctx context.Context) bool {
 	if it.scanner == nil {
-		it.scanner = it.path.BuildIterator(ctx).Iterate()
+		it.scanner = it.path.BuildIterator(ctx).Iterate(ctx)
 	}
 	return it.scanner.Next(ctx)
 }
 
 // Value returns the current value
-func (it *ValueIterator) Value() quad.Value {
-	if it.scanner == nil {
-		return nil
+func (it *ValueIterator) Value(ctx context.Context) (quad.Value, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	rname, err := it.Namer.NameOf(it.scanner.Result())
+	if it.scanner == nil {
+		return nil, nil
+	}
+	res, err := it.scanner.Result(ctx)
+	if err != nil {
+		it.err = err
+		return nil, err
+	}
+	rname, err := it.Namer.NameOf(ctx, res)
 	if err != nil {
 		it.err = err
 	}
-	return rname
+	return rname, err
 }
 
 // Result implements query.Iterator.
-func (it *ValueIterator) Result() interface{} {
+func (it *ValueIterator) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
+	}
 	// FIXME(iddan): only convert when collation is JSON/JSON-LD, leave as Ref otherwise
-	return jsonld.FromValue(it.Value())
+	res, err := it.Value(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return jsonld.FromValue(res), nil
 }
 
 // Err implements query.Iterator.

@@ -46,6 +46,7 @@ type mqlIterator struct {
 	q   *Query
 	col query.Collation
 	it  iterator.Scanner
+	err error
 	res []interface{}
 }
 
@@ -60,12 +61,29 @@ func (it *mqlIterator) Next(ctx context.Context) bool {
 	}
 	for it.it.Next(ctx) {
 		m := make(map[string]graph.Ref)
-		it.it.TagResults(m)
-		it.q.treeifyResult(m)
+		if err := it.it.TagResults(ctx, m); err != nil {
+			_ = it.it.Close()
+			it.err = err
+			return false
+		}
+		_, err := it.q.treeifyResult(ctx, m)
+		if err != nil {
+			_ = it.it.Close()
+			it.err = err
+			return false
+		}
 		for it.it.NextPath(ctx) {
 			m = make(map[string]graph.Ref, len(m))
-			it.it.TagResults(m)
-			it.q.treeifyResult(m)
+			if err := it.it.TagResults(ctx, m); err != nil {
+				_ = it.it.Close()
+				it.err = err
+				return false
+			}
+			if _, err := it.q.treeifyResult(ctx, m); err != nil {
+				_ = it.it.Close()
+				it.err = err
+				return false
+			}
 		}
 	}
 	if err := it.it.Err(); err != nil {
@@ -76,14 +94,20 @@ func (it *mqlIterator) Next(ctx context.Context) bool {
 	return len(it.res) != 0
 }
 
-func (it *mqlIterator) Result() interface{} {
-	if len(it.res) == 0 {
-		return nil
+func (it *mqlIterator) Result(ctx context.Context) (interface{}, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	return it.res[0]
+	if len(it.res) == 0 {
+		return nil, nil
+	}
+	return it.res[0], nil
 }
 
 func (it *mqlIterator) Err() error {
+	if it.err != nil {
+		return it.err
+	}
 	return it.it.Err()
 }
 
@@ -107,7 +131,7 @@ func (s *Session) Execute(ctx context.Context, input string, opt query.Options) 
 		return nil, q.err
 	}
 
-	it := q.it.Iterate()
+	it := q.it.Iterate(ctx)
 	if opt.Limit > 0 {
 		it = iterator.NewLimitNext(it, int64(opt.Limit))
 	}

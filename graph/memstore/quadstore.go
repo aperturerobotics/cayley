@@ -149,7 +149,8 @@ type QuadStore struct {
 func New(quads ...quad.Quad) *QuadStore {
 	qs := newQuadStore()
 	for _, q := range quads {
-		qs.AddQuad(q)
+		// cannot fail in memory store
+		_, _ = qs.AddQuad(q)
 	}
 	return qs
 }
@@ -302,20 +303,20 @@ func (qs *QuadStore) AddQuad(q quad.Quad) (int64, bool) {
 // WriteQuad adds a quad to quad store.
 //
 // Deprecated: use AddQuad instead.
-func (qs *QuadStore) WriteQuad(q quad.Quad) error {
+func (qs *QuadStore) WriteQuad(ctx context.Context, q quad.Quad) error {
 	qs.AddQuad(q)
 	return nil
 }
 
 // WriteQuads implements quad.Writer.
-func (qs *QuadStore) WriteQuads(buf []quad.Quad) (int, error) {
+func (qs *QuadStore) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	for _, q := range buf {
 		qs.AddQuad(q)
 	}
 	return len(buf), nil
 }
 
-func (qs *QuadStore) NewQuadWriter() (quad.WriteCloser, error) {
+func (qs *QuadStore) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	return &quadWriter{qs: qs}, nil
 }
 
@@ -323,12 +324,12 @@ type quadWriter struct {
 	qs *QuadStore
 }
 
-func (w *quadWriter) WriteQuad(q quad.Quad) error {
+func (w *quadWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
 	w.qs.AddQuad(q)
 	return nil
 }
 
-func (w *quadWriter) WriteQuads(buf []quad.Quad) (int, error) {
+func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	for _, q := range buf {
 		w.qs.AddQuad(q)
 	}
@@ -402,7 +403,7 @@ func (qs *QuadStore) findQuad(q quad.Quad) (int64, internalQuad, bool) {
 	return id, p, id != 0
 }
 
-func (qs *QuadStore) ApplyDeltas(deltas []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
+func (qs *QuadStore) ApplyDeltas(ctx context.Context, deltas []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
 	// Precheck the whole transaction (if required)
 	if !ignoreOpts.IgnoreDup || !ignoreOpts.IgnoreMissing {
 		for _, d := range deltas {
@@ -469,7 +470,7 @@ func (qs *QuadStore) quad(v graph.Ref) (q internalQuad, ok bool) {
 	return q, !q.Zero()
 }
 
-func (qs *QuadStore) Quad(index graph.Ref) (quad.Quad, error) {
+func (qs *QuadStore) Quad(ctx context.Context, index graph.Ref) (quad.Quad, error) {
 	q, ok := qs.quad(index)
 	if !ok {
 		return quad.Quad{}, nil
@@ -477,7 +478,7 @@ func (qs *QuadStore) Quad(index graph.Ref) (quad.Quad, error) {
 	return qs.lookupQuadDirs(q), nil
 }
 
-func (qs *QuadStore) QuadIterator(d quad.Direction, value graph.Ref) iterator.Shape {
+func (qs *QuadStore) QuadIterator(ctx context.Context, d quad.Direction, value graph.Ref) iterator.Shape {
 	id, ok := asID(value)
 	if !ok {
 		return iterator.NewNull()
@@ -514,7 +515,7 @@ func (qs *QuadStore) Stats(ctx context.Context, exact bool) (graph.Stats, error)
 	}, nil
 }
 
-func (qs *QuadStore) ValueOf(name quad.Value) (graph.Ref, error) {
+func (qs *QuadStore) ValueOf(ctx context.Context, name quad.Value) (graph.Ref, error) {
 	if name == nil {
 		return nil, nil
 	}
@@ -525,7 +526,7 @@ func (qs *QuadStore) ValueOf(name quad.Value) (graph.Ref, error) {
 	return bnode(id), nil
 }
 
-func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
+func (qs *QuadStore) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	if v == nil {
 		return nil, nil
 	} else if v, ok := v.(refs.PreFetchedValue); ok {
@@ -541,11 +542,11 @@ func (qs *QuadStore) NameOf(v graph.Ref) (quad.Value, error) {
 	return qs.lookupVal(n), nil
 }
 
-func (qs *QuadStore) QuadsAllIterator() iterator.Shape {
+func (qs *QuadStore) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newAllIterator(false, qs.last)
 }
 
-func (qs *QuadStore) QuadDirection(val graph.Ref, d quad.Direction) (graph.Ref, error) {
+func (qs *QuadStore) QuadDirection(ctx context.Context, val graph.Ref, d quad.Direction) (graph.Ref, error) {
 	q, ok := qs.quad(val)
 	if !ok {
 		return nil, nil
@@ -557,7 +558,7 @@ func (qs *QuadStore) QuadDirection(val graph.Ref, d quad.Direction) (graph.Ref, 
 	return bnode(id), nil
 }
 
-func (qs *QuadStore) NodesAllIterator() iterator.Shape {
+func (qs *QuadStore) NodesAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newAllIterator(true, qs.last)
 }
 

@@ -1,6 +1,8 @@
 package mongo
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/hidal-go/hidalgo/legacy/nosql/mongo"
@@ -11,10 +13,10 @@ import (
 
 const Type = mongo.Name
 
-func Create(addr string, opt graph.Options) (nosql.Database, error) {
-	return mongo.Dial(addr, gnosql.DefaultDBName, nosql.Options(opt))
+func Create(ctx context.Context, addr string, opt graph.Options) (nosql.Database, error) {
+	return mongo.Dial(ctx, addr, gnosql.DefaultDBName, nosql.Options(opt))
 }
 
-func Open(addr string, opt graph.Options) (nosql.Database, error) {
-	return mongo.Dial(addr, gnosql.DefaultDBName, nosql.Options(opt))
+func Open(ctx context.Context, addr string, opt graph.Options) (nosql.Database, error) {
+	return mongo.Dial(ctx, addr, gnosql.DefaultDBName, nosql.Options(opt))
 }

@@ -25,20 +25,20 @@ import (
 )
 
 func TestMaterializeIteratorError(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	errIt := newTestIterator(false, wantErr)
 
 	// This tests that we properly return 0 results and the error when the
 	// underlying iterator returns an error.
-	mIt := NewMaterialize(errIt).Iterate()
+	mIt := NewMaterialize(errIt).Iterate(ctx)
 
 	require.False(t, mIt.Next(ctx))
 	require.Equal(t, wantErr, mIt.Err())
 }
 
 func TestMaterializeIteratorErrorAbort(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	errIt := newTestIterator(false, wantErr)
 
@@ -50,7 +50,7 @@ func TestMaterializeIteratorErrorAbort(t *testing.T) {
 		errIt,
 	)
 
-	mIt := NewMaterialize(or).Iterate()
+	mIt := NewMaterialize(or).Iterate(ctx)
 
 	// We should get all the underlying values...
 	for i := 0; i < MaterializeLimit+1; i++ {

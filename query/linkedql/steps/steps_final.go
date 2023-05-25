@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"context"
+
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/linkedql"
@@ -27,8 +29,8 @@ func (s *Select) Description() string {
 }
 
 // BuildIterator implements IteratorStep
-func (s *Select) BuildIterator(qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error) {
-	valueIt, err := linkedql.NewValueIteratorFromPathStep(s.From, qs, ns)
+func (s *Select) BuildIterator(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error) {
+	valueIt, err := linkedql.NewValueIteratorFromPathStep(ctx, s.From, qs, ns)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +51,8 @@ func (s *Documents) Description() string {
 }
 
 // BuildIterator implements IteratorStep
-func (s *Documents) BuildIterator(qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error) {
-	p, err := s.From.BuildPath(qs, ns)
+func (s *Documents) BuildIterator(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (query.Iterator, error) {
+	p, err := s.From.BuildPath(ctx, qs, ns)
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 func TestNotIteratorBasics(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	allIt := NewFixed(
 		Int64Node(1),
 		Int64Node(2),
@@ -31,27 +31,31 @@ func TestNotIteratorBasics(t *testing.T) {
 
 	expect := []int{1, 3}
 	for i := 0; i < 2; i++ {
-		require.Equal(t, expect, iterated(not))
+		require.Equal(t, expect, iterated(t, not))
 	}
 
-	nc := not.Lookup()
+	nc := not.Lookup(ctx)
 	for _, v := range []int{1, 3} {
-		require.True(t, nc.Contains(ctx, Int64Node(v)))
+		cnt, err := nc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.True(t, cnt)
 	}
 
 	for _, v := range []int{2, 4} {
-		require.False(t, nc.Contains(ctx, Int64Node(v)))
+		cnt, err := nc.Contains(ctx, Int64Node(v))
+		require.NoError(t, err)
+		require.False(t, cnt)
 	}
 }
 
 func TestNotIteratorErr(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	allIt := newTestIterator(false, wantErr)
 
 	toComplementIt := NewFixed()
 
-	not := NewNot(toComplementIt, allIt).Iterate()
+	not := NewNot(toComplementIt, allIt).Iterate(ctx)
 
 	require.False(t, not.Next(ctx))
 	require.Equal(t, wantErr, not.Err())

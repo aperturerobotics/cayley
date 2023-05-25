@@ -42,12 +42,12 @@ func (qs *QuadStore) newIterator(tree *Tree, d quad.Direction, value int64) *Ite
 	}
 }
 
-func (it *Iterator) Iterate() iterator.Scanner {
+func (it *Iterator) Iterate(ctx context.Context) iterator.Scanner {
 	// TODO(dennwc): it doesn't check the direction and value, while Contains does; is it expected?
 	return it.qs.newIteratorNext(it.tree, it.d)
 }
 
-func (it *Iterator) Lookup() iterator.Index {
+func (it *Iterator) Lookup(ctx context.Context) iterator.Index {
 	return it.qs.newIteratorContains(it.tree, it.d, it.value)
 }
 
@@ -61,8 +61,8 @@ func (it *Iterator) String() string {
 
 func (it *Iterator) Sorted() bool { return true }
 
-func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool) {
-	return it, false
+func (it *Iterator) Optimize(ctx context.Context) (iterator.Shape, bool, error) {
+	return it, false, nil
 }
 
 func (it *Iterator) Stats(ctx context.Context) (iterator.Costs, error) {
@@ -96,7 +96,7 @@ func (qs *QuadStore) newIteratorNext(tree *Tree, d quad.Direction) *iteratorNext
 	}
 }
 
-func (it *iteratorNext) TagResults(dst map[string]graph.Ref) {}
+func (it *iteratorNext) TagResults(ctx context.Context, dst map[string]graph.Ref) error { return nil }
 
 func (it *iteratorNext) Close() error {
 	return nil
@@ -129,11 +129,14 @@ func (it *iteratorNext) Err() error {
 	return it.err
 }
 
-func (it *iteratorNext) Result() graph.Ref {
-	if it.cur == nil {
-		return nil
+func (it *iteratorNext) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	return qprim{p: it.cur}
+	if it.cur == nil {
+		return nil, nil
+	}
+	return qprim{p: it.cur}, nil
 }
 
 func (it *iteratorNext) NextPath(ctx context.Context) bool {
@@ -167,7 +170,9 @@ func (qs *QuadStore) newIteratorContains(tree *Tree, d quad.Direction, value int
 	}
 }
 
-func (it *iteratorContains) TagResults(dst map[string]graph.Ref) {}
+func (it *iteratorContains) TagResults(ctx context.Context, dst map[string]graph.Ref) error {
+	return nil
+}
 
 func (it *iteratorContains) Close() error {
 	return nil
@@ -177,34 +182,40 @@ func (it *iteratorContains) Err() error {
 	return nil
 }
 
-func (it *iteratorContains) Result() graph.Ref {
-	if it.cur == nil {
-		return nil
+func (it *iteratorContains) Result(ctx context.Context) (graph.Ref, error) {
+	if err := it.Err(); err != nil {
+		return nil, err
 	}
-	return qprim{p: it.cur}
+	if it.cur == nil {
+		return nil, nil
+	}
+	return qprim{p: it.cur}, nil
 }
 
 func (it *iteratorContains) NextPath(ctx context.Context) bool {
 	return false
 }
 
-func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) bool {
+func (it *iteratorContains) Contains(ctx context.Context, v graph.Ref) (bool, error) {
+	if err := it.Err(); err != nil {
+		return false, err
+	}
 	if v == nil {
-		return false
+		return false, nil
 	}
 	switch v := v.(type) {
 	case bnode:
 		if p, ok := it.tree.Get(int64(v)); ok {
 			it.cur = p
-			return true
+			return true, nil
 		}
 	case qprim:
 		if v.p.Quad.Dir(it.d) == it.value {
 			it.cur = v.p
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (it *iteratorContains) String() string {

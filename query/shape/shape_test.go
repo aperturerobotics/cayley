@@ -39,35 +39,35 @@ var _ graph.QuadStore = ValLookup(nil)
 
 type ValLookup map[quad.Value]refs.Ref
 
-func (qs ValLookup) OptimizeShape(ctx context.Context, s Shape) (Shape, bool) {
-	return s, false // emulate dumb quad store
+func (qs ValLookup) OptimizeShape(ctx context.Context, s Shape) (Shape, bool, error) {
+	return s, false, nil // emulate dumb quad store
 }
-func (qs ValLookup) ValueOf(v quad.Value) (refs.Ref, error) {
+func (qs ValLookup) ValueOf(ctx context.Context, v quad.Value) (refs.Ref, error) {
 	return qs[v], nil
 }
 
-func (ValLookup) NewQuadWriter() (quad.WriteCloser, error) {
+func (ValLookup) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	panic("not implemented")
 }
-func (ValLookup) ApplyDeltas(_ []graph.Delta, _ graph.IgnoreOpts) error {
+func (ValLookup) ApplyDeltas(ctx context.Context, _ []graph.Delta, _ graph.IgnoreOpts) error {
 	panic("not implemented")
 }
-func (ValLookup) Quad(_ refs.Ref) (quad.Quad, error) {
+func (ValLookup) Quad(ctx context.Context, _ refs.Ref) (quad.Quad, error) {
 	panic("not implemented")
 }
-func (ValLookup) QuadIterator(_ quad.Direction, _ refs.Ref) iterator.Shape {
+func (ValLookup) QuadIterator(ctx context.Context, _ quad.Direction, _ refs.Ref) iterator.Shape {
 	panic("not implemented")
 }
 func (ValLookup) QuadIteratorSize(ctx context.Context, d quad.Direction, val refs.Ref) (refs.Size, error) {
 	panic("not implemented")
 }
-func (ValLookup) NodesAllIterator() iterator.Shape {
+func (ValLookup) NodesAllIterator(ctx context.Context) iterator.Shape {
 	panic("not implemented")
 }
-func (ValLookup) QuadsAllIterator() iterator.Shape {
+func (ValLookup) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	panic("not implemented")
 }
-func (ValLookup) NameOf(_ refs.Ref) (quad.Value, error) {
+func (ValLookup) NameOf(ctx context.Context, _ refs.Ref) (quad.Value, error) {
 	panic("not implemented")
 }
 func (ValLookup) Stats(ctx context.Context, exact bool) (graph.Stats, error) {
@@ -76,7 +76,7 @@ func (ValLookup) Stats(ctx context.Context, exact bool) (graph.Stats, error) {
 func (ValLookup) Close() error {
 	panic("not implemented")
 }
-func (ValLookup) QuadDirection(_ refs.Ref, _ quad.Direction) (refs.Ref, error) {
+func (ValLookup) QuadDirection(ctx context.Context, _ refs.Ref, _ quad.Direction) (refs.Ref, error) {
 	panic("not implemented")
 }
 func (ValLookup) Type() string {
@@ -355,10 +355,12 @@ var optimizeCases = []struct {
 }
 
 func TestOptimize(t *testing.T) {
+	ctx := context.Background()
 	for _, c := range optimizeCases {
 		t.Run(c.name, func(t *testing.T) {
 			qs := c.qs
-			got, opt := Optimize(context.TODO(), c.from, qs)
+			got, opt, err := Optimize(ctx, c.from, qs)
+			assert.NoError(t, err)
 			assert.Equal(t, c.expect, got)
 			assert.Equal(t, c.opt, opt)
 		})

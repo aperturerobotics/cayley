@@ -126,7 +126,12 @@ func (api *API) ServeV1Query(w http.ResponseWriter, r *http.Request, params http
 
 	var out []interface{}
 	for it.Next(ctx) {
-		out = append(out, it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			errFunc(w, err)
+			return
+		}
+		out = append(out, res)
 	}
 	if err = it.Err(); err != nil {
 		errFunc(w, err)

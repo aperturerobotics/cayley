@@ -103,7 +103,7 @@ func (c *Config) LoadToDepth(ctx context.Context, qs graph.QuadStore, dst interf
 	if len(ids) != 0 {
 		fixed := iterator.NewFixed()
 		for _, id := range ids {
-			idv, err := qs.ValueOf(id)
+			idv, err := qs.ValueOf(ctx, id)
 			if err != nil {
 				return err
 			}
@@ -364,7 +364,7 @@ func (l *loader) loadToValue(ctx context.Context, dst reflect.Value, depth int, 
 			var sv reflect.Value
 			if recursive {
 				if ptr {
-					fv, err := l.qs.NameOf(fv)
+					fv, err := l.qs.NameOf(ctx, fv)
 					if err != nil {
 						return err
 					}
@@ -383,7 +383,7 @@ func (l *loader) loadToValue(ctx context.Context, dst reflect.Value, depth int, 
 					return err
 				}
 			} else {
-				fv, err := l.qs.NameOf(fv)
+				fv, err := l.qs.NameOf(ctx, fv)
 				if err != nil {
 					return err
 				}
@@ -461,7 +461,7 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 	if err != nil {
 		return err
 	}
-	it := its.Iterate()
+	it := its.Iterate(ctx)
 	defer it.Close()
 
 	ctx = context.WithValue(ctx, fieldsCtxKey{}, fields)
@@ -469,7 +469,11 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 		if ctxDone() {
 			return ctx.Err()
 		}
-		id, err := l.qs.NameOf(it.Result())
+		res, err := it.Result(ctx)
+		if err != nil {
+			return err
+		}
+		id, err := l.qs.NameOf(ctx, res)
 		if err != nil {
 			return err
 		}
@@ -490,7 +494,9 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 			}
 		}
 		mp := make(map[string]graph.Ref)
-		it.TagResults(mp)
+		if err := it.TagResults(ctx, mp); err != nil {
+			return err
+		}
 		if len(mp) == 0 {
 			continue
 		}
@@ -507,7 +513,9 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 				return ctx.Err()
 			}
 			mp = make(map[string]graph.Ref)
-			it.TagResults(mp)
+			if err := it.TagResults(ctx, mp); err != nil {
+				return err
+			}
 			if len(mp) == 0 {
 				continue
 			}
@@ -546,7 +554,7 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 	}
 	if list != nil { // TODO(dennwc): optional optimization: do this only if iterator is not "all nodes"
 		// distinguish between missing object and type constraints
-		and := iterator.NewAnd(list, l.qs.NodesAllIterator()).Iterate()
+		and := iterator.NewAnd(list, l.qs.NodesAllIterator(ctx)).Iterate(ctx)
 		defer and.Close()
 		if and.Next(ctx) {
 			return errRequiredFieldIsMissing
@@ -561,7 +569,11 @@ func (l *loader) iteratorFromPath(ctx context.Context, root iterator.Shape, p *p
 		it = iterator.NewAnd(root, it)
 	}
 	if Optimize {
-		it, _ = it.Optimize(ctx)
+		optim, _, err := it.Optimize(ctx)
+		if err != nil {
+			return it, err
+		}
+		return optim, nil
 	}
 	return it, nil
 }

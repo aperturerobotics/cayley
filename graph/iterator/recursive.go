@@ -37,12 +37,12 @@ func NewRecursive(it Shape, morphism Morphism, maxDepth int) *Recursive {
 	}
 }
 
-func (it *Recursive) Iterate() Scanner {
-	return newRecursiveNext(it.subIt.Iterate(), it.morphism, it.maxDepth, it.depthTags)
+func (it *Recursive) Iterate(ctx context.Context) Scanner {
+	return newRecursiveNext(it.subIt.Iterate(ctx), it.morphism, it.maxDepth, it.depthTags)
 }
 
-func (it *Recursive) Lookup() Index {
-	return newRecursiveContains(newRecursiveNext(it.subIt.Iterate(), it.morphism, it.maxDepth, it.depthTags))
+func (it *Recursive) Lookup(ctx context.Context) Index {
+	return newRecursiveContains(newRecursiveNext(it.subIt.Iterate(ctx), it.morphism, it.maxDepth, it.depthTags))
 }
 
 func (it *Recursive) AddDepthTag(s string) {
@@ -53,18 +53,21 @@ func (it *Recursive) SubIterators() []Shape {
 	return []Shape{it.subIt}
 }
 
-func (it *Recursive) Optimize(ctx context.Context) (Shape, bool) {
-	newIt, optimized := it.subIt.Optimize(ctx)
+func (it *Recursive) Optimize(ctx context.Context) (Shape, bool, error) {
+	newIt, optimized, err := it.subIt.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if optimized {
 		it.subIt = newIt
 	}
-	return it, false
+	return it, false, nil
 }
 
 func (it *Recursive) Stats(ctx context.Context) (Costs, error) {
 	base := NewFixed()
 	base.Add(Int64Node(20))
-	fanoutit := it.morphism(base)
+	fanoutit := it.morphism(ctx, base)
 	fanoutStats, err := fanoutit.Stats(ctx)
 	subitStats, err2 := it.subIt.Stats(ctx)
 	if err == nil {
@@ -118,7 +121,11 @@ func newRecursiveNext(it Scanner, morphism Morphism, maxDepth int, depthTags []s
 	}
 }
 
-func (it *recursiveNext) TagResults(dst map[string]refs.Ref) {
+func (it *recursiveNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if err := it.Err(); err != nil {
+		return err
+	}
+
 	for _, tag := range it.depthTags {
 		dst[tag] = refs.PreFetched(quad.Int(it.result.depth))
 	}
@@ -132,26 +139,54 @@ func (it *recursiveNext) TagResults(dst map[string]refs.Ref) {
 		}
 	}
 	if it.nextIt != nil {
-		it.nextIt.TagResults(dst)
+		err := it.nextIt.TagResults(ctx, dst)
 		delete(dst, recursiveBaseTag)
+		if err != nil {
+			it.err = err
+			return err
+		}
 	}
+	return nil
 }
 
 func (it *recursiveNext) Next(ctx context.Context) bool {
+	if it.err != nil {
+		return false
+	}
 	it.pathIndex = 0
 	if it.depth == 0 {
 		for it.subIt.Next(ctx) {
-			res := it.subIt.Result()
-			it.depthCache = append(it.depthCache, it.subIt.Result())
+			res, err := it.subIt.Result(ctx)
+			if err != nil {
+				_ = it.subIt.Close()
+				it.err = err
+				return false
+			}
+			it.depthCache = append(it.depthCache, res)
 			tags := make(map[string]refs.Ref)
-			it.subIt.TagResults(tags)
+			err = it.subIt.TagResults(ctx, tags)
+			if err != nil {
+				_ = it.subIt.Close()
+				it.err = err
+				return false
+			}
 			key := refs.ToKey(res)
 			it.pathMap[key] = append(it.pathMap[key], tags)
 			for it.subIt.NextPath(ctx) {
 				tags := make(map[string]refs.Ref)
-				it.subIt.TagResults(tags)
+				err = it.subIt.TagResults(ctx, tags)
+				if err != nil {
+					_ = it.subIt.Close()
+					it.err = err
+					return false
+				}
 				it.pathMap[key] = append(it.pathMap[key], tags)
 			}
+		}
+		if err := it.subIt.Err(); err != nil {
+			_ = it.subIt.Close()
+			it.err = err
+			return false
 		}
 	}
 
@@ -168,12 +203,23 @@ func (it *recursiveNext) Next(ctx context.Context) bool {
 			if it.nextIt != nil {
 				it.nextIt.Close()
 			}
-			it.nextIt = it.morphism(Tag(it.baseIt, recursiveBaseTag)).Iterate()
+			it.nextIt = it.morphism(ctx, Tag(it.baseIt, recursiveBaseTag)).Iterate(ctx)
 			continue
 		}
-		val := it.nextIt.Result()
+		if err := it.nextIt.Err(); err != nil {
+			it.err = err
+			return false
+		}
+		val, err := it.nextIt.Result(ctx)
+		if err != nil {
+			it.err = err
+			return false
+		}
 		results := make(map[string]refs.Ref)
-		it.nextIt.TagResults(results)
+		if err := it.nextIt.TagResults(ctx, results); err != nil {
+			it.err = err
+			return false
+		}
 		key := refs.ToKey(val)
 		if _, seen := it.seen[key]; !seen {
 			base := results[recursiveBaseTag]
@@ -196,8 +242,8 @@ func (it *recursiveNext) Err() error {
 	return it.err
 }
 
-func (it *recursiveNext) Result() refs.Ref {
-	return it.result.val
+func (it *recursiveNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result.val, it.err
 }
 
 func (it *recursiveNext) getBaseValue(val refs.Ref) refs.Ref {
@@ -252,22 +298,28 @@ func newRecursiveContains(next *recursiveNext) *recursiveContains {
 	}
 }
 
-func (it *recursiveContains) TagResults(dst map[string]refs.Ref) {
-	it.next.TagResults(dst)
+func (it *recursiveContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if err := it.next.TagResults(ctx, dst); err != nil {
+		return err
+	}
 	for k, v := range it.tags {
 		dst[k] = v
 	}
+	return nil
 }
 
 func (it *recursiveContains) Err() error {
 	return it.next.Err()
 }
 
-func (it *recursiveContains) Result() refs.Ref {
-	return it.next.Result()
+func (it *recursiveContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.next.Result(ctx)
 }
 
-func (it *recursiveContains) Contains(ctx context.Context, val refs.Ref) bool {
+func (it *recursiveContains) Contains(ctx context.Context, val refs.Ref) (bool, error) {
+	if err := it.next.Err(); err != nil {
+		return false, err
+	}
 	it.next.pathIndex = 0
 	key := refs.ToKey(val)
 	if at, ok := it.next.seen[key]; ok {
@@ -275,14 +327,18 @@ func (it *recursiveContains) Contains(ctx context.Context, val refs.Ref) bool {
 		it.next.result.depth = at.depth
 		it.next.result.val = val
 		it.tags = at.tags
-		return true
+		return true, nil
 	}
 	for it.next.Next(ctx) {
-		if refs.ToKey(it.next.Result()) == key {
-			return true
+		res, err := it.next.Result(ctx)
+		if err != nil {
+			return false, nil
+		}
+		if refs.ToKey(res) == key {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (it *recursiveContains) NextPath(ctx context.Context) bool {

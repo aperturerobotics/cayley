@@ -141,14 +141,16 @@ var comparisonTests = []struct {
 }
 
 func TestValueComparison(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	for _, test := range comparisonTests {
 		qs := test.qs
-		vc := NewComparison(test.iterator(), test.operator, test.operand, qs).Iterate()
+		vc := NewComparison(test.iterator(), test.operator, test.operand, qs).Iterate(ctx)
 
 		var got []quad.Value
 		for vc.Next(ctx) {
-			qsv, err := qs.NameOf(vc.Result())
+			resi, err := vc.Result(ctx)
+			require.NoError(t, err)
+			qsv, err := qs.NameOf(ctx, resi)
 			require.NoError(t, err)
 			got = append(got, qsv)
 		}
@@ -233,10 +235,12 @@ var vciContainsTests = []struct {
 }
 
 func TestVCIContains(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	for _, test := range vciContainsTests {
-		vc := NewComparison(test.iterator(), test.operator, test.val, test.qs).Lookup()
-		if vc.Contains(ctx, test.check) != test.expect {
+		vc := NewComparison(test.iterator(), test.operator, test.val, test.qs).Lookup(ctx)
+		cnt, err := vc.Contains(ctx, test.check)
+		require.NoError(t, err)
+		if cnt != test.expect {
 			t.Errorf("Failed to show %s", test.message)
 		}
 	}
@@ -260,12 +264,12 @@ var comparisonIteratorTests = []struct {
 }
 
 func TestComparisonIteratorErr(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	wantErr := errors.New("unique")
 	errIt := newTestIterator(false, wantErr)
 
 	for _, test := range comparisonIteratorTests {
-		vc := NewComparison(errIt, CompareLT, test.val, test.qs).Iterate()
+		vc := NewComparison(errIt, CompareLT, test.val, test.qs).Iterate(ctx)
 
 		require.False(t, vc.Next(ctx))
 		require.Equal(t, wantErr, vc.Err())

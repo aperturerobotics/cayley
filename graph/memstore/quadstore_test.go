@@ -57,7 +57,8 @@ var simpleGraph = []quad.Quad{
 	quad.MakeRaw("G", "status", "cool", "status_graph"),
 }
 
-func makeTestStore(data []quad.Quad) (*QuadStore, graph.QuadWriter, []pair) {
+func makeTestStore(t *testing.T, data []quad.Quad) (*QuadStore, graph.QuadWriter, []pair) {
+	ctx := context.Background()
 	seen := make(map[string]struct{})
 	qs := New()
 	var (
@@ -65,9 +66,9 @@ func makeTestStore(data []quad.Quad) (*QuadStore, graph.QuadWriter, []pair) {
 		ind []pair
 	)
 	writer, _ := writer.NewSingleReplication(qs, nil)
-	for _, t := range data {
+	for _, td := range data {
 		for _, dir := range quad.Directions {
-			qp := t.GetString(dir)
+			qp := td.GetString(dir)
 			if _, ok := seen[qp]; !ok && qp != "" {
 				val++
 				ind = append(ind, pair{qp, val})
@@ -75,7 +76,8 @@ func makeTestStore(data []quad.Quad) (*QuadStore, graph.QuadWriter, []pair) {
 			}
 		}
 
-		writer.AddQuad(t)
+		err := writer.AddQuad(ctx, td)
+		require.NoError(t, err)
 		val++
 	}
 	return qs, writer, ind
@@ -103,17 +105,18 @@ type pair struct {
 }
 
 func TestMemstoreValueOf(t *testing.T) {
-	qs, _, index := makeTestStore(simpleGraph)
+	ctx := context.Background()
+	qs, _, index := makeTestStore(t, simpleGraph)
 	exp := graph.Stats{
 		Nodes: refs.Size{Value: 11, Exact: true},
 		Quads: refs.Size{Value: 11, Exact: true},
 	}
-	st, err := qs.Stats(context.Background(), true)
+	st, err := qs.Stats(ctx, true)
 	require.NoError(t, err)
 	require.Equal(t, exp, st, "Unexpected quadstore size")
 
 	for _, test := range index {
-		v, err := qs.ValueOf(quad.Raw(test.query))
+		v, err := qs.ValueOf(ctx, quad.Raw(test.query))
 		require.NoError(t, err)
 		switch v := v.(type) {
 		default:
@@ -125,20 +128,20 @@ func TestMemstoreValueOf(t *testing.T) {
 }
 
 func TestIteratorsAndNextResultOrderA(t *testing.T) {
-	ctx := context.TODO()
-	qs, _, _ := makeTestStore(simpleGraph)
+	ctx := context.Background()
+	qs, _, _ := makeTestStore(t, simpleGraph)
 
 	fixed := iterator.NewFixed()
-	qsv, err := qs.ValueOf(quad.Raw("C"))
+	qsv, err := qs.ValueOf(ctx, quad.Raw("C"))
 	require.NoError(t, err)
 	fixed.Add(qsv)
 
 	fixed2 := iterator.NewFixed()
-	qsv, err = qs.ValueOf(quad.Raw("follows"))
+	qsv, err = qs.ValueOf(ctx, quad.Raw("follows"))
 	require.NoError(t, err)
 	fixed2.Add(qsv)
 
-	all := qs.NodesAllIterator()
+	all := qs.NodesAllIterator(ctx)
 
 	const allTag = "all"
 	innerAnd := iterator.NewAnd(
@@ -147,13 +150,14 @@ func TestIteratorsAndNextResultOrderA(t *testing.T) {
 	)
 
 	hasa := graph.NewHasA(qs, innerAnd, quad.Subject)
-	outerAnd := iterator.NewAnd(fixed, hasa).Iterate()
+	outerAnd := iterator.NewAnd(fixed, hasa).Iterate(ctx)
 
 	if !outerAnd.Next(ctx) {
 		t.Error("Expected one matching subtree")
 	}
-	val := outerAnd.Result()
-	vn, err := qs.NameOf(val)
+	val, err := outerAnd.Result(ctx)
+	require.NoError(t, err)
+	vn, err := qs.NameOf(ctx, val)
 	require.NoError(t, err)
 	if vn != quad.Raw("C") {
 		t.Errorf("Matching subtree should be %s, got %s", "barak", vn)
@@ -165,8 +169,9 @@ func TestIteratorsAndNextResultOrderA(t *testing.T) {
 	)
 	for {
 		m := make(map[string]graph.Ref, 1)
-		outerAnd.TagResults(m)
-		mv, err := qs.NameOf(m[allTag])
+		err := outerAnd.TagResults(ctx, m)
+		require.NoError(t, err)
+		mv, err := qs.NameOf(ctx, m[allTag])
 		require.NoError(t, err)
 		got = append(got, quad.ToString(mv))
 		if !outerAnd.NextPath(ctx) {
@@ -185,13 +190,15 @@ func TestIteratorsAndNextResultOrderA(t *testing.T) {
 }
 
 func TestLinksToOptimization(t *testing.T) {
-	qs, _, _ := makeTestStore(simpleGraph)
+	qs, _, _ := makeTestStore(t, simpleGraph)
 
-	lto := shape.BuildIterator(context.TODO(), qs, shape.Quads{
+	ctx := context.Background()
+	lto := shape.BuildIterator(ctx, qs, shape.Quads{
 		{Dir: quad.Object, Values: shape.Lookup{quad.Raw("cool")}},
 	})
 
-	newIt, changed := lto.Optimize(context.TODO())
+	newIt, changed, err := lto.Optimize(ctx)
+	require.NoError(t, err)
 	if changed {
 		t.Errorf("unexpected optimization step")
 	}
@@ -201,10 +208,10 @@ func TestLinksToOptimization(t *testing.T) {
 }
 
 func TestRemoveQuad(t *testing.T) {
-	ctx := context.TODO()
-	qs, w, _ := makeTestStore(simpleGraph)
+	ctx := context.Background()
+	qs, w, _ := makeTestStore(t, simpleGraph)
 
-	err := w.RemoveQuad(quad.Make(
+	err := w.RemoveQuad(ctx, quad.Make(
 		"E",
 		"follows",
 		"F",
@@ -216,12 +223,12 @@ func TestRemoveQuad(t *testing.T) {
 	}
 
 	fixed := iterator.NewFixed()
-	qsv, err := qs.ValueOf(quad.Raw("E"))
+	qsv, err := qs.ValueOf(ctx, quad.Raw("E"))
 	require.NoError(t, err)
 	fixed.Add(qsv)
 
 	fixed2 := iterator.NewFixed()
-	qsv, err = qs.ValueOf(quad.Raw("follows"))
+	qsv, err = qs.ValueOf(ctx, quad.Raw("follows"))
 	require.NoError(t, err)
 	fixed2.Add(qsv)
 
@@ -232,15 +239,17 @@ func TestRemoveQuad(t *testing.T) {
 
 	hasa := graph.NewHasA(qs, innerAnd, quad.Object)
 
-	newIt, _ := hasa.Optimize(ctx)
-	if newIt.Iterate().Next(ctx) {
+	newIt, _, err := hasa.Optimize(ctx)
+	require.NoError(t, err)
+	if newIt.Iterate(ctx).Next(ctx) {
 		t.Error("E should not have any followers.")
 	}
 }
 
 func TestTransaction(t *testing.T) {
-	qs, w, _ := makeTestStore(simpleGraph)
-	st, err := qs.Stats(context.Background(), true)
+	qs, w, _ := makeTestStore(t, simpleGraph)
+	ctx := context.Background()
+	st, err := qs.Stats(ctx, true)
 	require.NoError(t, err)
 
 	tx := graph.NewTransaction()
@@ -255,7 +264,7 @@ func TestTransaction(t *testing.T) {
 		"quad",
 		nil))
 
-	err = w.ApplyTransaction(tx)
+	err = w.ApplyTransaction(ctx, tx)
 	if err == nil {
 		t.Error("Able to remove a non-existent quad")
 	}

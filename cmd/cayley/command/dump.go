@@ -2,6 +2,7 @@ package command
 
 import (
 	"compress/gzip"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,7 +14,7 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func writerQuadsTo(path string, typ string, qr quad.Reader) error {
+func writerQuadsTo(ctx context.Context, path string, typ string, qr quad.Reader) error {
 	var f *os.File
 	if path == "-" {
 		f = os.Stdout
@@ -54,7 +55,7 @@ func writerQuadsTo(path string, typ string, qr quad.Reader) error {
 	qw := format.Writer(w)
 	defer qw.Close()
 
-	n, err := quad.Copy(qw, qr)
+	n, err := quad.Copy(ctx, qw, qr)
 	if err != nil {
 		return err
 	} else if err = qw.Close(); err != nil {
@@ -66,9 +67,9 @@ func writerQuadsTo(path string, typ string, qr quad.Reader) error {
 	return nil
 }
 
-func dumpDatabase(h *graph.Handle, path string, typ string) error {
+func dumpDatabase(ctx context.Context, h *graph.Handle, path string, typ string) error {
 	//TODO: add possible support for exporting specific queries only
-	qr := graph.NewQuadStoreReader(h.QuadStore)
+	qr := graph.NewQuadStoreReader(ctx, h.QuadStore)
 	defer qr.Close()
-	return writerQuadsTo(path, typ, qr)
+	return writerQuadsTo(ctx, path, typ, qr)
 }

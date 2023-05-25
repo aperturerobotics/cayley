@@ -39,12 +39,12 @@ type Save struct {
 	fixedTags map[string]refs.Ref
 }
 
-func (it *Save) Iterate() Scanner {
-	return newSaveNext(it.it.Iterate(), it.tags, it.fixedTags)
+func (it *Save) Iterate(ctx context.Context) Scanner {
+	return newSaveNext(it.it.Iterate(ctx), it.tags, it.fixedTags)
 }
 
-func (it *Save) Lookup() Index {
-	return newSaveContains(it.it.Lookup(), it.tags, it.fixedTags)
+func (it *Save) Lookup(ctx context.Context) Index {
+	return newSaveContains(it.it.Lookup(ctx), it.tags, it.fixedTags)
 }
 
 func (it *Save) String() string {
@@ -92,21 +92,24 @@ func (it *Save) Stats(ctx context.Context) (Costs, error) {
 	return it.it.Stats(ctx)
 }
 
-func (it *Save) Optimize(ctx context.Context) (nit Shape, no bool) {
-	sub, ok := it.it.Optimize(ctx)
+func (it *Save) Optimize(ctx context.Context) (nit Shape, no bool, err error) {
+	sub, ok, err := it.it.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if len(it.tags) == 0 && len(it.fixedTags) == 0 {
-		return sub, true
+		return sub, true, nil
 	}
 	if st, ok2 := sub.(TaggerShape); ok2 {
 		st.CopyFromTagger(it)
-		return st, true
+		return st, true, nil
 	}
 	if !ok {
-		return it, false
+		return it, false, nil
 	}
 	s := NewSave(sub)
 	s.CopyFromTagger(it)
-	return s, true
+	return s, true, nil
 }
 
 func (it *Save) SubIterators() []Shape {
@@ -127,10 +130,15 @@ func (it *saveNext) String() string {
 	return fmt.Sprintf("Save(%v, %v)", it.tags, it.fixedTags)
 }
 
-func (it *saveNext) TagResults(dst map[string]refs.Ref) {
-	it.it.TagResults(dst)
+func (it *saveNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if err := it.it.TagResults(ctx, dst); err != nil {
+		return err
+	}
 
-	v := it.Result()
+	v, err := it.Result(ctx)
+	if err != nil {
+		return err
+	}
 	for _, tag := range it.tags {
 		dst[tag] = v
 	}
@@ -138,10 +146,11 @@ func (it *saveNext) TagResults(dst map[string]refs.Ref) {
 	for tag, value := range it.fixedTags {
 		dst[tag] = value
 	}
+	return nil
 }
 
-func (it *saveNext) Result() refs.Ref {
-	return it.it.Result()
+func (it *saveNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.it.Result(ctx)
 }
 
 func (it *saveNext) Next(ctx context.Context) bool {
@@ -174,10 +183,15 @@ func (it *saveContains) String() string {
 	return fmt.Sprintf("SaveContains(%v, %v)", it.tags, it.fixed)
 }
 
-func (it *saveContains) TagResults(dst map[string]refs.Ref) {
-	it.it.TagResults(dst)
+func (it *saveContains) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	if err := it.it.TagResults(ctx, dst); err != nil {
+		return err
+	}
 
-	v := it.Result()
+	v, err := it.Result(ctx)
+	if err != nil {
+		return err
+	}
 	for _, tag := range it.tags {
 		dst[tag] = v
 	}
@@ -185,17 +199,18 @@ func (it *saveContains) TagResults(dst map[string]refs.Ref) {
 	for tag, value := range it.fixed {
 		dst[tag] = value
 	}
+	return nil
 }
 
-func (it *saveContains) Result() refs.Ref {
-	return it.it.Result()
+func (it *saveContains) Result(ctx context.Context) (refs.Ref, error) {
+	return it.it.Result(ctx)
 }
 
 func (it *saveContains) NextPath(ctx context.Context) bool {
 	return it.it.NextPath(ctx)
 }
 
-func (it *saveContains) Contains(ctx context.Context, v refs.Ref) bool {
+func (it *saveContains) Contains(ctx context.Context, v refs.Ref) (bool, error) {
 	return it.it.Contains(ctx, v)
 }
 

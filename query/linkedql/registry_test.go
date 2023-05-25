@@ -1,6 +1,7 @@
 package linkedql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph"
@@ -109,7 +110,7 @@ func (s *TestStep) BuildIterator(qs graph.QuadStore, ns *voc.Namespaces) (query.
 	panic("Can't build iterator for TestStep")
 }
 
-func (s *TestStep) BuildPath(qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
+func (s *TestStep) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Namespaces) (*path.Path, error) {
 	panic("Can't build path for TestStep")
 }
 

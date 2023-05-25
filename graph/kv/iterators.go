@@ -13,17 +13,17 @@ import (
 	"github.com/cayleygraph/quad"
 )
 
-func (qs *QuadStore) NodesAllIterator() iterator.Shape {
+func (qs *QuadStore) NodesAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newAllIterator(true, nil)
 }
 
-func (qs *QuadStore) QuadsAllIterator() iterator.Shape {
+func (qs *QuadStore) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	return qs.newAllIterator(false, nil)
 }
 
 func (qs *QuadStore) indexSize(ctx context.Context, ind QuadIndex, vals []uint64) (refs.Size, error) {
 	var sz int64
-	err := kv.View(qs.db, func(tx kv.Tx) error {
+	err := kv.View(ctx, qs.db, func(tx kv.Tx) error {
 		val, err := tx.Get(ctx, ind.Key(vals))
 		if err != nil {
 			return err
@@ -72,7 +72,7 @@ func (qs *QuadStore) QuadIteratorSize(ctx context.Context, d quad.Direction, v g
 	}, nil
 }
 
-func (qs *QuadStore) QuadIterator(dir quad.Direction, v graph.Ref) iterator.Shape {
+func (qs *QuadStore) QuadIterator(ctx context.Context, dir quad.Direction, v graph.Ref) iterator.Shape {
 	if v == nil {
 		return iterator.NewNull()
 	}
@@ -92,17 +92,17 @@ func (qs *QuadStore) QuadIterator(dir quad.Direction, v graph.Ref) iterator.Shap
 	})
 }
 
-func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool) {
+func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool, error) {
 	switch s := s.(type) {
 	case shape.QuadsAction:
 		return qs.optimizeQuadsAction(s)
 	}
-	return s, false
+	return s, false, nil
 }
 
-func (qs *QuadStore) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, bool) {
+func (qs *QuadStore) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, bool, error) {
 	if len(s.Filter) == 0 {
-		return s, false
+		return s, false, nil
 	}
 	dirs := make([]quad.Direction, 0, len(s.Filter))
 	for d := range s.Filter {
@@ -110,17 +110,17 @@ func (qs *QuadStore) optimizeQuadsAction(s shape.QuadsAction) (shape.Shape, bool
 	}
 	ind := qs.bestIndexes(dirs)
 	if len(ind) != 1 {
-		return s, false // TODO(dennwc): allow intersecting indexes
+		return s, false, nil // TODO(dennwc): allow intersecting indexes
 	}
 	quads := IndexScan{Index: ind[0]}
 	for _, d := range ind[0].Dirs {
 		v, ok := s.Filter[d].(Int64Value)
 		if !ok {
-			return s, false
+			return s, false, nil
 		}
 		quads.Values = append(quads.Values, uint64(v))
 	}
-	return s.SimplifyFrom(quads), true
+	return s.SimplifyFrom(quads), true, nil
 }
 
 type IndexScan struct {
@@ -128,7 +128,7 @@ type IndexScan struct {
 	Values []uint64
 }
 
-func (s IndexScan) BuildIterator(qs graph.QuadStore) iterator.Shape {
+func (s IndexScan) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	kqs, ok := qs.(*QuadStore)
 	if !ok {
 		return iterator.NewError(fmt.Errorf("expected KV quadstore, got: %T", qs))
@@ -136,6 +136,6 @@ func (s IndexScan) BuildIterator(qs graph.QuadStore) iterator.Shape {
 	return kqs.newQuadIterator(s.Index, s.Values)
 }
 
-func (s IndexScan) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool) {
-	return s, false
+func (s IndexScan) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
+	return s, false, nil
 }

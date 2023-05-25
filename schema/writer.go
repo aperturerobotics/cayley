@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -14,9 +15,9 @@ import (
 // Otherwise, a new BNode will be generated using GenerateID function.
 //
 // See LoadTo for a list of quads mapping rules.
-func (c *Config) WriteAsQuads(w quad.Writer, o interface{}) (quad.Value, error) {
+func (c *Config) WriteAsQuads(ctx context.Context, w quad.Writer, o interface{}) (quad.Value, error) {
 	wr := c.newWriter(w)
-	return wr.writeAsQuads(reflect.ValueOf(o))
+	return wr.writeAsQuads(ctx, reflect.ValueOf(o))
 }
 
 type writer struct {
@@ -29,36 +30,36 @@ func (c *Config) newWriter(w quad.Writer) *writer {
 	return &writer{c: c, w: w, seen: make(map[uintptr]quad.Value)}
 }
 
-func (w *writer) writeQuad(s, p, o quad.Value, rev bool) error {
+func (w *writer) writeQuad(ctx context.Context, s, p, o quad.Value, rev bool) error {
 	if rev {
 		s, o = o, s
 	}
-	return w.w.WriteQuad(quad.Quad{Subject: s, Predicate: p, Object: o, Label: w.c.Label})
+	return w.w.WriteQuad(ctx, quad.Quad{Subject: s, Predicate: p, Object: o, Label: w.c.Label})
 }
 
 // writeOneValReflect writes a set of quads corresponding to a value. It may omit writing quads if value is zero.
-func (w *writer) writeOneValReflect(id quad.Value, pred quad.Value, rv reflect.Value, rev bool) error {
+func (w *writer) writeOneValReflect(ctx context.Context, id quad.Value, pred quad.Value, rv reflect.Value, rev bool) error {
 	if isZero(rv) {
 		return nil
 	}
 	// write field value and get an ID
-	sid, err := w.writeAsQuads(rv)
+	sid, err := w.writeAsQuads(ctx, rv)
 	if err != nil {
 		return err
 	}
 	// write a quad pointing to this value
-	return w.writeQuad(id, pred, sid, rev)
+	return w.writeQuad(ctx, id, pred, sid, rev)
 }
 
-func (w *writer) writeTypeInfo(id quad.Value, rt reflect.Type) error {
+func (w *writer) writeTypeInfo(ctx context.Context, id quad.Value, rt reflect.Type) error {
 	iri := getTypeIRI(rt)
 	if iri == quad.IRI("") {
 		return nil
 	}
-	return w.writeQuad(id, w.c.iri(iriType), w.c.iri(iri), false)
+	return w.writeQuad(ctx, id, w.c.iri(iriType), w.c.iri(iri), false)
 }
 
-func (w *writer) writeValueAs(id quad.Value, rv reflect.Value, pref string, rules fieldRules) error {
+func (w *writer) writeValueAs(ctx context.Context, id quad.Value, rv reflect.Value, pref string, rules fieldRules) error {
 	switch kind := rv.Kind(); kind {
 	case reflect.Ptr, reflect.Map:
 		ptr := rv.Pointer()
@@ -71,13 +72,13 @@ func (w *writer) writeValueAs(id quad.Value, rv reflect.Value, pref string, rule
 		}
 	}
 	rt := rv.Type()
-	if err := w.writeTypeInfo(id, rt); err != nil {
+	if err := w.writeTypeInfo(ctx, id, rt); err != nil {
 		return err
 	}
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		if f.Anonymous {
-			if err := w.writeValueAs(id, rv.Field(i), pref+f.Name+".", rules); err != nil {
+			if err := w.writeValueAs(ctx, id, rv.Field(i), pref+f.Name+".", rules); err != nil {
 				return err
 			}
 			continue
@@ -88,14 +89,14 @@ func (w *writer) writeValueAs(id quad.Value, rv reflect.Value, pref string, rule
 			if r.Rev {
 				s, o = o, s
 			}
-			if err := w.writeQuad(s, r.Pred, o, false); err != nil {
+			if err := w.writeQuad(ctx, s, r.Pred, o, false); err != nil {
 				return err
 			}
 		case saveRule:
 			if f.Type.Kind() == reflect.Slice {
 				sl := rv.Field(i)
 				for j := 0; j < sl.Len(); j++ {
-					if err := w.writeOneValReflect(id, r.Pred, sl.Index(j), r.Rev); err != nil {
+					if err := w.writeOneValReflect(ctx, id, r.Pred, sl.Index(j), r.Rev); err != nil {
 						return err
 					}
 				}
@@ -104,7 +105,7 @@ func (w *writer) writeValueAs(id quad.Value, rv reflect.Value, pref string, rule
 				if !r.Opt && isZero(fv) {
 					return ErrReqFieldNotSet{Field: f.Name}
 				}
-				if err := w.writeOneValReflect(id, r.Pred, fv, r.Rev); err != nil {
+				if err := w.writeOneValReflect(ctx, id, r.Pred, fv, r.Rev); err != nil {
 					return err
 				}
 			}
@@ -113,7 +114,7 @@ func (w *writer) writeValueAs(id quad.Value, rv reflect.Value, pref string, rule
 	return nil
 }
 
-func (w *writer) writeAsQuads(rv reflect.Value) (quad.Value, error) {
+func (w *writer) writeAsQuads(ctx context.Context, rv reflect.Value) (quad.Value, error) {
 	rt := rv.Type()
 	// if node is a primitive - return directly
 	if rt.Implements(reflQuadValue) {
@@ -176,7 +177,7 @@ func (w *writer) writeAsQuads(rv reflect.Value) (quad.Value, error) {
 		ptr := prv.Pointer()
 		w.seen[ptr] = id
 	}
-	if err = w.writeValueAs(id, rv, "", rules); err != nil {
+	if err = w.writeValueAs(ctx, id, rv, "", rules); err != nil {
 		return nil, err
 	}
 	return id, nil

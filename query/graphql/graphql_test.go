@@ -311,7 +311,8 @@ func TestExecute(t *testing.T) {
 	qs := memstore.New()
 	qw := testutil.MakeWriter(t, qs, nil)
 	quads := testutil.LoadGraph(t, "../../data/testdata.nq")
-	err := qw.AddQuadSet(quads)
+	ctx := context.Background()
+	err := qw.AddQuadSet(ctx, quads)
 	require.NoError(t, err)
 
 	for _, c := range casesExecute {

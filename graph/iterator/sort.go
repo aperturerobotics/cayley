@@ -21,23 +21,26 @@ func NewSort(namer refs.Namer, subIt Shape) *Sort {
 	return &Sort{namer, subIt}
 }
 
-func (it *Sort) Iterate() Scanner {
-	return newSortNext(it.namer, it.subIt.Iterate())
+func (it *Sort) Iterate(ctx context.Context) Scanner {
+	return newSortNext(it.namer, it.subIt.Iterate(ctx))
 }
 
-func (it *Sort) Lookup() Index {
+func (it *Sort) Lookup(ctx context.Context) Index {
 	// TODO(dennwc): Lookup doesn't need any sorting. Using it this way is a bug in the optimizer.
 	//               But instead of failing here, let still allow the query to execute. It won't be sorted,
 	//               but it will work at least. Later consider changing returning an error here.
-	return it.subIt.Lookup()
+	return it.subIt.Lookup(ctx)
 }
 
-func (it *Sort) Optimize(ctx context.Context) (Shape, bool) {
-	newIt, optimized := it.subIt.Optimize(ctx)
+func (it *Sort) Optimize(ctx context.Context) (Shape, bool, error) {
+	newIt, optimized, err := it.subIt.Optimize(ctx)
+	if err != nil {
+		return it, false, err
+	}
 	if optimized {
 		it.subIt = newIt
 	}
-	return it, false
+	return it, false, nil
 }
 
 func (it *Sort) Stats(ctx context.Context) (Costs, error) {
@@ -93,18 +96,19 @@ func newSortNext(namer refs.Namer, subIt Scanner) *sortNext {
 	}
 }
 
-func (it *sortNext) TagResults(dst map[string]refs.Ref) {
+func (it *sortNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
 	for tag, value := range it.result.tags {
 		dst[tag] = value
 	}
+	return nil
 }
 
 func (it *sortNext) Err() error {
 	return it.err
 }
 
-func (it *sortNext) Result() refs.Ref {
-	return it.result.id
+func (it *sortNext) Result(ctx context.Context) (refs.Ref, error) {
+	return it.result.id, it.err
 }
 
 func (it *sortNext) Next(ctx context.Context) bool {
@@ -153,22 +157,29 @@ func (it *sortNext) String() string {
 func getSortedValues(ctx context.Context, namer refs.Namer, it Scanner) (sortByString, error) {
 	var v sortByString
 	for it.Next(ctx) {
-		id := it.Result()
+		id, err := it.Result(ctx)
+		if err != nil {
+			return nil, err
+		}
 		// TODO(dennwc): batch and use refs.ValuesOf
-		name, err := namer.NameOf(id)
+		name, err := namer.NameOf(ctx, id)
 		if err != nil {
 			return nil, err
 		}
 		str := name.String()
 		tags := make(map[string]refs.Ref)
-		it.TagResults(tags)
+		if err := it.TagResults(ctx, tags); err != nil {
+			return nil, err
+		}
 		val := sortValue{
 			result: result{id, tags},
 			str:    str,
 		}
 		for it.NextPath(ctx) {
 			tags = make(map[string]refs.Ref)
-			it.TagResults(tags)
+			if err := it.TagResults(ctx, tags); err != nil {
+				return nil, err
+			}
 			val.paths = append(val.paths, result{id, tags})
 		}
 		v = append(v, val)

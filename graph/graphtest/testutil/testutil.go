@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +33,8 @@ func LoadGraph(t testing.TB, path string) []quad.Quad {
 	}
 	defer f.Close()
 	dec := nquads.NewReader(f, false)
-	quads, err := quad.ReadAll(dec)
+	ctx := context.Background()
+	quads, err := quad.ReadAll(ctx, dec)
 	if err != nil {
 		t.Fatalf("Failed to Unmarshal: %v", err)
 	}
@@ -42,8 +44,9 @@ func LoadGraph(t testing.TB, path string) []quad.Quad {
 func MakeWriter(t testing.TB, qs graph.QuadStore, opts graph.Options, data ...quad.Quad) graph.QuadWriter {
 	w, err := writer.NewSingleReplication(qs, opts)
 	require.NoError(t, err)
+	ctx := context.Background()
 	if len(data) > 0 {
-		err = w.AddQuadSet(data)
+		err = w.AddQuadSet(ctx, data)
 		require.NoError(t, err)
 	}
 	return w

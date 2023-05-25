@@ -41,7 +41,7 @@ func (qs *Oldstore) valueAt(i int) quad.Value {
 	return quad.String(qs.Data[i])
 }
 
-func (qs *Oldstore) ValueOf(s quad.Value) (graph.Ref, error) {
+func (qs *Oldstore) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
 	if s == nil {
 		return nil, nil
 	}
@@ -53,17 +53,17 @@ func (qs *Oldstore) ValueOf(s quad.Value) (graph.Ref, error) {
 	return nil, nil
 }
 
-func (qs *Oldstore) NewQuadWriter() (quad.WriteCloser, error) {
+func (qs *Oldstore) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	return nopWriter{}, nil
 }
 
 type nopWriter struct{}
 
-func (nopWriter) WriteQuad(q quad.Quad) error {
+func (nopWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
 	return nil
 }
 
-func (nopWriter) WriteQuads(buf []quad.Quad) (int, error) {
+func (nopWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 	return len(buf), nil
 }
 
@@ -71,11 +71,11 @@ func (nopWriter) Close() error {
 	return nil
 }
 
-func (qs *Oldstore) ApplyDeltas([]graph.Delta, graph.IgnoreOpts) error { return nil }
+func (qs *Oldstore) ApplyDeltas(context.Context, []graph.Delta, graph.IgnoreOpts) error { return nil }
 
-func (qs *Oldstore) Quad(graph.Ref) quad.Quad { return quad.Quad{} }
+func (qs *Oldstore) Quad(context.Context, graph.Ref) quad.Quad { return quad.Quad{} }
 
-func (qs *Oldstore) QuadIterator(d quad.Direction, i graph.Ref) iterator.Shape {
+func (qs *Oldstore) QuadIterator(ctx context.Context, d quad.Direction, i graph.Ref) iterator.Shape {
 	return qs.Iter
 }
 
@@ -84,11 +84,11 @@ func (qs *Oldstore) QuadIteratorSize(ctx context.Context, d quad.Direction, val 
 	return st.Size, err
 }
 
-func (qs *Oldstore) NodesAllIterator() iterator.Shape { return &iterator.Null{} }
+func (qs *Oldstore) NodesAllIterator(ctx context.Context) iterator.Shape { return &iterator.Null{} }
 
-func (qs *Oldstore) QuadsAllIterator() iterator.Shape { return &iterator.Null{} }
+func (qs *Oldstore) QuadsAllIterator(ctx context.Context) iterator.Shape { return &iterator.Null{} }
 
-func (qs *Oldstore) NameOf(v graph.Ref) (quad.Value, error) {
+func (qs *Oldstore) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	switch v := v.(type) {
 	case iterator.Int64Node:
 		i := int(v)
@@ -110,14 +110,14 @@ func (qs *Oldstore) Size() int64 { return 0 }
 
 func (qs *Oldstore) DebugPrint() {}
 
-func (qs *Oldstore) OptimizeIterator(it iterator.Shape) (iterator.Shape, bool) {
-	return iterator.NewNull(), false
+func (qs *Oldstore) OptimizeIterator(ctx context.Context, it iterator.Shape) (iterator.Shape, bool, error) {
+	return iterator.NewNull(), false, nil
 }
 
 func (qs *Oldstore) Close() error { return nil }
 
-func (qs *Oldstore) QuadDirection(graph.Ref, quad.Direction) graph.Ref {
-	return iterator.Int64Node(0)
+func (qs *Oldstore) QuadDirection(_ context.Context, _ graph.Ref, _ quad.Direction) (graph.Ref, error) {
+	return iterator.Int64Node(0), nil
 }
 
 func (qs *Oldstore) RemoveQuad(t quad.Quad) {}
@@ -130,7 +130,7 @@ type Store struct {
 
 var _ graph.QuadStore = &Store{}
 
-func (qs *Store) ValueOf(s quad.Value) (graph.Ref, error) {
+func (qs *Store) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
 	for _, q := range qs.Data {
 		if q.Subject == s || q.Object == s {
 			return refs.PreFetched(s), nil
@@ -139,9 +139,9 @@ func (qs *Store) ValueOf(s quad.Value) (graph.Ref, error) {
 	return nil, nil
 }
 
-func (qs *Store) ApplyDeltas([]graph.Delta, graph.IgnoreOpts) error { return nil }
+func (qs *Store) ApplyDeltas(context.Context, []graph.Delta, graph.IgnoreOpts) error { return nil }
 
-func (qs *Store) NewQuadWriter() (quad.WriteCloser, error) {
+func (qs *Store) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	return nopWriter{}, nil
 }
 
@@ -153,11 +153,11 @@ func (q quadValue) Key() interface{} {
 	return q.q.String()
 }
 
-func (qs *Store) Quad(v graph.Ref) (quad.Quad, error) {
+func (qs *Store) Quad(ctx context.Context, v graph.Ref) (quad.Quad, error) {
 	return v.(quadValue).q, nil
 }
 
-func (qs *Store) NameOf(v graph.Ref) (quad.Value, error) {
+func (qs *Store) NameOf(ctx context.Context, v graph.Ref) (quad.Value, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -168,8 +168,8 @@ func (qs *Store) RemoveQuad(t quad.Quad) {}
 
 func (qs *Store) Type() string { return "mockstore" }
 
-func (qs *Store) QuadDirection(v graph.Ref, d quad.Direction) (graph.Ref, error) {
-	qv, err := qs.Quad(v)
+func (qs *Store) QuadDirection(ctx context.Context, v graph.Ref, d quad.Direction) (graph.Ref, error) {
+	qv, err := qs.Quad(ctx, v)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (qs *Store) Close() error { return nil }
 
 func (qs *Store) DebugPrint() {}
 
-func (qs *Store) QuadIterator(d quad.Direction, i graph.Ref) iterator.Shape {
+func (qs *Store) QuadIterator(ctx context.Context, d quad.Direction, i graph.Ref) iterator.Shape {
 	fixed := iterator.NewFixed()
 	v := i.(refs.PreFetchedValue).NameOf()
 	for _, q := range qs.Data {
@@ -202,11 +202,11 @@ func (qs *Store) QuadIteratorSize(ctx context.Context, d quad.Direction, val gra
 	return sz, nil
 }
 
-func (qs *Store) NodesAllIterator() iterator.Shape {
+func (qs *Store) NodesAllIterator(ctx context.Context) iterator.Shape {
 	set := make(map[string]bool)
 	for _, q := range qs.Data {
 		for _, d := range quad.Directions {
-			n, err := qs.NameOf(refs.PreFetched(q.Get(d)))
+			n, err := qs.NameOf(ctx, refs.PreFetched(q.Get(d)))
 			if err != nil {
 				return iterator.NewError(err)
 			}
@@ -222,7 +222,7 @@ func (qs *Store) NodesAllIterator() iterator.Shape {
 	return fixed
 }
 
-func (qs *Store) QuadsAllIterator() iterator.Shape {
+func (qs *Store) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	fixed := iterator.NewFixed()
 	for _, q := range qs.Data {
 		fixed.Add(quadValue{q})
@@ -234,7 +234,7 @@ func (qs *Store) Stats(ctx context.Context, exact bool) (graph.Stats, error) {
 	set := make(map[string]struct{})
 	for _, q := range qs.Data {
 		for _, d := range quad.Directions {
-			n, err := qs.NameOf(refs.PreFetched(q.Get(d)))
+			n, err := qs.NameOf(ctx, refs.PreFetched(q.Get(d)))
 			if err != nil {
 				return graph.Stats{}, err
 			}
