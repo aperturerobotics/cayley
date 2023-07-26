@@ -26,7 +26,6 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterh/liner v1.2.2
-	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/piprate/json-gold v0.5.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
