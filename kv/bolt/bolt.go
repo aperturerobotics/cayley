@@ -21,8 +21,8 @@ import (
 
 	"github.com/boltdb/bolt"
 
-	"github.com/cayleygraph/cayley/kv/base"
 	"github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/base"
 )
 
 const (

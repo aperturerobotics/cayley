@@ -122,8 +122,10 @@ func (r batchReader) ReadQuads(ctx context.Context, quads []Quad) (n int, err er
 	return
 }
 
-var DefaultBatch = 10000
-var MaxBatch = 100000
+var (
+	DefaultBatch = 10000
+	MaxBatch     = 100000
+)
 
 // CopyBatch will copy all quads from src to dst in a batches of batchSize.
 // It returns copied quads count and an error, if it failed.

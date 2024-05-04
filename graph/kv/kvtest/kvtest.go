@@ -9,9 +9,9 @@ import (
 	"github.com/cayleygraph/cayley/graph/graphtest"
 	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
 	"github.com/cayleygraph/cayley/graph/kv"
+	hkv "github.com/cayleygraph/cayley/kv"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/query/shape"
-	hkv "github.com/cayleygraph/cayley/kv"
 	"github.com/stretchr/testify/require"
 )
 

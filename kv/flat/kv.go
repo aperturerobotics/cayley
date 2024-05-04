@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/kv/base"
 	"github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/base"
 )
 
 var (

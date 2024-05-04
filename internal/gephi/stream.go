@@ -213,6 +213,7 @@ type (
 		Object    string `json:"target"`
 	}
 )
+
 type graphStreamEvent struct {
 	AddNodes    map[string]streamNode `json:"an,omitempty"`
 	ChangeNodes map[string]streamNode `json:"cn,omitempty"`

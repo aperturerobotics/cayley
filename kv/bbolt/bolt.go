@@ -21,8 +21,8 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/cayleygraph/cayley/kv/base"
 	"github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/base"
 )
 
 const (

@@ -3,8 +3,8 @@ package flat
 import (
 	"sort"
 
-	"github.com/cayleygraph/cayley/kv/base"
 	"github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/base"
 )
 
 // OpenPathFunc is a function for opening a database given a path.
