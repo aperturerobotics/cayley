@@ -2,7 +2,7 @@
 // protoc-gen-go-vtproto version: v0.4.0
 // source: github.com/cayleygraph/cayley/quad/pquads/pio/test/test.proto
 
-package test
+package pio_test
 
 import (
 	fmt "fmt"

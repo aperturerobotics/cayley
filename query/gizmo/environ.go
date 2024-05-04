@@ -24,10 +24,10 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/cayley/query/shape"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/cayleygraph/cayley/query/path"
+	"github.com/cayleygraph/cayley/query/shape"
 )
 
 // graphObject is a root graph object.

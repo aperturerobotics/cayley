@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph"
+	"github.com/cayleygraph/cayley/quad/voc"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/cayley/quad/voc"
 
 	"github.com/stretchr/testify/require"
 )

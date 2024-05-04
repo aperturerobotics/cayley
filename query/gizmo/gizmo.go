@@ -28,11 +28,11 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/query"
-	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/jsonld"
 	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/cayleygraph/cayley/query"
+	"github.com/cayleygraph/cayley/schema"
 )
 
 const Name = "gizmo"

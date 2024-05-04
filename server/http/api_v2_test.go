@@ -12,9 +12,9 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/writer"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/jsonld"
+	"github.com/cayleygraph/cayley/writer"
 	"github.com/stretchr/testify/require"
 )
 

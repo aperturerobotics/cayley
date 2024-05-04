@@ -28,8 +28,8 @@ import (
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/quad/nquads"
+	"github.com/cayleygraph/cayley/query"
 )
 
 func trace(s string) (string, time.Time) {

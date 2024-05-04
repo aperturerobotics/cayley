@@ -26,8 +26,8 @@ import (
 	"github.com/cayleygraph/cayley/graph/graphmock"
 	"github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/graph/refs"
-	. "github.com/cayleygraph/cayley/query/shape"
 	"github.com/cayleygraph/cayley/quad"
+	. "github.com/cayleygraph/cayley/query/shape"
 )
 
 func intVal(v int) refs.Ref {

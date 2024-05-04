@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/jsonld"
+	"github.com/cayleygraph/cayley/query"
 	"github.com/piprate/json-gold/ld"
 )
 

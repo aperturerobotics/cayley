@@ -30,8 +30,8 @@ import (
 	"github.com/cayleygraph/cayley/clog"
 	_ "github.com/cayleygraph/cayley/clog/glog"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/version"
 	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/version"
 
 	// Load supported backends
 	_ "github.com/cayleygraph/cayley/graph/all"

@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/writer"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/nquads"
+	"github.com/cayleygraph/cayley/writer"
 	"github.com/stretchr/testify/require"
 )
 

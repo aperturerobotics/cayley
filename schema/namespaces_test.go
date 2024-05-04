@@ -8,9 +8,9 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/cayleygraph/cayley/schema"
 )
 
 func TestSaveNamespaces(t *testing.T) {

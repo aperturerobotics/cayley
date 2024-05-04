@@ -15,9 +15,9 @@ import (
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/voc/rdf"
+	"github.com/cayleygraph/cayley/query/path"
 )
 
 func iriFlag(s string, err error) (quad.IRI, error) {

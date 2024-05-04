@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/query/linkedql"
-	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/jsonld"
 	"github.com/cayleygraph/cayley/quad/voc"
 	"github.com/cayleygraph/cayley/quad/voc/rdf"
 	"github.com/cayleygraph/cayley/quad/voc/rdfs"
+	"github.com/cayleygraph/cayley/query/linkedql"
+	"github.com/cayleygraph/cayley/query/path"
 )
 
 func init() {

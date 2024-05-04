@@ -6,9 +6,9 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
 	_ "github.com/cayleygraph/cayley/graph/memstore"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/query/path"
 	_ "github.com/cayleygraph/cayley/writer"
-	"github.com/cayleygraph/cayley/quad"
 )
 
 var (

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cayleygraph/cayley/schema"
 	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/schema"
 )
 
 type quadSlice []quad.Quad

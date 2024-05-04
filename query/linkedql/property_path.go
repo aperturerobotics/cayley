@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/cayleygraph/cayley/query/path"
 )
 
 // PropertyPathI is an interface to be used where a path of properties is expected.
