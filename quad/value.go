@@ -181,7 +181,7 @@ func ToString(v Value) string {
 
 // Raw is a Turtle/NQuads-encoded value.
 //
-// Deprecated: use IRI or String instead.
+// NOTE: use IRI or String instead.
 func Raw(s string) Value {
 	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
 		return String(s[1 : len(s)-1])

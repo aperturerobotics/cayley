@@ -112,17 +112,15 @@ func (it *iteratorNext) Next(ctx context.Context) bool {
 			return false
 		}
 	}
-	for {
-		_, p, err := it.iter.Next()
-		if err != nil {
-			if err != io.EOF {
-				it.err = err
-			}
-			return false
+	_, p, err := it.iter.Next()
+	if err != nil {
+		if err != io.EOF {
+			it.err = err
 		}
-		it.cur = p
-		return true
+		return false
 	}
+	it.cur = p
+	return true
 }
 
 func (it *iteratorNext) Err() error {

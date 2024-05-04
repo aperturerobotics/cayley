@@ -8,12 +8,13 @@ import (
 	base64 "encoding/base64"
 	binary "encoding/binary"
 	fmt "fmt"
-	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
-	json "github.com/aperturerobotics/protobuf-go-lite/json"
 	io "io"
 	math "math"
 	strconv "strconv"
 	strings "strings"
+
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
+	json "github.com/aperturerobotics/protobuf-go-lite/json"
 )
 
 // Copyright 2015 The Cayley Authors. All rights reserved.
@@ -574,7 +575,6 @@ func (x *Value_LangString) GetLang() string {
 	return ""
 }
 
-// From https://github.com/golang/protobuf/blob/master/ptypes/timestamp/timestamp.proto
 type Value_Timestamp struct {
 	unknownFields []byte
 	Seconds       int64 `protobuf:"varint,1,opt,name=seconds,proto3" json:"seconds,omitempty"`

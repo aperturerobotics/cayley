@@ -6,11 +6,12 @@ package pio_test
 
 import (
 	fmt "fmt"
-	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
-	json "github.com/aperturerobotics/protobuf-go-lite/json"
 	io "io"
 	strconv "strconv"
 	strings "strings"
+
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
+	json "github.com/aperturerobotics/protobuf-go-lite/json"
 )
 
 // TestMsg is a test message used for unit tests.

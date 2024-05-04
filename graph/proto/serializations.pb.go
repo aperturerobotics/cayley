@@ -6,12 +6,13 @@ package proto
 
 import (
 	fmt "fmt"
-	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
-	json "github.com/aperturerobotics/protobuf-go-lite/json"
-	pquads "github.com/cayleygraph/cayley/quad/pquads"
 	io "io"
 	strconv "strconv"
 	strings "strings"
+
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
+	json "github.com/aperturerobotics/protobuf-go-lite/json"
+	pquads "github.com/cayleygraph/cayley/quad/pquads"
 )
 
 // Copyright 2015 The Cayley Authors. All rights reserved.

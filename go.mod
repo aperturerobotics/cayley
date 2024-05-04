@@ -15,7 +15,6 @@ require (
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/golang/glog v1.1.1
-	github.com/golang/protobuf v1.5.4
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
@@ -58,6 +57,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect

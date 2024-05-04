@@ -31,10 +31,9 @@ import (
 	graphlog "github.com/cayleygraph/cayley/graph/log"
 	"github.com/cayleygraph/cayley/graph/proto"
 	"github.com/cayleygraph/cayley/graph/refs"
+	kvoptions "github.com/cayleygraph/cayley/kv/options"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/pquads"
-	gproto "github.com/golang/protobuf/proto"
-	kvoptions "github.com/cayleygraph/cayley/kv/options"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/vmihailenco/msgpack/v5"
 
@@ -1199,7 +1198,7 @@ func (qs *QuadStore) initBloomFilter(ctx context.Context) error {
 		for it.Next(ctx) {
 			v := it.Val()
 			p = &proto.Primitive{}
-			err := gproto.Unmarshal(v, p)
+			err := p.UnmarshalVT(v)
 			if err != nil {
 				return err
 			}

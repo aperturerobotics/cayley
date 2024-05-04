@@ -67,7 +67,7 @@ func Make(subject, predicate, object, label interface{}) (q Quad) {
 
 // MakeRaw creates a quad with provided raw values (nquads-escaped).
 //
-// Deprecated: use Make pr MakeIRI instead.
+// NOTE: use Make pr MakeIRI instead.
 func MakeRaw(subject, predicate, object, label string) (q Quad) {
 	if subject != "" {
 		q.Subject = Raw(subject)
