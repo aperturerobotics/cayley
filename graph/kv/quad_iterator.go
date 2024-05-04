@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hidal-go/hidalgo/kv"
-	"github.com/hidal-go/hidalgo/kv/options"
+	"github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/options"
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"

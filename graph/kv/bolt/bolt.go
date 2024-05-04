@@ -21,13 +21,11 @@ import (
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/kv"
-	hkv "github.com/hidal-go/hidalgo/kv"
-	"github.com/hidal-go/hidalgo/kv/bolt"
+	hkv "github.com/cayleygraph/cayley/kv"
+	"github.com/cayleygraph/cayley/kv/bolt"
 )
 
 func init() {
-	// override implementation; hidalgo expects a path to a database file,
-	// while cayley was using path/index.bolt file previously
 	kv.Register(Type, kv.Registration{
 		NewFunc:      Open,
 		InitFunc:     Create,

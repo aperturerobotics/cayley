@@ -13,7 +13,7 @@ import (
 	"sync"
 	"testing"
 
-	hkv "github.com/hidal-go/hidalgo/kv"
+	hkv "github.com/cayleygraph/cayley/kv"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cayleygraph/cayley/graph"

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/hidal-go/hidalgo/kv"
+	"github.com/cayleygraph/cayley/kv"
 )
 
 func init() {

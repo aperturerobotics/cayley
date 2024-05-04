@@ -34,11 +34,11 @@ import (
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/pquads"
 	gproto "github.com/golang/protobuf/proto"
-	kvoptions "github.com/hidal-go/hidalgo/kv/options"
+	kvoptions "github.com/cayleygraph/cayley/kv/options"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/hidal-go/hidalgo/kv"
+	"github.com/cayleygraph/cayley/kv"
 	boom "github.com/tylertreat/BoomFilters"
 )
 

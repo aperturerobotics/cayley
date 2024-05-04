@@ -11,7 +11,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/kv"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/query/shape"
-	hkv "github.com/hidal-go/hidalgo/kv"
+	hkv "github.com/cayleygraph/cayley/kv"
 	"github.com/stretchr/testify/require"
 )
 
