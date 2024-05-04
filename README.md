@@ -1,8 +1,11 @@
-<div align="center">
-  <a href="https://github.com/cayleygraph/cayley">
-    <img width="200" src="https://github.com/cayleygraph/branding/raw/master/cayley_bottom.png" alt="Cayley">
-  </a>
-</div>
+# Cayley
+
+[![GoDoc Widget]][GoDoc] [![Go Report Card Widget]][Go Report Card]
+
+[GoDoc]: https://godoc.org/github.com/aperturerobotics/cayley
+[GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/cayley?status.svg
+[Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/cayley
+[Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/cayley
 
 Cayley is an open-source database for [Linked Data](https://www.w3.org/standards/semanticweb/data). It is inspired by the graph database behind Google's [Knowledge Graph](https://en.wikipedia.org/wiki/Knowledge_Graph) (formerly [Freebase](https://en.wikipedia.org/wiki/Freebase_(database))).
 
