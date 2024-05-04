@@ -109,5 +109,7 @@ func (w *Writer) Close() error {
 	return nil
 }
 
-const header = "Creator \"Cayley\"\ngraph [ directed 1\n"
-const footer = "]\n"
+const (
+	header = "Creator \"Cayley\"\ngraph [ directed 1\n"
+	footer = "]\n"
+)

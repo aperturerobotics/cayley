@@ -90,9 +90,7 @@ const (
 	bLog  = "l"
 )
 
-var (
-	vAuto = []byte("auto")
-)
+var vAuto = []byte("auto")
 
 type Ops []kvOp
 
@@ -260,7 +258,7 @@ func sortByOp(exp, got Ops) {
 		}
 		sort.Sort(exp[li:i])
 		sort.Sort(got[li:i])
-		//sort.Sort(bothOps{a: exp[li:i], b: got[li:i]})
+		// sort.Sort(bothOps{a: exp[li:i], b: got[li:i]})
 		li, typ, b = -1, -1, ""
 	}
 	for i, op := range exp {

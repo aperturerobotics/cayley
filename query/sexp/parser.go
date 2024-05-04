@@ -229,7 +229,7 @@ func buildShape(tree *peg.ExpressionTree) (_ shape.Shape, opt bool) {
 	case "PredIdentifier":
 		i := 0
 		if tree.Children[0].Name == "Reverse" {
-			//Taken care of below
+			// Taken care of below
 			i++
 		}
 		it, _ := buildShape(tree.Children[i])

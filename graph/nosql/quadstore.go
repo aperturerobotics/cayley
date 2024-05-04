@@ -56,8 +56,10 @@ func init() {
 	}
 }
 
-type InitFunc func(context.Context, string, graph.Options) (nosql.Database, error)
-type NewFunc func(context.Context, string, graph.Options) (nosql.Database, error)
+type (
+	InitFunc func(context.Context, string, graph.Options) (nosql.Database, error)
+	NewFunc  func(context.Context, string, graph.Options) (nosql.Database, error)
+)
 
 func Register(name string, r Registration) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{

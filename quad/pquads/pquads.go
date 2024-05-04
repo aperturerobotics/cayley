@@ -71,6 +71,7 @@ func NewWriter(w io.Writer, opts *Options) *Writer {
 	})
 	return &Writer{pw: pw, err: err, opts: *opts}
 }
+
 func (w *Writer) WriteQuad(ctx context.Context, q quad.Quad) error {
 	if w.err != nil {
 		return w.err
@@ -124,9 +125,11 @@ func (w *Writer) WriteQuads(ctx context.Context, buf []quad.Quad) (int, error) {
 func (w *Writer) MaxSize() int {
 	return w.max
 }
+
 func (w *Writer) SetCloser(c io.Closer) {
 	w.cl = c
 }
+
 func (w *Writer) Close() error {
 	if w.cl != nil {
 		return w.cl.Close()
@@ -181,6 +184,7 @@ func NewReader(r io.Reader, maxSize int) *Reader {
 	}
 	return qr
 }
+
 func (r *Reader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	if r.err != nil {
 		return quad.Quad{}, r.err
@@ -216,6 +220,7 @@ func (r *Reader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	}
 	return q, nil
 }
+
 func (r *Reader) SkipQuad(ctx context.Context) error {
 	if !r.opts.Full {
 		// TODO(dennwc): read pb fields as bytes and unmarshal them only if ReadQuad is called
@@ -225,6 +230,7 @@ func (r *Reader) SkipQuad(ctx context.Context) error {
 	r.err = r.pr.SkipMsg()
 	return r.err
 }
+
 func (r *Reader) Close() error {
 	if r.cl != nil {
 		return r.cl.Close()

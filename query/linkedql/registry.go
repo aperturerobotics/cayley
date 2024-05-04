@@ -64,7 +64,6 @@ var (
 func Unmarshal(data []byte) (RegistryItem, error) {
 	// TODO: make it a part of quad/jsonld package.
 	data, err := normalizeQuery(data)
-
 	if err != nil {
 		return nil, err
 	}
@@ -232,7 +231,6 @@ func normalizeQuery(data []byte) ([]byte, error) {
 	processor := ld.NewJsonLdProcessor()
 	opts := ld.NewJsonLdOptions("")
 	compact, err := processor.Compact(query, nil, opts)
-
 	if err != nil {
 		return nil, err
 	}

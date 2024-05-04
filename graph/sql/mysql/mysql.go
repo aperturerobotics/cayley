@@ -57,7 +57,7 @@ func runTxMysql(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUp
 			values = append(values, n.RefInc) // one more time for UPDATE
 			stmt, ok := insertValue[nodeKey]
 			if !ok {
-				var ph = make([]string, len(values)-1) // excluding last increment
+				ph := make([]string, len(values)-1) // excluding last increment
 				for i := range ph {
 					ph[i] = "?"
 				}

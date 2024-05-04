@@ -222,15 +222,18 @@ func (w *batchWriter) WriteQuad(ctx context.Context, q quad.Quad) error {
 	w.buf = append(w.buf, q)
 	return nil
 }
+
 func (w *batchWriter) WriteQuads(ctx context.Context, quads []quad.Quad) (int, error) {
 	if err := w.qs.AddQuadSet(ctx, quads); err != nil {
 		return 0, err
 	}
 	return len(quads), nil
 }
+
 func (w *batchWriter) Flush(ctx context.Context) error {
 	return w.flushBuffer(ctx, true)
 }
+
 func (w *batchWriter) Close() error {
 	return w.Flush(context.Background())
 }

@@ -30,12 +30,9 @@ func TestPanicLRUCache(t *testing.T) {
 			c.Put(key, i)
 			c.Get(key)
 			xch <- i
-
 		}(i)
-
 	}
 	for i := 0; i < 100; i++ {
 		<-xch
 	}
-
 }

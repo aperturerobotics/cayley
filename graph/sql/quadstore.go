@@ -74,6 +74,7 @@ func (h NodeHash) SQLValue() interface{} {
 	}
 	return []byte(h.ValueHash[:])
 }
+
 func (h *NodeHash) Scan(src interface{}) error {
 	if src == nil {
 		*h = NodeHash{}
@@ -116,19 +117,16 @@ type QuadStore struct {
 
 func connect(addr string, flavor string, opts graph.Options) (*sql.DB, error) {
 	maxOpenConnections, err := opts.IntKey("maxopenconnections", -1)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve maxopenconnections from options: %v", err)
 	}
 
 	maxIdleConnections, err := opts.IntKey("maxidleconnections", -1)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve maxIdleConnections from options: %v", err)
 	}
 
 	connMaxLifetime, err := opts.StringKey("connmaxlifetime", "")
-
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve connmaxlifetime from options: %v", err)
 	}
@@ -136,7 +134,6 @@ func connect(addr string, flavor string, opts graph.Options) (*sql.DB, error) {
 	var connDuration time.Duration
 	if connMaxLifetime != "" {
 		connDuration, err = time.ParseDuration(connMaxLifetime)
-
 		if err != nil {
 			return nil, fmt.Errorf("couldn't parse connmaxlifetime string: %v", err)
 		}
@@ -299,6 +296,7 @@ func New(typ string, addr string, options graph.Options) (graph.QuadStore, error
 func escapeNullByte(s string) string {
 	return strings.Replace(s, "\u0000", `\x00`, -1)
 }
+
 func unescapeNullByte(s string) string {
 	return strings.Replace(s, `\x00`, "\u0000", -1)
 }

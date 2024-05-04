@@ -126,6 +126,7 @@ func (q QuadHash) Get(d quad.Direction) ValueHash {
 	}
 	panic(fmt.Errorf("unknown direction: %v", d))
 }
+
 func (q *QuadHash) Set(d quad.Direction, h ValueHash) {
 	switch d {
 	case quad.Subject:

@@ -43,8 +43,10 @@ type Registration struct {
 	IsPersistent bool
 }
 
-type InitFunc func(string, graph.Options) (kv.KV, error)
-type NewFunc func(string, graph.Options) (kv.KV, error)
+type (
+	InitFunc func(string, graph.Options) (kv.KV, error)
+	NewFunc  func(string, graph.Options) (kv.KV, error)
+)
 
 func Register(name string, r Registration) {
 	graph.RegisterQuadStore(name, graph.QuadStoreRegistration{

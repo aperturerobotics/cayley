@@ -25,9 +25,11 @@ import (
 )
 
 // line 30 "raw.go"
-const raw_start int = 1
-const raw_first_final int = 88
-const raw_error int = 0
+const (
+	raw_start       int = 1
+	raw_first_final int = 88
+	raw_error       int = 0
+)
 
 const raw_en_statement int = 1
 

@@ -7,9 +7,7 @@ import (
 	"github.com/piprate/json-gold/ld"
 )
 
-var (
-	_ query.Iterator = (*DocumentIterator)(nil)
-)
+var _ query.Iterator = (*DocumentIterator)(nil)
 
 // DocumentIterator is an iterator of documents from the graph
 type DocumentIterator struct {

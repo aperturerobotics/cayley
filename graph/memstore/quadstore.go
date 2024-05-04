@@ -117,6 +117,7 @@ func (q *internalQuad) SetDir(d quad.Direction, n int64) {
 		panic(fmt.Errorf("unknown dir: %v", d))
 	}
 }
+
 func (q internalQuad) Dir(d quad.Direction) int64 {
 	var n int64
 	switch d {
@@ -356,6 +357,7 @@ func (qs *QuadStore) deleteQuadNodes(q internalQuad) {
 		}
 	}
 }
+
 func (qs *QuadStore) Delete(id int64) bool {
 	p := qs.prim[id]
 	if p == nil {

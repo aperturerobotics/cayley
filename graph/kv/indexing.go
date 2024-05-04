@@ -375,6 +375,7 @@ func (qs *QuadStore) incNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 	_, err = qs.incNodesCnt(ctx, tx, upd, ins)
 	return ids, err
 }
+
 func (qs *QuadStore) decNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.NodeUpdate, nodes map[refs.ValueHash]uint64) error {
 	upds := make([]nodeUpdate, 0, len(deltas))
 	for i, d := range deltas {
@@ -718,7 +719,7 @@ func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive
 
 func (qs *QuadStore) markAsDead(ctx context.Context, tx kv.Tx, p *proto.Primitive) error {
 	p.Deleted = true
-	//TODO(barakmich): Add tombstone?
+	// TODO(barakmich): Add tombstone?
 	qs.bloomRemove(p)
 	return qs.addToLog(ctx, tx, p)
 }

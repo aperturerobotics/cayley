@@ -190,6 +190,7 @@ func (it *allIteratorContains) Contains(ctx context.Context, v graph.Ref) (bool,
 	it.cur = p
 	return true, nil
 }
+
 func (it *allIteratorContains) Result(ctx context.Context) (graph.Ref, error) {
 	if err := it.Err(); err != nil {
 		return nil, err

@@ -28,9 +28,11 @@ var (
 
 var storeRegistry = make(map[string]QuadStoreRegistration)
 
-type NewStoreFunc func(context.Context, string, Options) (QuadStore, error)
-type InitStoreFunc func(context.Context, string, Options) error
-type UpgradeStoreFunc func(context.Context, string, Options) error
+type (
+	NewStoreFunc     func(context.Context, string, Options) (QuadStore, error)
+	InitStoreFunc    func(context.Context, string, Options) error
+	UpgradeStoreFunc func(context.Context, string, Options) error
+)
 
 type QuadStoreRegistration struct {
 	NewFunc      NewStoreFunc

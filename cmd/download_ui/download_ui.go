@@ -41,7 +41,6 @@ func main() {
 // DownloadFile will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory.
 func DownloadFile(filepath string, url string) error {
-
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
@@ -86,7 +85,7 @@ func Unzip(src string, dest string) error {
 
 		if f.FileInfo().IsDir() {
 			// Make Folder
-			os.MkdirAll(fpath, 0755)
+			os.MkdirAll(fpath, 0o755)
 			continue
 		}
 
@@ -106,20 +105,17 @@ func Unzip(src string, dest string) error {
 		}
 
 		_, err = io.Copy(outFile, rc)
-
 		if err != nil {
 			return err
 		}
 
 		// Close the file without defer to close before next iteration of loop
 		err = outFile.Close()
-
 		if err != nil {
 			return err
 		}
 
 		err = rc.Close()
-
 		if err != nil {
 			return err
 		}

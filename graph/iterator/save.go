@@ -7,9 +7,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 )
 
-var (
-	_ TaggerBase = (*Save)(nil)
-)
+var _ TaggerBase = (*Save)(nil)
 
 func Tag(it Shape, tag string) Shape {
 	if s, ok := it.(TaggerShape); ok {

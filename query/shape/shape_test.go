@@ -34,14 +34,17 @@ func intVal(v int) refs.Ref {
 	return graphmock.IntVal(v)
 }
 
-var _ Optimizer = ValLookup(nil)
-var _ graph.QuadStore = ValLookup(nil)
+var (
+	_ Optimizer       = ValLookup(nil)
+	_ graph.QuadStore = ValLookup(nil)
+)
 
 type ValLookup map[quad.Value]refs.Ref
 
 func (qs ValLookup) OptimizeShape(ctx context.Context, s Shape) (Shape, bool, error) {
 	return s, false, nil // emulate dumb quad store
 }
+
 func (qs ValLookup) ValueOf(ctx context.Context, v quad.Value) (refs.Ref, error) {
 	return qs[v], nil
 }
@@ -49,36 +52,47 @@ func (qs ValLookup) ValueOf(ctx context.Context, v quad.Value) (refs.Ref, error)
 func (ValLookup) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) ApplyDeltas(ctx context.Context, _ []graph.Delta, _ graph.IgnoreOpts) error {
 	panic("not implemented")
 }
+
 func (ValLookup) Quad(ctx context.Context, _ refs.Ref) (quad.Quad, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) QuadIterator(ctx context.Context, _ quad.Direction, _ refs.Ref) iterator.Shape {
 	panic("not implemented")
 }
+
 func (ValLookup) QuadIteratorSize(ctx context.Context, d quad.Direction, val refs.Ref) (refs.Size, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) NodesAllIterator(ctx context.Context) iterator.Shape {
 	panic("not implemented")
 }
+
 func (ValLookup) QuadsAllIterator(ctx context.Context) iterator.Shape {
 	panic("not implemented")
 }
+
 func (ValLookup) NameOf(ctx context.Context, _ refs.Ref) (quad.Value, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) Stats(ctx context.Context, exact bool) (graph.Stats, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) Close() error {
 	panic("not implemented")
 }
+
 func (ValLookup) QuadDirection(ctx context.Context, _ refs.Ref, _ quad.Direction) (refs.Ref, error) {
 	panic("not implemented")
 }
+
 func (ValLookup) Type() string {
 	panic("not implemented")
 }
@@ -87,7 +101,8 @@ func emptySet() Shape {
 	return NodesFrom{
 		Dir: quad.Predicate,
 		Quads: Intersect{Quads{
-			{Dir: quad.Object,
+			{
+				Dir:    quad.Object,
 				Values: Lookup{quad.IRI("not-existent")},
 			},
 		}},
@@ -246,7 +261,8 @@ var optimizeCases = []struct {
 			QuadFilter{Dir: quad.Predicate, Values: Intersect{
 				FixedTags{
 					Tags: map[string]refs.Ref{"foo": intVal(1)},
-					On: NodesFrom{Dir: quad.Subject,
+					On: NodesFrom{
+						Dir: quad.Subject,
 						Quads: Quads{
 							QuadFilter{Dir: quad.Object, Values: FixedTags{
 								Tags: map[string]refs.Ref{"bar": intVal(2)},
@@ -344,7 +360,8 @@ var optimizeCases = []struct {
 			From: IntersectOpt{
 				Sub: Intersect{AllNodes{}},
 				Opt: []Shape{
-					QuadsAction{Result: quad.Subject,
+					QuadsAction{
+						Result: quad.Subject,
 						Save:   map[quad.Direction][]string{quad.Object: {"status"}},
 						Filter: map[quad.Direction]refs.Ref{quad.Predicate: intVal(1)},
 					},

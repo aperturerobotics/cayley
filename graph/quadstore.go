@@ -111,9 +111,7 @@ type QuadStore interface {
 
 type Options map[string]interface{}
 
-var (
-	typeInt = reflect.TypeOf(int(0))
-)
+var typeInt = reflect.TypeOf(int(0))
 
 func (d Options) IntKey(key string, def int) (int, error) {
 	if val, ok := d[key]; ok {

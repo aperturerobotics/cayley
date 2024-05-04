@@ -14,7 +14,7 @@ func MakeValue(qv quad.Value) *Value {
 		return nil
 	}
 	switch v := qv.(type) {
-	//case quad.Raw:
+	// case quad.Raw:
 	//	return &Value{&Value_Raw{[]byte(v)}}
 	case quad.String:
 		return &Value{Value: &Value_Str{string(v)}}

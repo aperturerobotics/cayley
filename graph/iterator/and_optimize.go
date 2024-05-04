@@ -204,6 +204,7 @@ func (c byCost) Len() int { return len(c.list) }
 func (c byCost) Less(i, j int) bool {
 	return c.cost[i].ContainsCost < c.cost[j].ContainsCost
 }
+
 func (c byCost) Swap(i, j int) {
 	c.list[i], c.list[j] = c.list[j], c.list[i]
 	c.cost[i], c.cost[j] = c.cost[j], c.cost[i]

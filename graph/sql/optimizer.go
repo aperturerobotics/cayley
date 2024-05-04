@@ -266,6 +266,7 @@ func (opt *Optimizer) optimizeFilter(from shape.Shape, f shape.ValueFilter) ([]W
 		return nil, nil, false
 	}
 }
+
 func (opt *Optimizer) optimizeFilters(s shape.Filter) (shape.Shape, bool, error) {
 	switch from := s.From.(type) {
 	case shape.AllNodes:

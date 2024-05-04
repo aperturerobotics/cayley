@@ -140,9 +140,7 @@ const (
 	vEmily   = quad.IRI("emily")
 )
 
-var (
-	grandfollows = path.StartMorphism().Out(vFollows).Out(vFollows)
-)
+var grandfollows = path.StartMorphism().Out(vFollows).Out(vFollows)
 
 func testSet(qs graph.QuadStore) []test {
 	return []test{

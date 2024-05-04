@@ -69,8 +69,10 @@ func (fieldNameMapper) FieldName(t reflect.Type, f reflect.StructField) string {
 	return lcFirst(f.Name)
 }
 
-const constructMethodPrefix = "New"
-const backwardsCompatibilityPrefix = "Capitalized"
+const (
+	constructMethodPrefix        = "New"
+	backwardsCompatibilityPrefix = "Capitalized"
+)
 
 func (fieldNameMapper) MethodName(t reflect.Type, m reflect.Method) string {
 	if strings.HasPrefix(m.Name, backwardsCompatibilityPrefix) {
@@ -151,6 +153,7 @@ func (s *Session) tagsToValueMap(m map[string]graph.Ref) (map[string]interface{}
 	}
 	return outputMap, nil
 }
+
 func (s *Session) runIteratorToArray(it iterator.Shape, limit int) ([]map[string]interface{}, error) {
 	ctx := s.context()
 
@@ -285,6 +288,7 @@ func (s *Session) run() (goja.Value, error) {
 	}
 	return v, err
 }
+
 func (s *Session) Execute(ctx context.Context, qu string, opt query.Options) (query.Iterator, error) {
 	switch opt.Collation {
 	case query.Raw, query.JSON, query.JSONLD, query.REPL:

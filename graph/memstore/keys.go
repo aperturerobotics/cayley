@@ -63,8 +63,8 @@ import (
 )
 
 const (
-	kx = 32 //TODO benchmark tune this number if using custom key/value type(s).
-	kd = 32 //TODO benchmark tune this number if using custom key/value type(s).
+	kx = 32 // TODO benchmark tune this number if using custom key/value type(s).
+	kd = 32 // TODO benchmark tune this number if using custom key/value type(s).
 )
 
 func init() {
@@ -385,7 +385,7 @@ func (t *Tree) Delete(k int64) (ok bool) {
 
 func (t *Tree) extract(q *d, i int) { // (r *primitive) {
 	t.ver++
-	//r = q.d[i].v // prepared for Extract
+	// r = q.d[i].v // prepared for Extract
 	q.c--
 	if i < q.c {
 		copy(q.d[i:], q.d[i+1:q.c+1])

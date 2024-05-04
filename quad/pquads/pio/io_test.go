@@ -45,11 +45,11 @@ func iotest(writer io.Writer, reader io.Reader) error {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := range msgs {
 		msgs[i] = &test.TestMsg{Value: r.Int31()}
-		//issue 31
+		// issue 31
 		if i == 5 {
 			msgs[i] = &test.TestMsg{}
 		}
-		//issue 31
+		// issue 31
 		if i == 999 {
 			msgs[i] = &test.TestMsg{}
 		}

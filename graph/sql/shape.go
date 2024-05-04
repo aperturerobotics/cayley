@@ -58,12 +58,14 @@ func needQuotes(s string) bool {
 	}
 	return false
 }
+
 func (b *Builder) EscapeField(s string) string {
 	if !needQuotes(s) {
 		return s
 	}
 	return b.d.FieldQuote(s)
 }
+
 func (b *Builder) Placeholder() string {
 	b.pi++
 	return b.d.Placeholder(b.pi)
@@ -159,6 +161,7 @@ func (f Field) SQL(b *Builder) string {
 	}
 	return name + " AS " + b.EscapeField(f.Alias)
 }
+
 func (f Field) NameOrAlias() string {
 	if f.Alias != "" {
 		return f.Alias
@@ -192,6 +195,7 @@ func (s Subquery) SQL(b *Builder) string {
 	}
 	return q
 }
+
 func (s Subquery) Args() []Value {
 	return s.Query.Args()
 }
@@ -206,6 +210,7 @@ func (f Table) SQL(b *Builder) string {
 func (f Table) Args() []Value {
 	return nil
 }
+
 func (f Table) NameSQL() string {
 	if f.Alias != "" {
 		return f.Alias
@@ -364,6 +369,7 @@ func (s Select) SQL(b *Builder) string {
 	}
 	return strings.Join(parts, sep)
 }
+
 func (s Select) Args() []Value {
 	var args []Value
 	// first add args for FROM subqueries

@@ -25,9 +25,11 @@ import (
 )
 
 // line 30 "typed.go"
-const typed_start int = 1
-const typed_first_final int = 178
-const typed_error int = 0
+const (
+	typed_start       int = 1
+	typed_first_final int = 178
+	typed_error       int = 0
+)
 
 const typed_en_statement int = 1
 

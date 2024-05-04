@@ -4,8 +4,10 @@ import (
 	"fmt"
 )
 
-type ldArray = []interface{}
-type ldMap = map[string]interface{}
+type (
+	ldArray = []interface{}
+	ldMap   = map[string]interface{}
+)
 
 func unwrapValue(i interface{}) interface{} {
 	m, ok := i.(ldMap)

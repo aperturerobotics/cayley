@@ -255,6 +255,7 @@ type Null struct{}
 func (Null) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	return iterator.NewNull()
 }
+
 func (s Null) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
@@ -347,6 +348,7 @@ func (s Filter) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.
 	}
 	return it
 }
+
 func (s Filter) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
 		return nil, true, nil
@@ -461,6 +463,7 @@ func (s Count) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.S
 	}
 	return iterator.NewCount(it, qs)
 }
+
 func (s Count) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Values) {
 		return Fixed{refs.PreFetched(quad.Int(0))}, true, nil
@@ -512,6 +515,7 @@ type Quads []QuadFilter
 func (s *Quads) Intersect(q ...QuadFilter) {
 	*s = append(*s, q...)
 }
+
 func (s Quads) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	if len(s) == 0 {
 		return qs.QuadsAllIterator(ctx)
@@ -525,6 +529,7 @@ func (s Quads) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.S
 	}
 	return iterator.NewAnd(its...)
 }
+
 func (s Quads) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	var opt bool
 	sw := 0
@@ -586,6 +591,7 @@ func (s NodesFrom) BuildIterator(ctx context.Context, qs graph.QuadStore) iterat
 	}
 	return graph.NewHasA(qs, sub, s.Dir)
 }
+
 func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Quads) {
 		return nil, true, nil
@@ -726,6 +732,7 @@ func (s QuadsAction) Clone() QuadsAction {
 	}
 	return s
 }
+
 func (s QuadsAction) simplify() NodesFrom {
 	q := make(Quads, 0, len(s.Save)+len(s.Filter))
 	for dir, val := range s.Filter {
@@ -736,6 +743,7 @@ func (s QuadsAction) simplify() NodesFrom {
 	}
 	return NodesFrom{Dir: s.Result, Quads: q}
 }
+
 func (s QuadsAction) SimplifyFrom(quads Shape) Shape {
 	q := make(Quads, 0, len(s.Save))
 	for dir, tags := range s.Save {
@@ -746,13 +754,16 @@ func (s QuadsAction) SimplifyFrom(quads Shape) Shape {
 	}
 	return NodesFrom{Dir: s.Result, Quads: quads}
 }
+
 func (s QuadsAction) Simplify() Shape {
 	return s.simplify()
 }
+
 func (s QuadsAction) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	h := s.simplify()
 	return h.BuildIterator(ctx, qs)
 }
+
 func (s QuadsAction) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r != nil {
 		return r.OptimizeShape(ctx, s)
@@ -814,6 +825,7 @@ type Fixed []refs.Ref
 func (s *Fixed) Add(v ...refs.Ref) {
 	*s = append(*s, v...)
 }
+
 func (s Fixed) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	it := iterator.NewFixed()
 	for _, v := range s {
@@ -824,6 +836,7 @@ func (s Fixed) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.S
 	}
 	return it
 }
+
 func (s Fixed) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if len(s) == 0 {
 		return nil, true, nil
@@ -853,6 +866,7 @@ func (s FixedTags) BuildIterator(ctx context.Context, qs graph.QuadStore) iterat
 	}
 	return sv
 }
+
 func (s FixedTags) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.On) {
 		return nil, true, nil
@@ -915,6 +929,7 @@ func (s Lookup) resolve(ctx context.Context, qs valueResolver) (Shape, error) {
 	}
 	return Fixed(vals), nil
 }
+
 func (s Lookup) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	f, err := s.resolve(ctx, qs)
 	if err != nil {
@@ -925,6 +940,7 @@ func (s Lookup) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.
 	}
 	return f.BuildIterator(ctx, qs)
 }
+
 func (s Lookup) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if r == nil {
 		return s, false, nil
@@ -960,6 +976,7 @@ func (s Materialize) BuildIterator(ctx context.Context, qs graph.QuadStore) iter
 	it := s.Values.BuildIterator(ctx, qs)
 	return iterator.NewMaterializeWithSize(it, int64(s.Size))
 }
+
 func (s Materialize) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.Values) {
 		return nil, true, nil
@@ -1016,6 +1033,7 @@ func (s Intersect) BuildIterator(ctx context.Context, qs graph.QuadStore) iterat
 	}
 	return iterator.NewAnd(sub...)
 }
+
 func (s Intersect) Optimize(ctx context.Context, r Optimizer) (sout Shape, opt bool, rerr error) {
 	if len(s) == 0 {
 		return nil, true, nil
@@ -1375,6 +1393,7 @@ func (s Union) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.S
 	}
 	return iterator.NewOr(sub...)
 }
+
 func (s Union) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	var opt bool
 	realloc := func() {
@@ -1447,6 +1466,7 @@ func (s Page) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Sh
 	}
 	return it
 }
+
 func (s Page) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
 		return nil, true, nil
@@ -1478,6 +1498,7 @@ func (s Page) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	// TODO: check size
 	return s, opt, nil
 }
+
 func (s Page) ApplyPage(p Page) *Page {
 	s.Skip += p.Skip
 	if s.Limit > 0 {
@@ -1506,6 +1527,7 @@ func (s Unique) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.
 	it := s.From.BuildIterator(ctx, qs)
 	return iterator.NewUnique(it)
 }
+
 func (s Unique) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
 		return nil, true, nil
@@ -1546,6 +1568,7 @@ func (s Save) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Sh
 	}
 	return it
 }
+
 func (s Save) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
 		return nil, true, nil
@@ -1601,6 +1624,7 @@ func (s Sort) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Sh
 	it := s.From.BuildIterator(ctx, qs)
 	return iterator.NewSort(qs, it)
 }
+
 func (s Sort) Optimize(ctx context.Context, r Optimizer) (Shape, bool, error) {
 	if IsNull(s.From) {
 		return nil, true, nil

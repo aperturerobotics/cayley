@@ -205,8 +205,8 @@ var queries = []struct {
 		},
 	},
 
-	//Q: Who starred in both "The Net" and "Speed" ?
-	//A: "Sandra Bullock"
+	// Q: Who starred in both "The Net" and "Speed" ?
+	// A: "Sandra Bullock"
 	{
 		message: "Net and Speed",
 		query: common + `m1_actors.intersect(m2_actors).out("<name>").all()
@@ -216,8 +216,8 @@ var queries = []struct {
 		},
 	},
 
-	//Q: Did "Keanu Reeves" star in "The Net" ?
-	//A: No
+	// Q: Did "Keanu Reeves" star in "The Net" ?
+	// A: No
 	{
 		message: "Keanu in The Net",
 		query: common + `actor2.intersect(m1_actors).out("<name>").all()
@@ -225,8 +225,8 @@ var queries = []struct {
 		expect: nil,
 	},
 
-	//Q: Did "Keanu Reeves" star in "Speed" ?
-	//A: Yes
+	// Q: Did "Keanu Reeves" star in "Speed" ?
+	// A: Yes
 	{
 		message: "Keanu in Speed",
 		query: common + `actor2.intersect(m2_actors).out("<name>").all()
@@ -236,8 +236,8 @@ var queries = []struct {
 		},
 	},
 
-	//Q: Has "Keanu Reeves" co-starred with anyone who starred in "The Net" ?
-	//A: "Keanu Reeves" was in "Speed" and "The Lake House" with "Sandra Bullock",
+	// Q: Has "Keanu Reeves" co-starred with anyone who starred in "The Net" ?
+	// A: "Keanu Reeves" was in "Speed" and "The Lake House" with "Sandra Bullock",
 	//   who was in "The Net"
 	{
 		message: "Keanu with other in The Net",
@@ -250,8 +250,8 @@ var queries = []struct {
 		},
 	},
 
-	//Q: Do "Keanu Reeves" and "Sandra Bullock" have any commons co-stars?
-	//A: Yes, many. For example: SB starred with "Steve Martin" in "The Prince
+	// Q: Do "Keanu Reeves" and "Sandra Bullock" have any commons co-stars?
+	// A: Yes, many. For example: SB starred with "Steve Martin" in "The Prince
 	//    of Egypt", and KR starred with Steven Martin in "Parenthood".
 	{
 		message: "Keanu and Bullock with other",

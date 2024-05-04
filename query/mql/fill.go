@@ -74,7 +74,6 @@ func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (m
 						q.queryResult[targetPath][key] = append(t, newStruct)
 						q.queryResult[namePath] = newStruct
 					}
-
 				} else {
 					q.queryResult[namePath] = newStruct
 					q.queryResult[targetPath][key] = newStruct
@@ -108,7 +107,6 @@ func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (m
 				case []interface{}:
 					q.queryResult[targetPath][key] = append(t, value)
 				}
-
 			} else {
 				q.queryResult[targetPath][key] = value
 			}

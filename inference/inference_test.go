@@ -33,6 +33,7 @@ var (
 	personal         = quad.IRI("personal")
 	softwareEngineer = quad.IRI("SoftwareEngineer")
 )
+
 var (
 	aliceIsPerson                    = triple(alice, ptype, person)
 	aliceLikesBob                    = triple(alice, likes, bob)
@@ -48,6 +49,7 @@ var (
 	softwareEngineerClass            = triple(softwareEngineer, ptype, class)
 	aliceNameAlice                   = triple(alice, name, aliceName)
 )
+
 var (
 	engineerAndSoftwareEngineerSubClasses = []quad.Quad{
 		engineerSubClass,

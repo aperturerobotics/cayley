@@ -132,6 +132,7 @@ func (q Quad) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(rq)
 }
+
 func (q *Quad) UnmarshalJSON(data []byte) error {
 	var rq rawQuad
 	if err := json.Unmarshal(data, &rq); err != nil {

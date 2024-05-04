@@ -23,7 +23,7 @@ func NewCmd() *cobra.Command {
 	var quiet bool
 	var uri, formatName, out string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "cayleyexport",
 		Short: "Export data from Cayley. If no file is provided, cayleyexport writes to stdout.",
 		Args:  cobra.NoArgs,

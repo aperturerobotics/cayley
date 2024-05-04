@@ -124,15 +124,19 @@ func (g *graphObject) Emit(call goja.FunctionCall) goja.Value {
 func (g *graphObject) CapitalizedUri(s string) quad.IRI {
 	return g.NewIRI(s)
 }
+
 func (g *graphObject) CapitalizedAddNamespace(pref, ns string) {
 	g.AddNamespace(pref, ns)
 }
+
 func (g *graphObject) CapitalizedAddDefaultNamespaces() {
 	g.AddDefaultNamespaces()
 }
+
 func (g *graphObject) CapitalizedLoadNamespaces() error {
 	return g.LoadNamespaces()
 }
+
 func (g *graphObject) CapitalizedEmit(call goja.FunctionCall) goja.Value {
 	return g.Emit(call)
 }
@@ -349,7 +353,7 @@ func toStrings(objs []interface{}) []string {
 	if len(objs) == 0 {
 		return nil
 	}
-	var out = make([]string, 0, len(objs))
+	out := make([]string, 0, len(objs))
 	for _, o := range objs {
 		switch v := o.(type) {
 		case string:

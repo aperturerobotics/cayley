@@ -15,9 +15,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
-var (
-	Address = `unix:///var/run/docker.sock`
-)
+var Address = `unix:///var/run/docker.sock`
 
 type Config struct {
 	docker.Config

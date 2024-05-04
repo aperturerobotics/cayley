@@ -68,6 +68,7 @@ func NewGraphStream(w io.Writer) *GraphStream {
 		buf:  bytes.NewBuffer(nil),
 	}
 }
+
 func toNodeLabel(v quad.Value) string {
 	if v == nil {
 		return ""
@@ -78,6 +79,7 @@ func toNodeLabel(v quad.Value) string {
 func randCoord() float64 {
 	return (rand.Float64() - 0.5) * limitCoord * 2
 }
+
 func randPos() (x float64, y float64) {
 	x = randCoord()
 	x2 := x * x
@@ -144,17 +146,20 @@ func (gs *GraphStream) makeOneNode(id string, v quad.Value, props map[quad.Value
 	}
 	return map[string]streamNode{id: node}
 }
+
 func (gs *GraphStream) AddNode(v quad.Value, props map[quad.Value]quad.Value) string {
 	var h valHash
 	quad.HashTo(v, h[:])
 	return gs.addNode(v, h, props)
 }
+
 func (gs *GraphStream) encode(o interface{}) {
 	data, _ := json.Marshal(o)
 	gs.buf.Write(data)
 	// Gephi requires \r character at the end of each line
 	gs.buf.WriteString("\r\n")
 }
+
 func (gs *GraphStream) addNode(v quad.Value, h valHash, props map[quad.Value]quad.Value) string {
 	id, ok := gs.seen[h]
 	if ok {
@@ -170,10 +175,12 @@ func (gs *GraphStream) addNode(v quad.Value, h valHash, props map[quad.Value]qua
 	gs.encode(graphStreamEvent{AddNodes: m})
 	return sid
 }
+
 func (gs *GraphStream) ChangeNode(v quad.Value, sid string, props map[quad.Value]quad.Value) {
 	m := gs.makeOneNode(sid, v, props)
 	gs.encode(graphStreamEvent{ChangeNodes: m})
 }
+
 func (gs *GraphStream) AddEdge(i int, s, o string, p quad.Value) {
 	id := "q" + strconv.FormatInt(int64(i), 16)
 	ps := toNodeLabel(p)
@@ -185,6 +192,7 @@ func (gs *GraphStream) AddEdge(i int, s, o string, p quad.Value) {
 		}},
 	})
 }
+
 func (gs *GraphStream) Flush() error {
 	if gs.buf.Len() == 0 {
 		return nil
@@ -196,13 +204,15 @@ func (gs *GraphStream) Flush() error {
 	return err
 }
 
-type streamNode map[string]interface{}
-type streamEdge struct {
-	Subject   string `json:"source"`
-	Label     string `json:"label"`
-	Predicate string `json:"pred"`
-	Object    string `json:"target"`
-}
+type (
+	streamNode map[string]interface{}
+	streamEdge struct {
+		Subject   string `json:"source"`
+		Label     string `json:"label"`
+		Predicate string `json:"pred"`
+		Object    string `json:"target"`
+	}
+)
 type graphStreamEvent struct {
 	AddNodes    map[string]streamNode `json:"an,omitempty"`
 	ChangeNodes map[string]streamNode `json:"cn,omitempty"`

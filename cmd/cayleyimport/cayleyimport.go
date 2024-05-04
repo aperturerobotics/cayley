@@ -27,7 +27,7 @@ func NewCmd() *cobra.Command {
 	var quiet bool
 	var uri, formatName string
 
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "cayleyimport <file>",
 		Short: "Import data into Cayley. If no file is provided, cayleyimport reads from stdin.",
 		Args:  cobra.MaximumNArgs(1),

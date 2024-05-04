@@ -68,7 +68,7 @@ func writerQuadsTo(ctx context.Context, path string, typ string, qr quad.Reader)
 }
 
 func dumpDatabase(ctx context.Context, h *graph.Handle, path string, typ string) error {
-	//TODO: add possible support for exporting specific queries only
+	// TODO: add possible support for exporting specific queries only
 	qr := graph.NewQuadStoreReader(ctx, h.QuadStore)
 	defer qr.Close()
 	return writerQuadsTo(ctx, path, typ, qr)

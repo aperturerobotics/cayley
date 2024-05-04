@@ -46,7 +46,6 @@ func (s *Match) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Names
 
 	// Get quads
 	quads, err := parsePattern(ctx, s.Pattern, ns)
-
 	if err != nil {
 		return nil, err
 	}

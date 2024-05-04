@@ -177,7 +177,7 @@ func (c *Config) fieldRule(fld reflect.StructField) (rule, error) {
 		}
 	} else { // s-p>o // default
 		tri = strings.SplitN(rule, spo, 3)
-		if len(tri) > 2 { //len(tri) != 2 {
+		if len(tri) > 2 { // len(tri) != 2 {
 			return nil, fmt.Errorf("wrong quad tag format: '%s'", rule)
 		}
 	}
@@ -327,8 +327,10 @@ func (c *Config) rulesFor(rt reflect.Type) (fieldRules, error) {
 	return out, nil
 }
 
-type fieldsCtxKey struct{}
-type fieldRules map[string]rule
+type (
+	fieldsCtxKey struct{}
+	fieldRules   map[string]rule
+)
 
 type ValueConverter interface {
 	SetValue(dst reflect.Value, src reflect.Value) error

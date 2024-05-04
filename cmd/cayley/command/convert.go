@@ -32,6 +32,7 @@ func (r *lazyReader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	}
 	return r.rc.ReadQuad(ctx)
 }
+
 func (r *lazyReader) Close() (err error) {
 	if r.rc != nil {
 		err = r.rc.Close()
@@ -59,6 +60,7 @@ func (r *multiReader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 		return q, err
 	}
 }
+
 func (r *multiReader) Close() error {
 	var first error
 	if r.i < len(r.rc) {

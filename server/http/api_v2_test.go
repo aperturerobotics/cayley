@@ -98,7 +98,6 @@ func TestV2Read(t *testing.T) {
 	sort.Sort(quad.ByQuadString(receivedQuads))
 	sort.Sort(quad.ByQuadString(quads))
 	require.Equal(t, quads, receivedQuads)
-
 }
 
 func TestV2Delete(t *testing.T) {

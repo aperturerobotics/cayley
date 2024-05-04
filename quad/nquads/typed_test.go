@@ -177,7 +177,8 @@ var testNQuads = []struct {
 			Subject:   quad.IRI("http://example/s"),
 			Predicate: quad.IRI("http://example/p"),
 			Object:    quad.LangString{Value: "o", Lang: "en"},
-			Label:     nil},
+			Label:     nil,
+		},
 	},
 	{
 		message: "handle simple case with lang string",
@@ -186,7 +187,8 @@ var testNQuads = []struct {
 			Subject:   quad.IRI("http://example/s"),
 			Predicate: quad.IRI("http://example/p"),
 			Object:    quad.LangString{Value: "Tomás de Torquemada", Lang: "es"},
-			Label:     nil},
+			Label:     nil,
+		},
 	},
 
 	// Tests taken from http://www.w3.org/TR/n-quads/ and http://www.w3.org/TR/n-triples/.

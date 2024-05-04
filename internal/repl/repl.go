@@ -272,7 +272,7 @@ func terminal(path string) (*liner.State, error) {
 }
 
 func persist(term *liner.State, path string) error {
-	f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o666)
 	if err != nil {
 		return fmt.Errorf("could not open %q to append history: %v", path, err)
 	}

@@ -82,7 +82,7 @@ func itos(i int64) string {
 func stoi(s string) int64 {
 	ret, err := strconv.ParseUint(s, 32, 64)
 	if err != nil {
-		//TODO handle error?
+		// TODO handle error?
 		return 0
 	}
 	return int64(ret - int64Adjust)

@@ -127,7 +127,7 @@ func RunTx(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUpdate,
 			values = append([]interface{}{n.RefInc}, values...)
 			stmt, ok := insertValue[nodeKey]
 			if !ok {
-				var ph = make([]string, len(values))
+				ph := make([]string, len(values))
 				for i := range ph {
 					ph[i] = "$" + strconv.FormatInt(int64(i)+1, 10)
 				}

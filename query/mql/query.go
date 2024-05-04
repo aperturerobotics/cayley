@@ -52,6 +52,7 @@ func (q *Query) copyPathStructure(path Path) map[string]interface{} {
 func NewPath() Path {
 	return ""
 }
+
 func (p Path) Follow(s string) Path {
 	return Path(fmt.Sprintf("%s\x1E%s", p, s))
 }

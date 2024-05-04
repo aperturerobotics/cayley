@@ -35,9 +35,7 @@ func TestBadParse(t *testing.T) {
 	}
 }
 
-var (
-	quads1 = []quad.Quad{quad.Make("i", "can", "win", nil)}
-)
+var quads1 = []quad.Quad{quad.Make("i", "can", "win", nil)}
 
 var testQueries = []struct {
 	message string

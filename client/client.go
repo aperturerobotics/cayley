@@ -25,6 +25,7 @@ type Client struct {
 func (c *Client) SetHTTPClient(cli *http.Client) {
 	c.cli = cli
 }
+
 func (c *Client) url(s string, q map[string]string) string {
 	addr := c.addr + s
 	if len(q) != 0 {
@@ -45,6 +46,7 @@ type errRequestFailed struct {
 func (e errRequestFailed) Error() string {
 	return fmt.Sprintf("request failed: %d %v", e.StatusCode, e.Status)
 }
+
 func (c *Client) QuadReader() (quad.ReadCloser, error) {
 	resp, err := http.Get(c.url("/api/v2/read", map[string]string{
 		"format": "pquads",
@@ -73,6 +75,7 @@ func (c funcCloser) Close() error {
 	c.closed = true
 	return c.f()
 }
+
 func (c *Client) QuadWriter() (quad.WriteCloser, error) {
 	pr, pw := io.Pipe()
 	req, err := http.NewRequest("POST", c.url("/api/v2/write", nil), pr)

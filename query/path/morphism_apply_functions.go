@@ -255,6 +255,7 @@ func (s *iteratorShape) BuildIterator(ctx context.Context, qs graph.QuadStore) i
 	s.it, s.sent = nil, true
 	return it
 }
+
 func (s *iteratorShape) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
 	return s, false, nil
 }
@@ -313,6 +314,7 @@ type iteratorBuilder func(ctx context.Context, qs graph.QuadStore) iterator.Shap
 func (s iteratorBuilder) BuildIterator(ctx context.Context, qs graph.QuadStore) iterator.Shape {
 	return s(ctx, qs)
 }
+
 func (s iteratorBuilder) Optimize(ctx context.Context, r shape.Optimizer) (shape.Shape, bool, error) {
 	return s, false, nil
 }

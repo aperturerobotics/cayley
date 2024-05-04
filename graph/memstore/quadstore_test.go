@@ -217,7 +217,6 @@ func TestRemoveQuad(t *testing.T) {
 		"F",
 		nil,
 	))
-
 	if err != nil {
 		t.Error("Couldn't remove quad", err)
 	}

@@ -736,7 +736,6 @@ func runQueryGetTag(ctx context.Context, rec func(), g []quad.Quad, qu string, t
 }
 
 func TestGizmo(t *testing.T) {
-
 	ctx := context.Background()
 	simpleGraph := testutil.LoadGraph(t, "../../data/testdata.nq")
 	multiGraph := testutil.LoadGraph(t, multiGraphTestFile)
@@ -768,7 +767,7 @@ func TestGizmo(t *testing.T) {
 			got, err := runQueryGetTag(ctx, rec, quads, test.query, test.tag, limit)
 			if err != nil {
 				if test.err {
-					return //expected
+					return // expected
 				}
 				t.Error(err)
 			}

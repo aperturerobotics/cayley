@@ -201,9 +201,10 @@ var escaper = strings.NewReplacer(
 )
 
 func (s String) String() string {
-	//TODO(barakmich): Proper escaping.
+	// TODO(barakmich): Proper escaping.
 	return `"` + escaper.Replace(string(s)) + `"`
 }
+
 func (s String) GoString() string {
 	return "quad.String(" + strconv.Quote(string(s)) + ")"
 }
@@ -218,6 +219,7 @@ type TypedString struct {
 func (s TypedString) String() string {
 	return s.Value.String() + `^^` + s.Type.String()
 }
+
 func (s TypedString) Native() interface{} {
 	if s.Type == "" {
 		return s.Value.Native()
@@ -527,6 +529,7 @@ func (s Time) Equal(v Value) bool {
 	}
 	return time.Time(s).Equal(time.Time(t))
 }
+
 func (s Time) TypedString() TypedString {
 	return TypedString{
 		// TODO(dennwc): this is used to compute hash, thus we might want to include nanos

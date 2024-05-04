@@ -164,16 +164,16 @@ func ExpectIteratedQuads(t testing.TB, qs graph.QuadStore, it iterator.Shape, ex
 }
 
 func ExpectIteratedRawStrings(t testing.TB, qs graph.QuadStore, it iterator.Shape, exp []string) {
-	//sort.Strings(exp)
+	// sort.Strings(exp)
 	got := IteratedStrings(t, qs, it)
-	//sort.Strings(got)
+	// sort.Strings(got)
 	require.Equal(t, exp, got)
 }
 
 func ExpectIteratedValues(t testing.TB, qs graph.QuadStore, it iterator.Shape, exp []quad.Value, sortVals bool) {
-	//sort.Strings(exp)
+	// sort.Strings(exp)
 	got := IteratedValues(t, qs, it)
-	//sort.Strings(got)
+	// sort.Strings(got)
 	if sortVals {
 		exp = append([]quad.Value{}, exp...)
 		sort.Sort(quad.ByValueString(exp))
@@ -1172,7 +1172,7 @@ func TestCompareTypedValues(t testing.TB, gen testutil.DatabaseFunc, conf *Confi
 	ExpectIteratedValues(t, qs, qs.NodesAllIterator(ctx), vals, true)
 
 	for _, c := range casesCompare {
-		//t.Log(c.op, c.val)
+		// t.Log(c.op, c.val)
 		it := iterator.NewComparison(qs.NodesAllIterator(ctx), c.op, c.val, qs)
 		ExpectIteratedValues(t, qs, it, c.expect, true)
 	}

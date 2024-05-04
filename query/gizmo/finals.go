@@ -86,6 +86,7 @@ func (p *pathObject) ToArray(call goja.FunctionCall) goja.Value {
 func (p *pathObject) TagArray(call goja.FunctionCall) goja.Value {
 	return p.toArray(call, true)
 }
+
 func (p *pathObject) toValue(withTags bool) (interface{}, error) {
 	it := p.buildIteratorTree()
 	it = iterator.Tag(it, TopResultTag)
@@ -175,33 +176,43 @@ func (p *pathObject) Count() (int64, error) {
 func (p *pathObject) CapitalizedGetLimit(limit int) error {
 	return p.GetLimit(limit)
 }
+
 func (p *pathObject) CapitalizedAll() error {
 	return p.All()
 }
+
 func (p *pathObject) CapitalizedtoArray(call goja.FunctionCall, withTags bool) goja.Value {
 	return p.toArray(call, withTags)
 }
+
 func (p *pathObject) CapitalizedToArray(call goja.FunctionCall) goja.Value {
 	return p.ToArray(call)
 }
+
 func (p *pathObject) CapitalizedTagArray(call goja.FunctionCall) goja.Value {
 	return p.TagArray(call)
 }
+
 func (p *pathObject) CapitalizedtoValue(withTags bool) (interface{}, error) {
 	return p.toValue(withTags)
 }
+
 func (p *pathObject) CapitalizedToValue() (interface{}, error) {
 	return p.ToValue()
 }
+
 func (p *pathObject) CapitalizedTagValue() (interface{}, error) {
 	return p.TagValue()
 }
+
 func (p *pathObject) CapitalizedMap(call goja.FunctionCall) goja.Value {
 	return p.Map(call)
 }
+
 func (p *pathObject) CapitalizedForEach(call goja.FunctionCall) goja.Value {
 	return p.ForEach(call)
 }
+
 func (p *pathObject) CapitalizedCount() (int64, error) {
 	return p.Count()
 }
