@@ -2,10 +2,10 @@ name: Tests
 
 on:
   push:
-    branches: [ "master", "aperture" ]
+    branches: [ "aperture" ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "master", "aperture" ]
+    branches: [ "aperture" ]
 
 # Builds images for target boards.
 permissions:
@@ -16,22 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.20']
+        go: ['1.22']
+    timeout-minutes: 10
     steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@6b3083af2869dc3314a0257a42f4af696cc79ba3 # v2.3.1
-        with:
-          egress-policy: audit # TODO: change to 'egress-policy: block' after couple of runs
-
-      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Setup Go ${{ matrix.go }}
-        uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
+        uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ matrix.go }}
-      - name: Lint Go
-        # note: linter currently produces lots of errors.
-        # run the linter but mark it as success even if it does not pass.
-        run: make lint || true
       - name: Test Go
         run: make test
-        timeout-minutes: 15
+      - name: Lint Go
+        run: make lint
