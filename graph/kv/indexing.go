@@ -26,18 +26,18 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	graphlog "github.com/cayleygraph/cayley/graph/log"
-	"github.com/cayleygraph/cayley/graph/proto"
-	"github.com/cayleygraph/cayley/graph/refs"
-	kvoptions "github.com/cayleygraph/cayley/kv/options"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/pquads"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	graphlog "github.com/aperturerobotics/cayley/graph/log"
+	"github.com/aperturerobotics/cayley/graph/proto"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	kvoptions "github.com/aperturerobotics/cayley/kv/options"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/pquads"
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/vmihailenco/msgpack/v5"
 
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv"
 	boom "github.com/tylertreat/BoomFilters"
 )
 

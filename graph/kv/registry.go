@@ -3,8 +3,8 @@ package kv
 import (
 	"strings"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/kv"
 )
 
 func init() {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv"
 )
 
 func NewTest(t testing.TB, db kv.KV) *Test {

@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/query"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/query"
 )
 
 const Name = "sexp"

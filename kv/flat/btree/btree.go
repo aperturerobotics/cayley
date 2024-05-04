@@ -19,8 +19,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/cayleygraph/cayley/kv/base"
-	"github.com/cayleygraph/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/base"
+	"github.com/aperturerobotics/cayley/kv/flat"
 )
 
 const (

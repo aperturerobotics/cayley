@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 // Size of a graph (either in nodes or quads).

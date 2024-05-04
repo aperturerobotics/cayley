@@ -1,8 +1,8 @@
 package linkedql
 
 import (
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
 )
 
 // AbsoluteValue uses given ns to resolve short IRIs and types in typed strings to their full form

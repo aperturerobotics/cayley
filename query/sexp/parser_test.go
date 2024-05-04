@@ -18,13 +18,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad"
 
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	_ "github.com/cayleygraph/cayley/graph/memstore"
-	sh "github.com/cayleygraph/cayley/query/shape"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	_ "github.com/aperturerobotics/cayley/graph/memstore"
+	sh "github.com/aperturerobotics/cayley/query/shape"
+	_ "github.com/aperturerobotics/cayley/writer"
 	"github.com/stretchr/testify/require"
 )
 

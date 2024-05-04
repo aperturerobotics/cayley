@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/jsonld"
-	"github.com/cayleygraph/cayley/query"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/jsonld"
+	"github.com/aperturerobotics/cayley/query"
 	"github.com/piprate/json-gold/ld"
 )
 

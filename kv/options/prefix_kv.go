@@ -3,8 +3,8 @@ package options
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/flat"
 )
 
 // WithPrefixKV returns IteratorOption that limits scanned key to a given binary prefix.

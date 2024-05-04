@@ -1,7 +1,7 @@
 syntax = "proto3";
 package pio.test;
 
-option go_package = "github.com/cayleygraph/cayley/quad/pquads/pio/test";
+option go_package = "github.com/aperturerobotics/cayley/quad/pquads/pio/test";
 
 // TestMsg is a test message used for unit tests.
 message TestMsg {

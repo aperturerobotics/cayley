@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 // MakeValue converts quad.Value to its protobuf representation.

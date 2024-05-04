@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 func init() {

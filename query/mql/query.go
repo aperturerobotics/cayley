@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cayleygraph/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/iterator"
 )
 
 type (

@@ -1,7 +1,7 @@
 // Package xsd contains constants of the W3C XML Schema Definition Language https://www.w3.org/TR/xmlschema11-1/
 package xsd
 
-import "github.com/cayleygraph/cayley/quad/voc"
+import "github.com/aperturerobotics/cayley/quad/voc"
 
 func init() {
 	voc.RegisterPrefix(Prefix, NS)

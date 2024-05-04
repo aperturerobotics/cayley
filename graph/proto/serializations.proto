@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package proto;
 
-import "github.com/cayleygraph/cayley/quad/pquads/quads.proto";
+import "github.com/aperturerobotics/cayley/quad/pquads/quads.proto";
 
 message LogDelta {
   uint64 ID = 1;

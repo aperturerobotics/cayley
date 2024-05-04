@@ -19,10 +19,10 @@ import (
 
 	"github.com/badgerodon/peg"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/shape"
 )
 
 func BuildIteratorTreeForQuery(ctx context.Context, qs graph.QuadStore, query string) iterator.Shape {

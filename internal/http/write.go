@@ -25,11 +25,11 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal/decompressor"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/nquads"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/internal/decompressor"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/nquads"
 )
 
 func ParseJSONToQuadList(jsonBody []byte) (out []quad.Quad, _ error) {

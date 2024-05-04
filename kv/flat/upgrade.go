@@ -3,7 +3,7 @@ package flat
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv"
 )
 
 var _ kv.KV = (*hieKV)(nil)

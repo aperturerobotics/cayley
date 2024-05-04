@@ -18,11 +18,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/proto"
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/proto"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 type constraint struct {

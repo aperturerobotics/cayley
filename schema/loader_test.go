@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/schema"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/memstore"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/schema"
 	"github.com/stretchr/testify/require"
 )
 

@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cayleygraph/cayley/clog"
+	"github.com/aperturerobotics/cayley/clog"
 
 	// Load all supported quad formats.
-	"github.com/cayleygraph/cayley/quad"
-	_ "github.com/cayleygraph/cayley/quad/jsonld"
-	_ "github.com/cayleygraph/cayley/quad/nquads"
+	"github.com/aperturerobotics/cayley/quad"
+	_ "github.com/aperturerobotics/cayley/quad/jsonld"
+	_ "github.com/aperturerobotics/cayley/quad/nquads"
 
 	"github.com/spf13/cobra"
 )

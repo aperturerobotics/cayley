@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/options"
+	"github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/options"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/proto"
-	"github.com/cayleygraph/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/proto"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 type QuadIterator struct {

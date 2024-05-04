@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph/memstore"
+	"github.com/aperturerobotics/cayley/quad"
 	"github.com/piprate/json-gold/ld"
 	"github.com/stretchr/testify/require"
 )

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/query/path"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query/path"
 	"github.com/stretchr/testify/require"
 )
 

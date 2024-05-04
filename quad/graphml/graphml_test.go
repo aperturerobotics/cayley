@@ -5,8 +5,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/graphml"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/graphml"
 )
 
 var testData = []struct {

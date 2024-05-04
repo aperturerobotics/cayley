@@ -35,8 +35,8 @@ import (
 	"testing"
 	"time"
 
-	io "github.com/cayleygraph/cayley/quad/pquads/pio"
-	test "github.com/cayleygraph/cayley/quad/pquads/pio/test"
+	io "github.com/aperturerobotics/cayley/quad/pquads/pio"
+	test "github.com/aperturerobotics/cayley/quad/pquads/pio/test"
 )
 
 func iotest(writer io.Writer, reader io.Reader) error {

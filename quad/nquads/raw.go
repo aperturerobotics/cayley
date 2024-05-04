@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 // line 30 "raw.go"

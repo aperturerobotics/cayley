@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/query/linkedql"
-	"github.com/cayleygraph/cayley/query/path"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query/linkedql"
+	"github.com/aperturerobotics/cayley/query/path"
 )
 
 func init() {

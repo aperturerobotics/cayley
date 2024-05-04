@@ -22,9 +22,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/internal/gephi"
-	cayleyhttp "github.com/cayleygraph/cayley/server/http"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/internal/gephi"
+	cayleyhttp "github.com/aperturerobotics/cayley/server/http"
 )
 
 func jsonResponse(w http.ResponseWriter, code int, err interface{}) {

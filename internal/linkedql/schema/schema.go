@@ -5,14 +5,14 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/cayleygraph/cayley/query/linkedql"
+	"github.com/aperturerobotics/cayley/query/linkedql"
 	// Steps are imported here so they be registered and documented in the schema
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc/owl"
-	"github.com/cayleygraph/cayley/quad/voc/rdf"
-	"github.com/cayleygraph/cayley/quad/voc/rdfs"
-	"github.com/cayleygraph/cayley/quad/voc/xsd"
-	_ "github.com/cayleygraph/cayley/query/linkedql/steps"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc/owl"
+	"github.com/aperturerobotics/cayley/quad/voc/rdf"
+	"github.com/aperturerobotics/cayley/quad/voc/rdfs"
+	"github.com/aperturerobotics/cayley/quad/voc/xsd"
+	_ "github.com/aperturerobotics/cayley/query/linkedql/steps"
 )
 
 // rdfgGraph is the W3C type for named graphs

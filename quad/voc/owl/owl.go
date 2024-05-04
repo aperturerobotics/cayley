@@ -1,7 +1,7 @@
 // Package owl contains constants of the Web Ontology Language (OWL)
 package owl
 
-import "github.com/cayleygraph/cayley/quad/voc"
+import "github.com/aperturerobotics/cayley/quad/voc"
 
 func init() {
 	voc.RegisterPrefix(Prefix, NS)

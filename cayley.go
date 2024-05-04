@@ -3,12 +3,12 @@ package cayley
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	_ "github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/path"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	_ "github.com/aperturerobotics/cayley/graph/memstore"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/path"
+	_ "github.com/aperturerobotics/cayley/writer"
 )
 
 var (

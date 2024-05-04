@@ -1,4 +1,4 @@
-module github.com/cayleygraph/cayley
+module github.com/aperturerobotics/cayley
 
 go 1.22
 

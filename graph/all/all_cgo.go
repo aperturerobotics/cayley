@@ -5,5 +5,5 @@ package all
 
 import (
 	// backends requiring cgo
-	_ "github.com/cayleygraph/cayley/graph/sql/sqlite"
+	_ "github.com/aperturerobotics/cayley/graph/sql/sqlite"
 )

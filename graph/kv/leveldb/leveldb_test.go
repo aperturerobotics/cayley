@@ -19,9 +19,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/kv/kvtest"
-	hkv "github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/kv/kvtest"
+	hkv "github.com/aperturerobotics/cayley/kv"
 )
 
 func makeLeveldb(t testing.TB) (hkv.KV, graph.Options, func()) {

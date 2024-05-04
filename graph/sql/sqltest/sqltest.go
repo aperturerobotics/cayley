@@ -5,11 +5,11 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/graphtest"
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	"github.com/cayleygraph/cayley/graph/sql"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/graphtest"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	"github.com/aperturerobotics/cayley/graph/sql"
+	"github.com/aperturerobotics/cayley/quad"
 	"github.com/stretchr/testify/require"
 )
 

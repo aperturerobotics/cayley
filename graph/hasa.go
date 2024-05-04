@@ -37,10 +37,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 // A HasA consists of a reference back to the graph.QuadStore that it references,

@@ -1,7 +1,7 @@
 // Package rdfs contains constants of the RDF Schema vocabulary (RDFS)
 package rdfs
 
-import "github.com/cayleygraph/cayley/quad/voc"
+import "github.com/aperturerobotics/cayley/quad/voc"
 
 func init() {
 	voc.RegisterPrefix(Prefix, NS)

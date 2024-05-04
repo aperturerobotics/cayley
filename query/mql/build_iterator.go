@@ -21,8 +21,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/shape"
 )
 
 func buildFixed(s string) shape.Shape {

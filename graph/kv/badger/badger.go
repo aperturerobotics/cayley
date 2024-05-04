@@ -17,11 +17,11 @@ package badger
 import (
 	"os"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/kv"
-	hkv "github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/flat"
-	"github.com/cayleygraph/cayley/kv/flat/badger"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/kv"
+	hkv "github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/flat/badger"
 )
 
 const (

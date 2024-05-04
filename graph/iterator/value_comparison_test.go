@@ -22,10 +22,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cayleygraph/cayley/graph/graphmock"
-	. "github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph/graphmock"
+	. "github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 var (

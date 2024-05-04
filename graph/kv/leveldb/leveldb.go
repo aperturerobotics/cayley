@@ -17,10 +17,10 @@ package leveldb
 import (
 	"os"
 
-	"github.com/cayleygraph/cayley/graph"
-	hkv "github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/flat"
-	"github.com/cayleygraph/cayley/kv/flat/leveldb"
+	"github.com/aperturerobotics/cayley/graph"
+	hkv "github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/flat/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 )
 

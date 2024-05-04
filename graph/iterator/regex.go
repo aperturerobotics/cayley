@@ -17,8 +17,8 @@ package iterator
 import (
 	"regexp"
 
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 func newRegex(qs refs.Namer, sub Shape, re *regexp.Regexp, refs bool) Shape {

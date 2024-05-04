@@ -17,8 +17,8 @@ package iterator
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 type ValueFilterFunc func(quad.Value) (bool, error)

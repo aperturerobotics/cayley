@@ -1,8 +1,8 @@
 package options
 
 import (
-	"github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/flat"
 )
 
 var (

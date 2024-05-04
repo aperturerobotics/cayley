@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/shape"
 )
 
 // join puts two iterators together by intersecting their result sets with an AND

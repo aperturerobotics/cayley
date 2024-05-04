@@ -7,8 +7,8 @@ import (
 
 	"github.com/dennwc/graphql/gqlerrors"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/query"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/query"
 )
 
 type httpResult struct {

@@ -3,7 +3,7 @@ package httpgraph
 import (
 	"net/http"
 
-	"github.com/cayleygraph/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph"
 )
 
 type QuadStore interface {

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/jsonld"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/query/linkedql"
+	"github.com/aperturerobotics/cayley/graph/memstore"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/jsonld"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query/linkedql"
 	"github.com/stretchr/testify/require"
 )
 

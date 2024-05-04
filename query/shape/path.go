@@ -3,9 +3,9 @@ package shape
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 func IntersectShapes(s1, s2 Shape) Shape {

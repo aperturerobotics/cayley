@@ -26,13 +26,13 @@ import (
 
 	"github.com/dop251/goja"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/jsonld"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/query"
-	"github.com/cayleygraph/cayley/schema"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/jsonld"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query"
+	"github.com/aperturerobotics/cayley/schema"
 )
 
 const Name = "gizmo"

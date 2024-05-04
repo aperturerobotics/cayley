@@ -3,8 +3,8 @@ package badger
 import (
 	"testing"
 
-	"github.com/cayleygraph/cayley/kv/flat"
-	"github.com/cayleygraph/cayley/kv/kvtest"
+	"github.com/aperturerobotics/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/kvtest"
 )
 
 func TestBadger(t *testing.T) {

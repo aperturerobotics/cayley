@@ -3,8 +3,8 @@ package linkedql
 import (
 	"encoding/json"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
 )
 
 // EntityIdentifierI is an interface to be used where a single entity identifier is expected.

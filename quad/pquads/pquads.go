@@ -9,8 +9,8 @@ import (
 	"io"
 
 	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/pquads/pio"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/pquads/pio"
 )
 
 var DefaultMaxSize = 1024 * 1024

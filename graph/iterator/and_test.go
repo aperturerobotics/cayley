@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	. "github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/refs"
+	. "github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 // Make sure that tags work on the And.

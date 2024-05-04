@@ -12,10 +12,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc/rdf"
-	"github.com/cayleygraph/cayley/query/path"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc/rdf"
+	"github.com/aperturerobotics/cayley/query/path"
 )
 
 var global = NewConfig()

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sort"
 
-	"github.com/cayleygraph/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 // Sort iterator orders values from it's subiterator.

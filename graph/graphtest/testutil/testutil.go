@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/nquads"
-	"github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/nquads"
+	"github.com/aperturerobotics/cayley/writer"
 	"github.com/stretchr/testify/require"
 )
 

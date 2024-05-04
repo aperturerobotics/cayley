@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/kvtest"
+	"github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/kvtest"
 )
 
 func TestBolt(t *testing.T) {

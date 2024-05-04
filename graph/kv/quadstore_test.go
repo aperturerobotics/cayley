@@ -13,15 +13,15 @@ import (
 	"sync"
 	"testing"
 
-	hkv "github.com/cayleygraph/cayley/kv"
+	hkv "github.com/aperturerobotics/cayley/kv"
 	"github.com/stretchr/testify/require"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/kv"
-	"github.com/cayleygraph/cayley/graph/kv/btree"
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/kv"
+	"github.com/aperturerobotics/cayley/graph/kv/btree"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/writer"
 	b58 "github.com/mr-tron/base58/base58"
 )
 

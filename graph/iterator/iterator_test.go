@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/graph/refs"
+	. "github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 // A testing iterator that returns the given values for Next() and Err().

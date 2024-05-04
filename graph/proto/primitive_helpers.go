@@ -1,6 +1,6 @@
 package proto
 
-import "github.com/cayleygraph/cayley/quad"
+import "github.com/aperturerobotics/cayley/quad"
 
 //go:generate protoc --proto_path=$GOPATH/src:. --gogo_out=. primitive.proto
 

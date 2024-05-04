@@ -4,10 +4,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/quad/voc/rdf"
-	"github.com/cayleygraph/cayley/schema"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/quad/voc/rdf"
+	"github.com/aperturerobotics/cayley/schema"
 )
 
 func init() {

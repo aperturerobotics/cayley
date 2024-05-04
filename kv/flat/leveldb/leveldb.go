@@ -22,8 +22,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 
-	"github.com/cayleygraph/cayley/kv/base"
-	"github.com/cayleygraph/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/base"
+	"github.com/aperturerobotics/cayley/kv/flat"
 )
 
 const (

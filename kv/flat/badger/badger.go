@@ -5,8 +5,8 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 
-	"github.com/cayleygraph/cayley/kv/base"
-	"github.com/cayleygraph/cayley/kv/flat"
+	"github.com/aperturerobotics/cayley/kv/base"
+	"github.com/aperturerobotics/cayley/kv/flat"
 )
 
 const (

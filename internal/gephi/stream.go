@@ -13,15 +13,15 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc/rdf"
-	"github.com/cayleygraph/cayley/quad/voc/rdfs"
-	"github.com/cayleygraph/cayley/quad/voc/schema"
-	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc/rdf"
+	"github.com/aperturerobotics/cayley/quad/voc/rdfs"
+	"github.com/aperturerobotics/cayley/quad/voc/schema"
+	"github.com/aperturerobotics/cayley/query/path"
+	"github.com/aperturerobotics/cayley/query/shape"
 )
 
 const (

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 // Chain is a chain-enabled helper to setup iterator execution.

@@ -28,15 +28,15 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/query"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/query"
+	"github.com/aperturerobotics/cayley/query/shape"
 
 	// Writer is imported for writers to be registered
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	_ "github.com/aperturerobotics/cayley/writer"
 )
 
 const (

@@ -26,12 +26,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	"github.com/cayleygraph/cayley/internal"
-	"github.com/cayleygraph/cayley/query"
-	"github.com/cayleygraph/cayley/query/gizmo"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	"github.com/aperturerobotics/cayley/internal"
+	"github.com/aperturerobotics/cayley/query"
+	"github.com/aperturerobotics/cayley/query/gizmo"
+	_ "github.com/aperturerobotics/cayley/writer"
 )
 
 const (

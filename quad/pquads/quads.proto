@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package pquads;
 
-option go_package = "github.com/cayleygraph/cayley/quad/pquads";
+option go_package = "github.com/aperturerobotics/cayley/quad/pquads";
 
 // Quad is in internal representation of quad used by Cayley.
 message Quad {

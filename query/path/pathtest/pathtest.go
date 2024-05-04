@@ -22,13 +22,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/cayley/query/shape"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	"github.com/aperturerobotics/cayley/graph/iterator"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/path"
+	"github.com/aperturerobotics/cayley/query/shape"
+	_ "github.com/aperturerobotics/cayley/writer"
 	"github.com/stretchr/testify/require"
 )
 

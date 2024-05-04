@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cayleygraph/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 // Skip iterator will skip certain number of values from primary iterator.

@@ -21,16 +21,16 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	_ "github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query"
-	_ "github.com/cayleygraph/cayley/writer"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	_ "github.com/aperturerobotics/cayley/graph/memstore"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query"
+	_ "github.com/aperturerobotics/cayley/writer"
 	"github.com/stretchr/testify/require"
 
 	// register global namespace for tests
-	_ "github.com/cayleygraph/cayley/quad/voc/rdf"
+	_ "github.com/aperturerobotics/cayley/quad/voc/rdf"
 )
 
 // This is a simple test graph used for testing

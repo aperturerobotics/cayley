@@ -19,10 +19,10 @@ package btree
 import (
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/kv/kvtest"
-	hkv "github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/kvdebug"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/kv/kvtest"
+	hkv "github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/kvdebug"
 )
 
 const debug = false

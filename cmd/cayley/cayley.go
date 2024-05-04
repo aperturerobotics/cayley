@@ -23,36 +23,36 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cayleygraph/cayley/cmd/cayley/command"
+	"github.com/aperturerobotics/cayley/cmd/cayley/command"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/cayleygraph/cayley/clog"
-	_ "github.com/cayleygraph/cayley/clog/glog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/version"
+	"github.com/aperturerobotics/cayley/clog"
+	_ "github.com/aperturerobotics/cayley/clog/glog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/version"
 
 	// Load supported backends
-	_ "github.com/cayleygraph/cayley/graph/all"
+	_ "github.com/aperturerobotics/cayley/graph/all"
 
 	// Load all supported quad formats.
-	_ "github.com/cayleygraph/cayley/quad/dot"
-	_ "github.com/cayleygraph/cayley/quad/gml"
-	_ "github.com/cayleygraph/cayley/quad/graphml"
-	_ "github.com/cayleygraph/cayley/quad/json"
-	_ "github.com/cayleygraph/cayley/quad/jsonld"
-	_ "github.com/cayleygraph/cayley/quad/nquads"
-	_ "github.com/cayleygraph/cayley/quad/pquads"
+	_ "github.com/aperturerobotics/cayley/quad/dot"
+	_ "github.com/aperturerobotics/cayley/quad/gml"
+	_ "github.com/aperturerobotics/cayley/quad/graphml"
+	_ "github.com/aperturerobotics/cayley/quad/json"
+	_ "github.com/aperturerobotics/cayley/quad/jsonld"
+	_ "github.com/aperturerobotics/cayley/quad/nquads"
+	_ "github.com/aperturerobotics/cayley/quad/pquads"
 
 	// Load writer registry
-	_ "github.com/cayleygraph/cayley/writer"
+	_ "github.com/aperturerobotics/cayley/writer"
 
 	// Load supported query languages
-	_ "github.com/cayleygraph/cayley/query/gizmo"
-	_ "github.com/cayleygraph/cayley/query/graphql"
-	_ "github.com/cayleygraph/cayley/query/mql"
-	_ "github.com/cayleygraph/cayley/query/sexp"
+	_ "github.com/aperturerobotics/cayley/query/gizmo"
+	_ "github.com/aperturerobotics/cayley/query/graphql"
+	_ "github.com/aperturerobotics/cayley/query/mql"
+	_ "github.com/aperturerobotics/cayley/query/sexp"
 )
 
 var (

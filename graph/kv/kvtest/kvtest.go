@@ -5,13 +5,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/graphtest"
-	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
-	"github.com/cayleygraph/cayley/graph/kv"
-	hkv "github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/graphtest"
+	"github.com/aperturerobotics/cayley/graph/graphtest/testutil"
+	"github.com/aperturerobotics/cayley/graph/kv"
+	hkv "github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/query/shape"
 	"github.com/stretchr/testify/require"
 )
 

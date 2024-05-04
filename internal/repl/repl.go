@@ -26,10 +26,10 @@ import (
 
 	"github.com/peterh/liner"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad/nquads"
-	"github.com/cayleygraph/cayley/query"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad/nquads"
+	"github.com/aperturerobotics/cayley/query"
 )
 
 func trace(s string) (string, time.Time) {

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/voc/xsd"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/voc/xsd"
 	"github.com/piprate/json-gold/ld"
 	"github.com/stretchr/testify/require"
 )

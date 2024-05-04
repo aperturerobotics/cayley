@@ -8,11 +8,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/memstore"
-	chttp "github.com/cayleygraph/cayley/internal/http"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/jsonld"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/memstore"
+	chttp "github.com/aperturerobotics/cayley/internal/http"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/jsonld"
 	"github.com/stretchr/testify/require"
 )
 

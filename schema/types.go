@@ -1,10 +1,10 @@
 package schema
 
 import (
-	"github.com/cayleygraph/cayley/quad"
-	_ "github.com/cayleygraph/cayley/quad/voc/rdf"
-	_ "github.com/cayleygraph/cayley/quad/voc/rdfs"
-	"github.com/cayleygraph/cayley/quad/voc/schema"
+	"github.com/aperturerobotics/cayley/quad"
+	_ "github.com/aperturerobotics/cayley/quad/voc/rdf"
+	_ "github.com/aperturerobotics/cayley/quad/voc/rdfs"
+	"github.com/aperturerobotics/cayley/quad/voc/schema"
 )
 
 func init() {

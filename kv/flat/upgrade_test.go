@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv"
 )
 
 func TestSepEscape(t *testing.T) {

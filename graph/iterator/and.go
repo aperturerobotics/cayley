@@ -18,7 +18,7 @@ package iterator
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/graph/refs"
 )
 
 // The And iterator. Consists of a number of subiterators, the primary of which will

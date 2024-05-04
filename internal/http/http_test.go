@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad"
 )
 
 var parseTests = []struct {

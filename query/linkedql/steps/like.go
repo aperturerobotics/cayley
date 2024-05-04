@@ -3,11 +3,11 @@ package steps
 import (
 	"context"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/quad/voc"
-	"github.com/cayleygraph/cayley/query/linkedql"
-	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query/linkedql"
+	"github.com/aperturerobotics/cayley/query/path"
+	"github.com/aperturerobotics/cayley/query/shape"
 )
 
 func init() {

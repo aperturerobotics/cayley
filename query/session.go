@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cayleygraph/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph"
 )
 
 var ErrParseMore = errors.New("query: more input required")

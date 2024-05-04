@@ -18,11 +18,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/kv"
-	hkv "github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/kv/bolt"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/kv"
+	hkv "github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv/bolt"
 )
 
 func init() {

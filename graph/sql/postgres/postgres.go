@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cayleygraph/cayley/clog"
-	"github.com/cayleygraph/cayley/graph"
-	graphlog "github.com/cayleygraph/cayley/graph/log"
-	csql "github.com/cayleygraph/cayley/graph/sql"
-	"github.com/cayleygraph/cayley/quad"
+	"github.com/aperturerobotics/cayley/clog"
+	"github.com/aperturerobotics/cayley/graph"
+	graphlog "github.com/aperturerobotics/cayley/graph/log"
+	csql "github.com/aperturerobotics/cayley/graph/sql"
+	"github.com/aperturerobotics/cayley/quad"
 	"github.com/lib/pq"
 )
 

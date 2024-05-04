@@ -7,7 +7,7 @@ import (
 	"log"
 	"sync/atomic"
 
-	"github.com/cayleygraph/cayley/kv"
+	"github.com/aperturerobotics/cayley/kv"
 )
 
 var _ kv.KV = (*KV)(nil)

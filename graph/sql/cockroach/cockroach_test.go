@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/sql/sqltest"
-	"github.com/cayleygraph/cayley/internal/dock"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/sql/sqltest"
+	"github.com/aperturerobotics/cayley/internal/dock"
 	"github.com/jackc/pgx"
 	_ "github.com/jackc/pgx/stdlib"
 )

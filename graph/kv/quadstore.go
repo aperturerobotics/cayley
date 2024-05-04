@@ -21,14 +21,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/cayley/graph/proto"
-	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/cayley/internal/lru"
-	"github.com/cayleygraph/cayley/kv"
-	"github.com/cayleygraph/cayley/quad"
-	"github.com/cayleygraph/cayley/quad/pquads"
-	"github.com/cayleygraph/cayley/query/shape"
+	"github.com/aperturerobotics/cayley/graph"
+	"github.com/aperturerobotics/cayley/graph/proto"
+	"github.com/aperturerobotics/cayley/graph/refs"
+	"github.com/aperturerobotics/cayley/internal/lru"
+	"github.com/aperturerobotics/cayley/kv"
+	"github.com/aperturerobotics/cayley/quad"
+	"github.com/aperturerobotics/cayley/quad/pquads"
+	"github.com/aperturerobotics/cayley/query/shape"
 	boom "github.com/tylertreat/BoomFilters"
 )
 

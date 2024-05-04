@@ -26,7 +26,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/cayleygraph/cayley/query"
+	"github.com/aperturerobotics/cayley/query"
 )
 
 type SuccessQueryWrapper struct {
