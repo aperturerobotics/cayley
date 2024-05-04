@@ -11,9 +11,7 @@ Cayley is an open-source database for [Linked Data](https://www.w3.org/standards
 
 **This is a fork of the [upstream project].**
 
-[upstream project]: https://github.com/aperturerobotics/cayley
-
-## [Documentation](https://cayley.gitbook.io/cayley/)
+[upstream project]: https://github.com/cayleygraph/cayley
 
 ## Features
 

@@ -4,7 +4,7 @@ This library provides encoding and decoding support for NQuad/NTriple-compatible
 
 Forked from the [upstream project].
 
-[upstream project]: https://github.com/aperturerobotics/cayley/quad
+[upstream project]: https://github.com/cayleygraph/quad
 
 ## Supported formats
 
