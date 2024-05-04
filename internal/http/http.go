@@ -20,15 +20,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/internal/gephi"
 	cayleyhttp "github.com/cayleygraph/cayley/server/http"
 )
-
-var ui = packr.New("UI", "../../ui")
 
 func jsonResponse(w http.ResponseWriter, code int, err interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -68,9 +65,6 @@ func SetupRoutes(handle *graph.Handle, cfg *Config) error {
 	api2.SetReadOnly(cfg.ReadOnly)
 	api2.SetBatchSize(cfg.Batch)
 	api2.SetQueryTimeout(cfg.Timeout)
-
-	// For non API requests serve the UI
-	r.NotFound = http.FileServer(ui)
 
 	http.Handle("/", CORS(LogRequest(r)))
 
