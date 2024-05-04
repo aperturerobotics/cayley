@@ -18,7 +18,7 @@ import (
 	"github.com/dop251/goja"
 
 	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 const TopResultTag = "id"

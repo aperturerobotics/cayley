@@ -22,7 +22,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/graph/proto"
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 type constraint struct {

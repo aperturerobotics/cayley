@@ -26,11 +26,11 @@ import (
 	_ "github.com/cayleygraph/cayley/graph/memstore"
 	"github.com/cayleygraph/cayley/query"
 	_ "github.com/cayleygraph/cayley/writer"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/stretchr/testify/require"
 
 	// register global namespace for tests
-	_ "github.com/cayleygraph/quad/voc/rdf"
+	_ "github.com/cayleygraph/cayley/quad/voc/rdf"
 )
 
 // This is a simple test graph used for testing

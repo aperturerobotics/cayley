@@ -19,7 +19,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 const Name = "graphql"

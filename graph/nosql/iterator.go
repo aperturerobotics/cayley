@@ -24,7 +24,7 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 type Linkage struct {

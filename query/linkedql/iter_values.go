@@ -8,9 +8,9 @@ import (
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/jsonld"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/jsonld"
+	"github.com/cayleygraph/cayley/quad/voc"
 )
 
 var _ query.Iterator = (*ValueIterator)(nil)

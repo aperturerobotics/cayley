@@ -7,7 +7,7 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	graphlog "github.com/cayleygraph/cayley/graph/log"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 var types = make(map[string]Registration)

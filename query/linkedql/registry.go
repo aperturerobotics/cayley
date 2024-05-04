@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/piprate/json-gold/ld"
 )
 

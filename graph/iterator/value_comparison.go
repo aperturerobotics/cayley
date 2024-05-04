@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 type Operator int

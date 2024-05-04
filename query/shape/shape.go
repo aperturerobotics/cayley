@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"

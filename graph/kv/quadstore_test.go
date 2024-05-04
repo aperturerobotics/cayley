@@ -21,7 +21,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/kv/btree"
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/cayley/writer"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	b58 "github.com/mr-tron/base58/base58"
 )
 

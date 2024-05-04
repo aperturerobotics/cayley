@@ -24,7 +24,7 @@ import (
 	reflect "reflect"
 	sync "sync"
 
-	pquads "github.com/cayleygraph/quad/pquads"
+	pquads "github.com/cayleygraph/cayley/quad/pquads"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )

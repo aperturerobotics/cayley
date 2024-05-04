@@ -28,7 +28,7 @@ import (
 	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/query/shape"
 	_ "github.com/cayleygraph/cayley/writer"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/stretchr/testify/require"
 )
 

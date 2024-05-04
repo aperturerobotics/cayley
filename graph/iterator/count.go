@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 // Count iterator returns one element with size of underlying iterator.

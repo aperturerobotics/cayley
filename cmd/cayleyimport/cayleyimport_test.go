@@ -7,12 +7,14 @@ import (
 	"net"
 	"net/http"
 	"path"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
 	chttp "github.com/cayleygraph/cayley/internal/http"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,5 +73,10 @@ func TestCayleyImport(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Empty(t, b.String())
-	require.Equal(t, expectData, allQuads(t, qs))
+
+	allq := allQuads(t, qs)
+	slices.SortFunc(allq, func(a, b quad.Quad) int {
+		return strings.Compare(a.String(), b.String())
+	})
+	require.Equal(t, expectData, allq)
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/query/linkedql"
 	"github.com/cayleygraph/cayley/query/path"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc"
 )
 
 func init() {

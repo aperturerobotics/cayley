@@ -26,7 +26,7 @@ import (
 	"github.com/cayleygraph/cayley/query"
 	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/query/shape"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 // pathObject is a Path object in Gizmo.

@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/cayleygraph/cayley/query/shape"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 func buildFixed(s string) shape.Shape {

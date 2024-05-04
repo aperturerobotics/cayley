@@ -18,10 +18,10 @@ import (
 	"github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/query/path"
 	"github.com/cayleygraph/cayley/query/shape"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc/rdf"
-	"github.com/cayleygraph/quad/voc/rdfs"
-	"github.com/cayleygraph/quad/voc/schema"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc/rdf"
+	"github.com/cayleygraph/cayley/quad/voc/rdfs"
+	"github.com/cayleygraph/cayley/quad/voc/schema"
 )
 
 const (

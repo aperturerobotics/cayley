@@ -35,8 +35,8 @@ import (
 
 	// Writer is imported for writers to be registered
 	_ "github.com/cayleygraph/cayley/writer"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc"
 )
 
 const (

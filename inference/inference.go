@@ -23,9 +23,9 @@
 package inference
 
 import (
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc/rdf"
-	"github.com/cayleygraph/quad/voc/rdfs"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc/rdf"
+	"github.com/cayleygraph/cayley/quad/voc/rdfs"
 )
 
 // classSet is a set of RDF Classes

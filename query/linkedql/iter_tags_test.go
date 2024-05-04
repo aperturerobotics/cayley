@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/piprate/json-gold/ld"
 	"github.com/stretchr/testify/require"
 )

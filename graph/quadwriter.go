@@ -27,7 +27,7 @@ import (
 	"io"
 
 	"github.com/cayleygraph/cayley/graph/iterator"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 type Procedure int8

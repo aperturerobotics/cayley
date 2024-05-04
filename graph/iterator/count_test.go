@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/stretchr/testify/require"
 )
 

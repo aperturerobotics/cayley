@@ -11,7 +11,7 @@ import (
 
 	"github.com/cayleygraph/cayley/clog"
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 func writerQuadsTo(ctx context.Context, path string, typ string, qr quad.Reader) error {

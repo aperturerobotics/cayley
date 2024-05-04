@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 // A Resolver iterator consists of it's order, an index (where it is in the,

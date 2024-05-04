@@ -25,7 +25,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/graphmock"
 	. "github.com/cayleygraph/cayley/graph/iterator"
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 func singleHop(qs graph.QuadIndexer, pred string) Morphism {

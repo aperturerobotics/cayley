@@ -9,9 +9,9 @@ import (
 	"github.com/cayleygraph/cayley/clog"
 
 	// Load all supported quad formats.
-	"github.com/cayleygraph/quad"
-	_ "github.com/cayleygraph/quad/jsonld"
-	_ "github.com/cayleygraph/quad/nquads"
+	"github.com/cayleygraph/cayley/quad"
+	_ "github.com/cayleygraph/cayley/quad/jsonld"
+	_ "github.com/cayleygraph/cayley/quad/nquads"
 
 	"github.com/spf13/cobra"
 )

@@ -15,8 +15,8 @@ import (
 	graphlog "github.com/cayleygraph/cayley/graph/log"
 	"github.com/cayleygraph/cayley/graph/refs"
 	"github.com/cayleygraph/cayley/internal/lru"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/pquads"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/pquads"
 )
 
 func registerQuadStore(name, typ string) {

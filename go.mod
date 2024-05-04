@@ -3,14 +3,10 @@ module github.com/cayleygraph/cayley
 go 1.19
 
 // use aperture maintenance forks
-replace (
-	github.com/cayleygraph/quad => github.com/aperturerobotics/cayley-quad v1.2.5-0.20230524232228-dc08772d0195 // aperture
-	github.com/hidal-go/hidalgo => github.com/aperturerobotics/hidalgo v0.2.1-0.20230526002043-6e494c6ad96b // aperture
-)
+replace github.com/hidal-go/hidalgo => github.com/aperturerobotics/hidalgo v0.2.1-0.20230526002043-6e494c6ad96b // aperture
 
 require (
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
-	github.com/cayleygraph/quad v1.2.4
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dop251/goja v0.0.0-20230427124612-428fc442ff5f

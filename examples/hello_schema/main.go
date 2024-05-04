@@ -12,11 +12,11 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	_ "github.com/cayleygraph/cayley/graph/kv/bolt"
 	"github.com/cayleygraph/cayley/schema"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc"
 
 	// Import RDF vocabulary definitions to be able to expand IRIs like rdf:label.
-	_ "github.com/cayleygraph/quad/voc/core"
+	_ "github.com/cayleygraph/cayley/quad/voc/core"
 )
 
 type Person struct {

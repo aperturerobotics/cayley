@@ -10,7 +10,7 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	graphlog "github.com/cayleygraph/cayley/graph/log"
 	csql "github.com/cayleygraph/cayley/graph/sql"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	"github.com/lib/pq"
 )
 

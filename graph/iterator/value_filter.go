@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 type ValueFilterFunc func(quad.Value) (bool, error)

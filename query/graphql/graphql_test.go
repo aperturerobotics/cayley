@@ -12,8 +12,8 @@ import (
 
 	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
 	"github.com/cayleygraph/cayley/graph/memstore"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/voc/rdf"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/voc/rdf"
 )
 
 func iris(arr ...string) (out []quad.Value) {

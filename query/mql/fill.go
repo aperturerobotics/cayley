@@ -20,7 +20,7 @@ import (
 	"sort"
 
 	"github.com/cayleygraph/cayley/graph"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (map[ResultPath]string, error) {

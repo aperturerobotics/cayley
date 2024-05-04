@@ -18,7 +18,7 @@ import (
 	"regexp"
 
 	"github.com/cayleygraph/cayley/graph/refs"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 )
 
 func newRegex(qs refs.Namer, sub Shape, re *regexp.Regexp, refs bool) Shape {

@@ -12,9 +12,9 @@ import (
 
 	"github.com/cayleygraph/cayley/graph/memstore"
 	"github.com/cayleygraph/cayley/query/linkedql"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/jsonld"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/jsonld"
+	"github.com/cayleygraph/cayley/quad/voc"
 	"github.com/stretchr/testify/require"
 )
 

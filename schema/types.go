@@ -1,10 +1,10 @@
 package schema
 
 import (
-	"github.com/cayleygraph/quad"
-	_ "github.com/cayleygraph/quad/voc/rdf"
-	_ "github.com/cayleygraph/quad/voc/rdfs"
-	"github.com/cayleygraph/quad/voc/schema"
+	"github.com/cayleygraph/cayley/quad"
+	_ "github.com/cayleygraph/cayley/quad/voc/rdf"
+	_ "github.com/cayleygraph/cayley/quad/voc/rdfs"
+	"github.com/cayleygraph/cayley/quad/voc/schema"
 )
 
 func init() {

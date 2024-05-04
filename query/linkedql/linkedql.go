@@ -6,7 +6,7 @@ import (
 
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/query"
-	"github.com/cayleygraph/quad/voc"
+	"github.com/cayleygraph/cayley/quad/voc"
 )
 
 const (

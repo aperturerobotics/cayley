@@ -8,7 +8,7 @@ import (
 	fmt "fmt"
 	io "io"
 
-	pquads "github.com/cayleygraph/quad/pquads"
+	pquads "github.com/cayleygraph/cayley/quad/pquads"
 	proto "google.golang.org/protobuf/proto"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )

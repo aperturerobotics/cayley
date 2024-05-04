@@ -10,7 +10,7 @@ import (
 	"github.com/cayleygraph/cayley/graph/graphtest/testutil"
 	"github.com/cayleygraph/cayley/graph/kv"
 	"github.com/cayleygraph/cayley/query/shape"
-	"github.com/cayleygraph/quad"
+	"github.com/cayleygraph/cayley/quad"
 	hkv "github.com/hidal-go/hidalgo/kv"
 	"github.com/stretchr/testify/require"
 )

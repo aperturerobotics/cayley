@@ -11,8 +11,8 @@ import (
 	"github.com/cayleygraph/cayley/graph"
 	"github.com/cayleygraph/cayley/graph/memstore"
 	chttp "github.com/cayleygraph/cayley/internal/http"
-	"github.com/cayleygraph/quad"
-	"github.com/cayleygraph/quad/jsonld"
+	"github.com/cayleygraph/cayley/quad"
+	"github.com/cayleygraph/cayley/quad/jsonld"
 	"github.com/stretchr/testify/require"
 )
 
