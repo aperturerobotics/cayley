@@ -1,10 +1,10 @@
 module github.com/cayleygraph/cayley
 
-go 1.19
-
-// use aperture maintenance forks
+go 1.22
 
 require (
+	github.com/aperturerobotics/common v0.15.2
+	github.com/aperturerobotics/protobuf-go-lite v0.6.1
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/boltdb/bolt v1.3.1
 	github.com/cockroachdb/pebble v0.0.0-20220318150003-0ad186894f6d
@@ -15,7 +15,7 @@ require (
 	github.com/fsouza/go-dockerclient v1.9.7
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/golang/glog v1.1.1
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
@@ -25,18 +25,18 @@ require (
 	github.com/piprate/json-gold v0.5.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tylertreat/BoomFilters v0.0.0-20210315201527-1a82519a3e43
 	github.com/vmihailenco/msgpack/v5 v5.3.5
 	go.etcd.io/bbolt v1.3.6
-	google.golang.org/protobuf v1.30.0
 )
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/DataDog/zstd v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
+	github.com/aperturerobotics/json-iterator-lite v1.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/cockroachdb/errors v1.9.0 // indirect
@@ -99,6 +99,7 @@ require (
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

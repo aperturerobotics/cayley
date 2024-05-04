@@ -16,3 +16,6 @@ packrd/packed-*
 # The build binary
 /cayley
 .#*
+.tools/
+yarn.lock
+node_modules/

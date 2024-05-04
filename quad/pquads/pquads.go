@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io"
 
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 	"github.com/cayleygraph/cayley/quad"
 	"github.com/cayleygraph/cayley/quad/pquads/pio"
-	"google.golang.org/protobuf/proto"
 )
 
 var DefaultMaxSize = 1024 * 1024
@@ -95,7 +95,7 @@ func (w *Writer) WriteQuad(ctx context.Context, q quad.Quad) error {
 			w.o = q.Object
 		}
 	}
-	var m proto.Message
+	var m protobuf_go_lite.Message
 	if w.opts.Strict {
 		m, w.err = makeStrictQuad(q)
 		if w.err != nil {

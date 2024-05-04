@@ -33,7 +33,7 @@ import (
 	"errors"
 	"io"
 
-	"google.golang.org/protobuf/proto"
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 )
 
 var (
@@ -51,12 +51,12 @@ type varintWriter struct {
 	buffer []byte
 }
 
-func (w *varintWriter) WriteMsg(msg proto.Message) (_ int, err error) {
+func (w *varintWriter) WriteMsg(msg protobuf_go_lite.Message) (_ int, err error) {
 	var data []byte
 	if m, ok := msg.(marshaler); ok {
 		n, ok := getSize(m)
 		if !ok {
-			data, err = proto.Marshal(msg)
+			data, err = msg.MarshalVT()
 			if err != nil {
 				return 0, err
 			}
@@ -70,7 +70,7 @@ func (w *varintWriter) WriteMsg(msg proto.Message) (_ int, err error) {
 		}
 		data = w.buffer[:n]
 	} else {
-		data, err = proto.Marshal(msg)
+		data, err = msg.MarshalVT()
 		if err != nil {
 			return 0, err
 		}
@@ -125,7 +125,7 @@ func (r *varintReader) SkipMsg() error {
 	return nil
 }
 
-func (r *varintReader) ReadMsg(msg proto.Message) error {
+func (r *varintReader) ReadMsg(msg protobuf_go_lite.Message) error {
 	if err := r.readLength(); err != nil {
 		return err
 	}
@@ -140,5 +140,5 @@ func (r *varintReader) ReadMsg(msg proto.Message) error {
 	if _, err := io.ReadFull(r.r, buf); err != nil {
 		return err
 	}
-	return proto.Unmarshal(buf, msg)
+	return msg.UnmarshalVT(buf)
 }

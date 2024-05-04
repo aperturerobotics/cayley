@@ -27,16 +27,14 @@
 
 package pio
 
-import (
-	"google.golang.org/protobuf/proto"
-)
+import protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 
 type Writer interface {
-	WriteMsg(proto.Message) (int, error)
+	WriteMsg(protobuf_go_lite.Message) (int, error)
 }
 
 type Reader interface {
-	ReadMsg(msg proto.Message) error
+	ReadMsg(msg protobuf_go_lite.Message) error
 	SkipMsg() error
 }
 
