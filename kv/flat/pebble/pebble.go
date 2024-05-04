@@ -124,8 +124,10 @@ func (tx *Tx) Del(ctx context.Context, k flat.Key) error {
 }
 
 func (tx *Tx) Scan(ctx context.Context, opts ...flat.IteratorOption) flat.Iterator {
-	pit := tx.tx.NewIter(nil)
-	err := pit.Error()
+	pit, err := tx.tx.NewIter(nil)
+	if err == nil {
+		err = pit.Error()
+	}
 	if err != nil {
 		return &Iterator{err: err}
 	}
