@@ -3,7 +3,7 @@ module github.com/aperturerobotics/cayley
 go 1.22
 
 require (
-	github.com/aperturerobotics/common v0.15.2
+	github.com/aperturerobotics/common v0.15.5
 	github.com/aperturerobotics/protobuf-go-lite v0.6.1
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/boltdb/bolt v1.3.1
@@ -29,7 +29,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tylertreat/BoomFilters v0.0.0-20210315201527-1a82519a3e43
 	github.com/vmihailenco/msgpack/v5 v5.4.1
-	go.etcd.io/bbolt v1.3.9
+	go.etcd.io/bbolt v1.3.10
 )
 
 require (
