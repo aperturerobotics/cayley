@@ -146,8 +146,8 @@ type QuadWriter interface {
 	// AddQuadSet adds a set of quads to the store, atomically if possible.
 	AddQuadSet(context.Context, []quad.Quad) error
 
-	// RemoveQuad removes a quad matching the given one  from the database,
-	// if it exists. Does nothing otherwise.
+	// RemoveQuad removes a quad from the database, if it exists.
+	// If not found, returns ErrQuadNotExist.
 	RemoveQuad(context.Context, quad.Quad) error
 
 	// ApplyTransaction applies a set of quad changes.
