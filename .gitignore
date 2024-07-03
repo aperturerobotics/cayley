@@ -19,3 +19,4 @@ packrd/packed-*
 .tools/
 yarn.lock
 node_modules/
+.aider*

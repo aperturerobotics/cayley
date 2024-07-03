@@ -15,18 +15,29 @@ Cayley is an open-source database for [Linked Data](https://www.w3.org/standards
 
 ## Features
 
-- Built-in query editor, visualizer and REPL
-- Multiple query languages:
-  - [Gizmo](./docs/gizmoapi.md): query language inspired by [Gremlin](https://tinkerpop.apache.org/gremlin.html)
-  - [GraphQL](./docs/graphql.md)-inspired query language
-  - [MQL](./docs/mql.md): simplified version for [Freebase](https://en.wikipedia.org/wiki/Freebase_(database)) fans
-- Modular: easy to connect to your favorite programming languages and back-end stores
-- Production ready: well tested and used by various companies for their production workloads
-- Fast: optimized specifically for usage in applications
+### 🗄️ Multiple Backend Stores
+- **In-memory, ephemeral**
+  - btree in-memory-database
+- **[Key-Value Stores](./kv/kv.go)**
+  - [Bolt](https://github.com/etcd-io/bbolt): Lightweight embedded K/V store
+  - [Badger](https://github.com/dgraph-io/badger): Full-featured K/V store
+  - [Pebble](https://github.com/cockroachdb/pebble): LevelDB/RocksDB inspired K/V store
+- **[SQL Stores](./graph/sql)**
+  - [CockroachDB](https://github.com/cockroachdb/cockroach)
+  - [PostgreSQL](https://github.com/postgres/postgres)
+  - [SQLite](https://www.sqlite.org/)
+  - [MySQL](https://github.com/go-sql-driver/mysql)
 
-### Performance
+### 🔍 Efficient Data Management
+- Automatic indexing of quad directions (subject, predicate, object, label)
+- Transactions for atomic updates
 
-Rough performance testing shows that, on 2014 consumer hardware and an average disk, 134m quads in LevelDB is no problem and a multi-hop intersection query -- films starring X and Y -- takes ~150ms.
+### 🔧 Powerful Query Capabilities
+- Expressive query languages (Gizmo, Go API) for traversing and analyzing the graph
+
+### 🌐 API and CLI
+- RESTful API for interacting with the database
+- Command-line interface for querying and managing databases
 
 ## License
 
