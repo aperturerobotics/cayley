@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bbolt
+package bolt
 
 import (
 	"bytes"
@@ -26,13 +26,13 @@ import (
 )
 
 const (
-	Name = "bbolt"
+	Name = "bolt"
 )
 
 func init() {
 	kv.Register(kv.Registration{
 		Registration: base.Registration{
-			Name: Name, Title: "BBoltDB",
+			Name: Name, Title: "BoltDB",
 			Local: true,
 		},
 		OpenPath: OpenPath,
