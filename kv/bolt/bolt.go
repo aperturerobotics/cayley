@@ -12,27 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bolt
+package bbolt
 
 import (
 	"bytes"
 	"context"
 	"time"
 
-	"github.com/boltdb/bolt"
+	bolt "go.etcd.io/bbolt"
 
 	"github.com/aperturerobotics/cayley/kv"
 	"github.com/aperturerobotics/cayley/kv/base"
 )
 
 const (
-	Name = "bolt"
+	Name = "bbolt"
 )
 
 func init() {
 	kv.Register(kv.Registration{
 		Registration: base.Registration{
-			Name: Name, Title: "BoltDB",
+			Name: Name, Title: "BBoltDB",
 			Local: true,
 		},
 		OpenPath: OpenPath,

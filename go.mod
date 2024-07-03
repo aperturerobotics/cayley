@@ -6,7 +6,6 @@ require (
 	github.com/aperturerobotics/common v0.16.12
 	github.com/aperturerobotics/protobuf-go-lite v0.6.5
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
-	github.com/boltdb/bolt v1.3.1
 	github.com/cockroachdb/pebble v1.1.1
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d

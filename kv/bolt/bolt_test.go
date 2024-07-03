@@ -1,4 +1,4 @@
-package bolt
+package bbolt
 
 import (
 	"path/filepath"
@@ -8,9 +8,9 @@ import (
 	"github.com/aperturerobotics/cayley/kv/kvtest"
 )
 
-func TestBolt(t *testing.T) {
+func TestBBolt(t *testing.T) {
 	kvtest.RunTestLocal(t, func(path string) (kv.KV, error) {
-		path = filepath.Join(path, "bolt.db")
+		path = filepath.Join(path, "bbolt.db")
 		return OpenPath(path)
 	}, nil)
 }

@@ -22,7 +22,7 @@ import (
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/graph/kv"
 	hkv "github.com/aperturerobotics/cayley/kv"
-	"github.com/aperturerobotics/cayley/kv/bolt"
+	bolt "github.com/aperturerobotics/cayley/kv/bolt"
 )
 
 func init() {
