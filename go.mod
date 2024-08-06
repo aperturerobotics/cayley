@@ -3,18 +3,18 @@ module github.com/aperturerobotics/cayley
 go 1.22
 
 require (
-	github.com/aperturerobotics/common v0.16.12
+	github.com/aperturerobotics/common v0.18.3
 	github.com/aperturerobotics/protobuf-go-lite v0.6.5
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/cockroachdb/pebble v1.1.1
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dgraph-io/badger/v4 v4.2.0
-	github.com/docker/docker v26.1.1+incompatible // indirect
-	github.com/dop251/goja v0.0.0-20240627195025-eb1f15ee67d2
-	github.com/fsouza/go-dockerclient v1.11.0
+	github.com/docker/docker v27.1.1+incompatible // indirect
+	github.com/dop251/goja v0.0.0-20240806095544-3491d4a58fbe
+	github.com/fsouza/go-dockerclient v1.11.2
 	github.com/go-sql-driver/mysql v1.8.1
-	github.com/golang/glog v1.2.1
+	github.com/golang/glog v1.2.2
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
@@ -34,7 +34,7 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/DataDog/zstd v1.5.0 // indirect
-	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/aperturerobotics/json-iterator-lite v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
-	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
@@ -110,7 +110,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
