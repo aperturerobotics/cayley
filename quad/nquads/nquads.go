@@ -207,7 +207,7 @@ func unEscape(r []rune, spec int, isQuoted, isEscaped bool) quad.Value {
 		if isQuoted {
 			return quad.String(val)
 		}
-		return quad.Raw(string(val))
+		return quad.Raw(val)
 	}
 	if sp[0] == '@' {
 		return quad.LangString{

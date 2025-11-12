@@ -56,7 +56,7 @@ var testCases = []struct {
 		data:     aliceNameAlice,
 		value:    aliceNameAlice.Object,
 		expected: nil,
-		err:      fmt.Errorf("Expected subject to be an entity identifier but instead received: %v", aliceName),
+		err:      fmt.Errorf("expected subject to be an entity identifier but instead received: %v", aliceName),
 	},
 }
 

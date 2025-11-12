@@ -34,8 +34,6 @@ var logger Logger = &stdlog{
 // SetLogger set the clog logging implementation.
 func SetLogger(l Logger) { logger = l }
 
-var verbosity int
-
 // V returns whether the current clog verbosity is above the specified level.
 func V(level int) bool {
 	if logger == nil {

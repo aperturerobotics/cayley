@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -43,7 +42,7 @@ func NewCmd() *cobra.Command {
 			if len(args) == 0 {
 				in := cmd.InOrStdin()
 				if !hasIn(in) {
-					return errors.New("Either provide file to read from or pipe data")
+					return errors.New("either provide file to read from or pipe data")
 				}
 				reader = in
 			} else {
@@ -69,11 +68,12 @@ func NewCmd() *cobra.Command {
 				return err
 			}
 			defer r.Body.Close()
-			body, err := ioutil.ReadAll(r.Body)
+			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				return err
 			}
-			if r.StatusCode == http.StatusOK {
+			switch r.StatusCode {
+			case http.StatusOK:
 				var response struct {
 					Result string `json:"result"`
 					Count  string `json:"count"`
@@ -86,8 +86,8 @@ func NewCmd() *cobra.Command {
 				if !quiet {
 					fmt.Println(response.Result)
 				}
-			} else if r.StatusCode == http.StatusNotFound {
-				return errors.New("Database instance does not support write")
+			case http.StatusNotFound:
+				return errors.New("database instance does not support write")
 			}
 			return nil
 		},

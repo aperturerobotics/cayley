@@ -417,7 +417,7 @@ func buildVia(via ...interface{}) shape.Shape {
 	for _, v := range via {
 		qv, ok := quad.AsValue(v)
 		if !ok {
-			panic(fmt.Errorf("Invalid type passed to buildViaPath: %v (%T)", v, v))
+			panic(fmt.Errorf("invalid type passed to buildViaPath: %v (%T)", v, v))
 		}
 		nodes = append(nodes, qv)
 	}

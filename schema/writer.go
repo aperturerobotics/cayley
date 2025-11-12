@@ -34,7 +34,8 @@ func (w *writer) writeQuad(ctx context.Context, s, p, o quad.Value, rev bool) er
 	if rev {
 		s, o = o, s
 	}
-	return w.w.WriteQuad(ctx, quad.Quad{Subject: s, Predicate: p, Object: o, Label: w.c.Label})
+	_, err := w.w.WriteQuads(ctx, []quad.Quad{{Subject: s, Predicate: p, Object: o, Label: w.c.Label}})
+	return err
 }
 
 // writeOneValReflect writes a set of quads corresponding to a value. It may omit writing quads if value is zero.

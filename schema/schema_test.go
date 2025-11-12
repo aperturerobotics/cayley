@@ -16,10 +16,10 @@ func init() {
 }
 
 type item struct {
-	rdfType struct{} `quad:"rdf:type > some:item"`
-	ID      quad.IRI `quad:"@id"`
-	Name    string   `quad:"name"`
-	Spec    string   `quad:"spec,optional"`
+	_    struct{} `quad:"rdf:type > some:item"`
+	ID   quad.IRI `quad:"@id"`
+	Name string   `quad:"name"`
+	Spec string   `quad:"spec,optional"`
 }
 
 type item2 struct {

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -318,7 +317,7 @@ func (api *APIv2) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	const limit = 128*1024 + 1
 	rd := io.LimitReader(r.Body, limit)
-	data, err := ioutil.ReadAll(rd)
+	data, err := io.ReadAll(rd)
 	if err != nil {
 		jsonResponse(w, http.StatusBadRequest, err)
 		return
@@ -488,7 +487,7 @@ func writeResults(w io.Writer, r interface{}) {
 const maxQuerySize = 1024 * 1024 // 1 MB
 func readLimit(r io.Reader) ([]byte, error) {
 	lr := io.LimitReader(r, maxQuerySize).(*io.LimitedReader)
-	data, err := ioutil.ReadAll(lr)
+	data, err := io.ReadAll(lr)
 	if err != nil && lr.N <= 0 {
 		err = errors.New("request is too large")
 	}

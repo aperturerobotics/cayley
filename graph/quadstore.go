@@ -120,7 +120,7 @@ func (d Options) IntKey(key string, def int) (int, error) {
 			return int(i), nil
 		}
 
-		return def, fmt.Errorf("Invalid %s parameter type from config: %T", key, val)
+		return def, fmt.Errorf("invalid %s parameter type from config: %T", key, val)
 	}
 	return def, nil
 }
@@ -131,7 +131,7 @@ func (d Options) StringKey(key string, def string) (string, error) {
 			return v, nil
 		}
 
-		return def, fmt.Errorf("Invalid %s parameter type from config: %T", key, val)
+		return def, fmt.Errorf("invalid %s parameter type from config: %T", key, val)
 	}
 
 	return def, nil
@@ -143,7 +143,7 @@ func (d Options) BoolKey(key string, def bool) (bool, error) {
 			return v, nil
 		}
 
-		return def, fmt.Errorf("Invalid %s parameter type from config: %T", key, val)
+		return def, fmt.Errorf("invalid %s parameter type from config: %T", key, val)
 	}
 
 	return def, nil

@@ -28,9 +28,8 @@ func (s *Collect) Description() string {
 }
 
 var (
-	first  = quad.IRI("rdf:first").Full()
-	rest   = quad.IRI("rdf:rest").Full()
-	rdfNil = quad.IRI("rdf:nil").Full()
+	first = quad.IRI("rdf:first").Full()
+	rest  = quad.IRI("rdf:rest").Full()
 )
 
 // BuildPath implements linkedql.PathStep.

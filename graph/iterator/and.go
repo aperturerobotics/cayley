@@ -217,7 +217,6 @@ func (it *andNext) Close() error {
 // The And iterator. Consists of a number of subiterators, the primary of which will
 // be Next()ed if next is called.
 type andContains struct {
-	base     Shape
 	sub      []Index
 	opt      []Index
 	optCheck []bool

@@ -283,7 +283,7 @@ func (g *generator) AddType(name string, t reflect.Type) {
 		return
 	}
 	var super []interface{}
-	stepTypeClasses := getStepTypeClasses(reflect.PtrTo(t))
+	stepTypeClasses := getStepTypeClasses(reflect.PointerTo(t))
 	for _, typeClass := range stepTypeClasses {
 		super = append(super, newIdentified(typeClass))
 	}

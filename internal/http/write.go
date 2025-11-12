@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -62,7 +61,7 @@ func ParseJSONToQuadList(jsonBody []byte) (out []quad.Quad, _ error) {
 const maxQuerySize = 1024 * 1024 // 1 MB
 func readLimit(r io.Reader) ([]byte, error) {
 	lr := io.LimitReader(r, maxQuerySize).(*io.LimitedReader)
-	data, err := ioutil.ReadAll(lr)
+	data, err := io.ReadAll(lr)
 	if err != nil && lr.N <= 0 {
 		err = errors.New("request is too large")
 	}
@@ -91,7 +90,7 @@ func (api *API) ServeV1Write(w http.ResponseWriter, r *http.Request, _ httproute
 		return
 	}
 	ctx := r.Context()
-	if err = h.QuadWriter.AddQuadSet(ctx, quads); err != nil {
+	if err = h.AddQuadSet(ctx, quads); err != nil {
 		jsonResponse(w, 400, err)
 		return
 	}
@@ -118,6 +117,10 @@ func (api *API) ServeV1WriteNQuad(w http.ResponseWriter, r *http.Request, params
 	}
 
 	quadReader, err := decompressor.New(formFile)
+	if err != nil {
+		jsonResponse(w, 400, err)
+		return
+	}
 	// TODO(kortschak) Make this configurable from the web UI.
 	dec := nquads.NewReader(quadReader, false)
 
@@ -163,7 +166,7 @@ func (api *API) ServeV1Delete(w http.ResponseWriter, r *http.Request, params htt
 	}
 	ctx := r.Context()
 	for _, q := range quads {
-		err = h.QuadWriter.RemoveQuad(ctx, q)
+		err = h.RemoveQuad(ctx, q)
 		if err != nil && !graph.IsQuadNotExist(err) {
 			jsonResponse(w, 400, err)
 			return

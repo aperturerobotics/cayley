@@ -30,7 +30,7 @@ func singleDocumentFromRDF(dataset *ld.RDFDataset) (interface{}, error) {
 		return nil, err
 	}
 	if len(documents) != 1 {
-		return nil, fmt.Errorf("Unexpected number of documents")
+		return nil, fmt.Errorf("unexpected number of documents")
 	}
 	return documents[0], nil
 }

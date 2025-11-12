@@ -145,7 +145,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			}
 			s, ok := a.(string)
 			if !ok {
-				return nil, fmt.Errorf("Expected a string but received %v instead", a)
+				return nil, fmt.Errorf("expected a string but received %v instead", a)
 			}
 			val, err := parseIRI(s)
 			if err != nil {
@@ -167,7 +167,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			for _, item := range arr {
 				s, ok := item.(string)
 				if !ok {
-					return nil, fmt.Errorf("Expected a string but received %v instead", item)
+					return nil, fmt.Errorf("expected a string but received %v instead", item)
 				}
 				val, err := parseIRI(s)
 				if err != nil {

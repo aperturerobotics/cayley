@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io"
 
-	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/pquads/pio"
+	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 )
 
 var DefaultMaxSize = 1024 * 1024
@@ -163,7 +163,7 @@ func NewReader(r io.Reader, maxSize int) *Reader {
 	if _, err := io.ReadFull(r, buf); err != nil {
 		qr.err = err
 		return qr
-	} else if bytes.Compare(magic[:], buf[:4]) != 0 {
+	} else if !bytes.Equal(magic[:], buf[:4]) {
 		qr.err = fmt.Errorf("not a pquads file")
 		return qr
 	}

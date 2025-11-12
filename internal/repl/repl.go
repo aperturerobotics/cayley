@@ -22,6 +22,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/peterh/liner"
@@ -106,7 +107,7 @@ func Repl(ctx context.Context, h *graph.Handle, queryLanguage string, timeout ti
 	defer persist(term, history)
 
 	var (
-		prompt = ps1
+		prompt string
 
 		code string
 	)
@@ -173,7 +174,7 @@ func Repl(ctx context.Context, h *graph.Handle, queryLanguage string, timeout ti
 			case ":a":
 				quad, err := nquads.Parse(args)
 				if err == nil {
-					err = h.QuadWriter.AddQuad(ctx, quad)
+					err = h.AddQuad(ctx, quad)
 				}
 				if err != nil {
 					fmt.Printf("Error: not a valid quad: %v\n", err)
@@ -187,7 +188,7 @@ func Repl(ctx context.Context, h *graph.Handle, queryLanguage string, timeout ti
 					fmt.Printf("Error: not a valid quad: %v\n", err)
 					continue
 				}
-				err = h.QuadWriter.RemoveQuad(ctx, quad)
+				err = h.RemoveQuad(ctx, quad)
 				if err != nil {
 					fmt.Printf("error deleting: %v\n", err)
 				}
@@ -250,7 +251,7 @@ func terminal(path string) (*liner.State, error) {
 
 	go func() {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt, os.Kill)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		<-c
 
 		err := persist(term, history)

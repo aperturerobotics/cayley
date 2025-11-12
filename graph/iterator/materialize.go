@@ -180,10 +180,7 @@ func (it *materializeNext) Next(ctx context.Context) bool {
 
 	it.index++
 	it.subindex = 0
-	if it.index >= len(it.values) {
-		return false
-	}
-	return true
+	return it.index < len(it.values)
 }
 
 func (it *materializeNext) Err() error {

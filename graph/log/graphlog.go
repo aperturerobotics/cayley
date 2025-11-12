@@ -66,7 +66,6 @@ func InsertQuads(in []quad.Quad) *Deltas {
 	for _, n := range hnodes {
 		incNodes = append(incNodes, *n)
 	}
-	hnodes = nil
 	sort.Slice(incNodes, func(i, j int) bool {
 		return bytes.Compare(incNodes[i].Hash[:], incNodes[j].Hash[:]) < 0
 	})
@@ -130,7 +129,6 @@ func SplitDeltas(in []graph.Delta) *Deltas {
 	sort.Slice(decNodes, func(i, j int) bool {
 		return bytes.Compare(decNodes[i].Hash[:], decNodes[j].Hash[:]) < 0
 	})
-	hnodes = nil
 	return &Deltas{
 		IncNode: incNodes, DecNode: decNodes,
 		QuadAdd: quadAdd, QuadDel: quadDel,

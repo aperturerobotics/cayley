@@ -1,11 +1,9 @@
 //go:build cgo
-// +build cgo
 
 package sqlite
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -14,7 +12,7 @@ import (
 )
 
 func makeSqlite(t testing.TB) (string, graph.Options, func()) {
-	tmpFile, err := ioutil.TempFile("", fmt.Sprintf("cayley_test_%s*", Type))
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("cayley_test_%s*", Type))
 	if err != nil {
 		t.Fatalf("Could not create working directory: %v", err)
 	}

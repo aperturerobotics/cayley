@@ -58,7 +58,7 @@ func (p Path) Follow(s string) Path {
 }
 
 func (p Path) DisplayString() string {
-	return strings.Replace(string(p), "\x1E", ".", -1)
+	return strings.ReplaceAll(string(p), "\x1E", ".")
 }
 
 func NewResultPath() ResultPath {

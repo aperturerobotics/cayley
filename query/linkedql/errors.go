@@ -7,5 +7,5 @@ func formatMultiError(errors []error) error {
 	for _, err := range errors {
 		joinedErr += "; " + err.Error()
 	}
-	return fmt.Errorf("Could not parse PropertyPath: %v", joinedErr)
+	return fmt.Errorf("could not parse PropertyPath: %v", joinedErr)
 }

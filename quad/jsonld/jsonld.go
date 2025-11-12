@@ -187,7 +187,7 @@ func toTerm(v quad.Value) ld.Node {
 	case quad.TypedString:
 		return ld.NewLiteral(string(v.Value), string(v.Type), "")
 	case quad.LangString:
-		return ld.NewLiteral(string(v.Value), "", string(v.Lang))
+		return ld.NewLiteral(string(v.Value), "", v.Lang)
 	case quad.TypedStringer:
 		return toTerm(v.TypedString())
 	default:
@@ -211,7 +211,7 @@ func FromValue(v quad.Value) interface{} {
 	case quad.LangString:
 		return map[string]interface{}{
 			"@value":    string(v.Value),
-			"@language": string(v.Lang),
+			"@language": v.Lang,
 		}
 	case quad.TypedString:
 		return typedStringToJSON(v)
@@ -236,7 +236,7 @@ func ToNode(value quad.Value) (ld.Node, error) {
 	case quad.LangString:
 		return ld.NewLiteral(string(v.Value), "", v.Lang), nil
 	default:
-		return nil, fmt.Errorf("Can not convert %v to ld.Node", value)
+		return nil, fmt.Errorf("can not convert %v to ld.Node", value)
 	}
 }
 

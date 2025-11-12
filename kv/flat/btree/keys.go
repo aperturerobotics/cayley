@@ -352,7 +352,6 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 				pi = i + 1
 				p = x
 				q = x.x[pi].ch
-				ok = false
 				continue
 			case *d:
 				t.extract(x, i)

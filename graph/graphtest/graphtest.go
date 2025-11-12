@@ -449,7 +449,10 @@ func Test1K(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 	for i := 0; i < n; i++ {
 		q := quad.Make(i, i, i, nil)
 		exp = append(exp, q)
-		qw.WriteQuad(ctx, q)
+		_, err = qw.WriteQuads(ctx, []quad.Quad{q})
+		if err != nil {
+			require.NoError(t, err)
+		}
 	}
 	err = qw.Flush(ctx)
 	require.NoError(t, err)
@@ -1326,7 +1329,7 @@ func TestDeleteReinsertedDup(t testing.TB, gen testutil.DatabaseFunc, _ *Config)
 		}
 
 		// the node should be garbage-collected
-		refs, err = graph.RefsOf(ctx, qs, []quad.Value{
+		_, err = graph.RefsOf(ctx, qs, []quad.Value{
 			q.Object,
 		})
 		if err == nil {

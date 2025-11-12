@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -81,9 +81,9 @@ func NewQueryCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var querystr string
 			if len(args) == 0 {
-				bytes, err := ioutil.ReadAll(os.Stdin)
+				bytes, err := io.ReadAll(os.Stdin)
 				if err != nil {
-					return fmt.Errorf("error occured while reading from stdin : %s", err)
+					return fmt.Errorf("error occurred while reading from stdin : %s", err)
 				}
 				querystr = string(bytes)
 			} else if len(args) == 1 {

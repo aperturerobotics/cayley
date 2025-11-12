@@ -17,7 +17,6 @@ var (
 	name    = quad.IRI(ns + "name")
 	bob     = quad.IRI(ns + "bob")
 	address = quad.IRI(ns + "address")
-	city    = quad.IRI(ns + "city")
 	street  = quad.IRI(ns + "street")
 	country = quad.IRI(ns + "country")
 )

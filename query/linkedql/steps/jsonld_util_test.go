@@ -23,7 +23,7 @@ var testCases = []struct {
 		name:     "Single non matching IDs",
 		source:   map[string]interface{}{"@id": "a"},
 		target:   map[string]interface{}{"@id": "b"},
-		expected: fmt.Errorf("Expected \"a\" but instead received \"b\""),
+		expected: fmt.Errorf("expected \"a\" but instead received \"b\""),
 	},
 	{
 		name:     "Single matching properties",
@@ -35,7 +35,7 @@ var testCases = []struct {
 		name:     "Single non matching properties",
 		source:   map[string]interface{}{"http://example.com/name": "Alice"},
 		target:   map[string]interface{}{"http://example.com/name": "Bob"},
-		expected: fmt.Errorf("Expected \"Alice\" but instead received \"Bob\""),
+		expected: fmt.Errorf("expected \"Alice\" but instead received \"Bob\""),
 	},
 	{
 		name:     "Single matching property with multiple values ordered",
@@ -53,13 +53,13 @@ var testCases = []struct {
 		name:     "Single non matching property with multiple values",
 		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
 		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Dan", "Alice"}},
-		expected: fmt.Errorf("No matching values for the item \"Bob\" in []interface {}{\"Dan\", \"Alice\"}"),
+		expected: fmt.Errorf("no matching values for the item \"Bob\" in []interface {}{\"Dan\", \"Alice\"}"),
 	},
 	{
 		name:     "Single non matching property with multiple values non matching length",
 		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
 		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice"}},
-		expected: fmt.Errorf("Expected multiple values but instead received the single value: \"Alice\""),
+		expected: fmt.Errorf("expected multiple values but instead received the single value: \"Alice\""),
 	},
 	{
 		name: "Single matching nested",
@@ -87,7 +87,7 @@ var testCases = []struct {
 				"@id": "bob",
 			},
 		},
-		expected: fmt.Errorf("Expected \"alice\" but instead received \"bob\""),
+		expected: fmt.Errorf("expected \"alice\" but instead received \"bob\""),
 	},
 	{
 		name:     "Single matching properties with @value string",
@@ -99,7 +99,7 @@ var testCases = []struct {
 		name:     "Single non matching properties with @value string",
 		source:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
 		target:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Bob"}},
-		expected: fmt.Errorf("Expected \"Alice\" but instead received \"Bob\""),
+		expected: fmt.Errorf("expected \"Alice\" but instead received \"Bob\""),
 	},
 	{
 		name:     "Single matching properties with @value string and string",

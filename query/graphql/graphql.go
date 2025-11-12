@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"unicode"
@@ -436,7 +435,7 @@ func (q *Query) Execute(ctx context.Context, qs graph.QuadStore) (map[string]int
 }
 
 func Parse(r io.Reader) (*Query, error) {
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +553,7 @@ func convField(fld *ast.Field, labels []quad.Value) (out field, err error) {
 		switch d.Name.Value {
 		case "rev", "reverse":
 			if len(d.Arguments) == 0 {
-				out.Rev = out.Rev != true
+				out.Rev = !out.Rev
 			} else {
 				out.Has, err = argsToHas(out.Has, d.Arguments, true, out.Labels)
 				if err != nil {

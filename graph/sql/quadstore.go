@@ -72,7 +72,7 @@ func (h NodeHash) SQLValue() interface{} {
 	if !h.Valid() {
 		return nil
 	}
-	return []byte(h.ValueHash[:])
+	return h.ValueHash[:]
 }
 
 func (h *NodeHash) Scan(src interface{}) error {
@@ -165,20 +165,6 @@ func connect(addr string, flavor string, opts graph.Options) (*sql.DB, error) {
 	}
 
 	return conn, nil
-}
-
-var nodesColumns = []string{
-	"hash",
-	"value",
-	"value_string",
-	"datatype",
-	"language",
-	"iri",
-	"bnode",
-	"value_int",
-	"value_bool",
-	"value_float",
-	"value_time",
 }
 
 var nodeInsertColumns = [][]string{
@@ -294,11 +280,11 @@ func New(typ string, addr string, options graph.Options) (graph.QuadStore, error
 }
 
 func escapeNullByte(s string) string {
-	return strings.Replace(s, "\u0000", `\x00`, -1)
+	return strings.ReplaceAll(s, "\u0000", `\x00`)
 }
 
 func unescapeNullByte(s string) string {
-	return strings.Replace(s, `\x00`, "\u0000", -1)
+	return strings.ReplaceAll(s, `\x00`, "\u0000")
 }
 
 type ValueType int
@@ -571,7 +557,7 @@ func (qs *QuadStore) QuadsAllIterator(ctx context.Context) iterator.Shape {
 }
 
 func (qs *QuadStore) ValueOf(ctx context.Context, s quad.Value) (graph.Ref, error) {
-	return NodeHash(HashOf(s)), nil
+	return HashOf(s), nil
 }
 
 // NullTime represents a time.Time that may be null. NullTime implements the
@@ -758,30 +744,4 @@ func (qs *QuadStore) Close() error {
 
 func (qs *QuadStore) QuadDirection(ctx context.Context, in graph.Ref, d quad.Direction) (graph.Ref, error) {
 	return NodeHash{in.(QuadHashes).Get(d)}, nil
-}
-
-func (qs *QuadStore) sizeForIterator(dir quad.Direction, hash NodeHash) int64 {
-	var err error
-	if qs.noSizes {
-		st, _ := qs.Stats(context.TODO(), false)
-		if dir == quad.Predicate {
-			return (st.Quads.Value / 100) + 1
-		}
-		return (st.Quads.Value / 1000) + 1
-	}
-	if val, ok := qs.sizes.Get(hash.String() + string(dir.Prefix())); ok {
-		return val.(int64)
-	}
-	var size int64
-	if clog.V(4) {
-		clog.Infof("sql: getting size for select %s, %v", dir.String(), hash)
-	}
-	err = qs.db.QueryRow(
-		fmt.Sprintf("SELECT count(*) FROM quads WHERE %s_hash = "+qs.flavor.Placeholder(1)+";", dir.String()), hash.SQLValue()).Scan(&size)
-	if err != nil {
-		clog.Errorf("Error getting size from SQL database: %v", err)
-		return 0
-	}
-	qs.sizes.Put(hash.String()+string(dir.Prefix()), size)
-	return size
 }

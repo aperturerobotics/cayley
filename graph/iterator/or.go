@@ -31,8 +31,6 @@ type Or struct {
 	isShortCircuiting bool
 	sub               []Shape
 	curInd            int
-	result            refs.Ref
-	err               error
 }
 
 func NewOr(sub ...Shape) *Or {

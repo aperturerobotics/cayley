@@ -47,12 +47,6 @@ var (
 
 	keyMetaIndexes = []byte("i")
 
-	// List of all buckets in the current version of the database.
-	buckets = []kv.Key{
-		metaBucket,
-		logIndex,
-	}
-
 	DefaultQuadIndexes = []QuadIndex{
 		// First index optimizes forward traversals. Getting all relations for a node should
 		// also be reasonably fast (prefix scan).
@@ -215,7 +209,6 @@ func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []gr
 	if err != nil {
 		return err
 	}
-	keys = nil
 	for i, b := range resp {
 		if len(b) == 0 {
 			fnc(inds[i], 0)
@@ -225,9 +218,9 @@ func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []gr
 		id, _ := binary.Uvarint(b)
 		d := &deltas[ind]
 		if iri, ok := d.Val.(quad.IRI); ok && id != 0 {
-			qs.valueLRU.Put(string(iri), uint64(id))
+			qs.valueLRU.Put(string(iri), id)
 		}
-		fnc(ind, uint64(id))
+		fnc(ind, id)
 	}
 	return nil
 }
@@ -544,7 +537,6 @@ func (qs *QuadStore) applyAddDeltas(
 		}
 		links = append(links, link)
 	}
-	qadd = nil
 	deltas.QuadAdd = nil
 
 	qstart, err := qs.genIDs(ctx, tx, len(links))
@@ -638,8 +630,6 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 		if err := qs.markLinksDead(ctx, tx, links); err != nil {
 			return err
 		}
-		links = nil
-		nodes = nil
 
 		// we decremented some nodes that has non-existent quads - let's fix this
 		if len(fixNodes) != 0 {
@@ -1109,7 +1099,7 @@ func (qs *QuadStore) resolveQuadValues(ctx context.Context, tx kv.Tx, vals []qua
 		ind := inds[i]
 		out[ind], _ = binary.Uvarint(b)
 		if iri, ok := vals[ind].(quad.IRI); ok && out[ind] != 0 {
-			qs.valueLRU.Put(string(iri), uint64(out[ind]))
+			qs.valueLRU.Put(string(iri), out[ind])
 		}
 	}
 	return out, nil

@@ -164,10 +164,7 @@ func (it *quadIteratorNext) ensureTx(ctx context.Context) bool {
 		return true
 	}
 	it.tx, it.err = it.qs.db.Tx(ctx, false)
-	if it.err != nil {
-		return false
-	}
-	return true
+	return it.err == nil
 }
 
 func (it *quadIteratorNext) Next(ctx context.Context) bool {

@@ -144,5 +144,4 @@ func (s *Session) Execute(ctx context.Context, input string, opt query.Options) 
 
 func (s *Session) Clear() {
 	// Since we create a new Query underneath every query, clearing isn't necessary.
-	return
 }

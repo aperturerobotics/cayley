@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -58,7 +58,7 @@ func readQuery(raw interface{}) (linkedql.Step, error) {
 func TestLinkedQL(t *testing.T) {
 	// Using files
 	directory := "test-cases"
-	files, err := ioutil.ReadDir(directory)
+	files, err := os.ReadDir(directory)
 	if err != nil {
 		require.NoError(t, err)
 	}
@@ -73,7 +73,7 @@ func TestLinkedQL(t *testing.T) {
 
 		testName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 		t.Run(testName, func(t *testing.T) {
-			file, err := ioutil.ReadFile(filePath)
+			file, err := os.ReadFile(filePath)
 			require.NoError(t, err)
 
 			var c TestCase

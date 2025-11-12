@@ -39,19 +39,19 @@ func isomorphic(source interface{}, target interface{}) error {
 	case string:
 		t, ok := target.(string)
 		if !ok {
-			return fmt.Errorf("Expected %v to be a string but instead received %T", target, target)
+			return fmt.Errorf("expected %v to be a string but instead received %T", target, target)
 		}
 		if s != t {
-			return fmt.Errorf("Expected \"%v\" but instead received \"%v\"", s, t)
+			return fmt.Errorf("expected \"%v\" but instead received \"%v\"", s, t)
 		}
 		return nil
 	case ldArray:
 		t, ok := target.(ldArray)
 		if !ok {
-			return fmt.Errorf("Expected multiple values but instead received the single value: %#v", target)
+			return fmt.Errorf("expected multiple values but instead received the single value: %#v", target)
 		}
 		if len(s) != len(t) {
-			return fmt.Errorf("Expected %#v and %#v to have the same length", s, t)
+			return fmt.Errorf("expected %#v and %#v to have the same length", s, t)
 		}
 	items:
 		for _, i := range s {
@@ -60,16 +60,16 @@ func isomorphic(source interface{}, target interface{}) error {
 					continue items
 				}
 			}
-			return fmt.Errorf("No matching values for the item %#v in %#v", i, t)
+			return fmt.Errorf("no matching values for the item %#v in %#v", i, t)
 		}
 		return nil
 	case ldMap:
 		t, ok := target.(ldMap)
 		if !ok {
-			return fmt.Errorf("Expected %#v to be a map or a slice with a single map but instead received %T", target, target)
+			return fmt.Errorf("expected %#v to be a map or a slice with a single map but instead received %T", target, target)
 		}
 		for k, v := range s {
-			tV, _ := t[k]
+			tV := t[k]
 			err := isomorphic(v, tV)
 			if err != nil {
 				return err

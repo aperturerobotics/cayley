@@ -59,7 +59,7 @@ func toSubject(ctx context.Context, namer refs.Namer, result refs.Ref) (ld.Node,
 	}
 	id, ok := v.(quad.Identifier)
 	if !ok {
-		return nil, fmt.Errorf("Expected subject to be an entity identifier but instead received: %v", v)
+		return nil, fmt.Errorf("expected subject to be an entity identifier but instead received: %v", v)
 	}
 	return jsonld.ToNode(id)
 }

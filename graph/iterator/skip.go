@@ -86,10 +86,7 @@ func (it *skipNext) Next(ctx context.Context) bool {
 			return false
 		}
 	}
-	if it.primaryIt.Next(ctx) {
-		return true
-	}
-	return false
+	return it.primaryIt.Next(ctx)
 }
 
 func (it *skipNext) Err() error {

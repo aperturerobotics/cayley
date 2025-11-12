@@ -156,8 +156,6 @@ func RunTx(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUpdate,
 	if s := updateValue; s != nil {
 		s.Close()
 	}
-	insertValue = nil
-	updateValue = nil
 
 	// now we can deal with quads
 
@@ -186,7 +184,6 @@ func RunTx(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUpdate,
 				if err != nil {
 					return err
 				}
-				insertValue = make(map[csql.ValueType]*sql.Stmt)
 			}
 			_, err := insertQuad.Exec(dirs...)
 			err = convInsertError(err)

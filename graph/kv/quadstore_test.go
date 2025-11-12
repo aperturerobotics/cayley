@@ -51,14 +51,6 @@ func key(b string, k []byte) hkv.Key {
 	return hkv.Key{[]byte(b), k}
 }
 
-func be(v ...uint64) []byte {
-	b := make([]byte, 8*len(v))
-	for i, vi := range v {
-		binary.BigEndian.PutUint64(b[i*8:], vi)
-	}
-	return b
-}
-
 func b64Col(vals ...uint64) []byte {
 	var sb strings.Builder
 	for i, val := range vals {
@@ -81,7 +73,7 @@ func ukey(n uint64) []byte {
 
 func le(v uint64) []byte {
 	var b [8]byte
-	binary.LittleEndian.PutUint64(b[:], uint64(v))
+	binary.LittleEndian.PutUint64(b[:], v)
 	return b[:]
 }
 
@@ -239,13 +231,6 @@ func TestApplyDeltas(t *testing.T) {
 		{opDel, key(bLog, ukey(3)), nil, nil},
 	})
 	require.NoError(t, err)
-}
-
-func clone(b []byte) []byte {
-	if b == nil {
-		return nil
-	}
-	return append([]byte{}, b...)
 }
 
 func sortByOp(exp, got Ops) {

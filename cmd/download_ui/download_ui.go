@@ -49,7 +49,7 @@ func DownloadFile(filepath string, url string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Received %v status code instead of 200 for %v", resp.Status, url)
+		return fmt.Errorf("received %v status code instead of 200 for %v", resp.Status, url)
 	}
 
 	// Create the file

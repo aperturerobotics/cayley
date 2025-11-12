@@ -154,7 +154,7 @@ func IsNull(it Shape) bool {
 	return false
 }
 
-// Height is a convienence function to measure the height of an iterator tree.
+// Height is a convenience function to measure the height of an iterator tree.
 func Height(it Shape, filter func(Shape) bool) int {
 	if filter != nil && !filter(it) {
 		return 1

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -109,7 +108,7 @@ func (api *API) ServeV1Query(w http.ResponseWriter, r *http.Request, params http
 	}
 
 	ses := l.Session(h.QuadStore)
-	bodyBytes, err := ioutil.ReadAll(r.Body)
+	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		errFunc(w, err)
 		return

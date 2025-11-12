@@ -139,7 +139,7 @@ func normalizeQuads(quads []quad.Quad, pattern linkedql.GraphPattern) ([]quad.Qu
 	if id, ok := pattern["@id"]; ok && len(quads) == 0 {
 		idString, ok := id.(string)
 		if !ok {
-			return nil, fmt.Errorf("Unexpected type for @id %T", idString)
+			return nil, fmt.Errorf("unexpected type for @id %T", idString)
 		}
 		quads = append(quads, makeSingleEntityQuad(quad.IRI(idString)))
 	}
@@ -157,7 +157,7 @@ func parsePattern(ctx context.Context, pattern linkedql.GraphPattern, ns *voc.Na
 		return nil, err
 	}
 	if len(quads) == 0 && len(pattern) != 0 {
-		return nil, fmt.Errorf("Pattern does not parse to any quad. `{}` is the only pattern allowed to not parse to any quad")
+		return nil, fmt.Errorf("pattern does not parse to any quad. `{}` is the only pattern allowed to not parse to any quad")
 	}
 	return quads, nil
 }

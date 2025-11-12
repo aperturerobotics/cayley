@@ -15,7 +15,6 @@
 package bolt
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -25,7 +24,7 @@ import (
 )
 
 func makeBolt(t testing.TB) (hkv.KV, graph.Options, func()) {
-	tmpDir, err := ioutil.TempDir(os.TempDir(), "cayley_test_"+Type)
+	tmpDir, err := os.MkdirTemp(os.TempDir(), "cayley_test_"+Type)
 	if err != nil {
 		t.Fatalf("Could not create working directory: %v", err)
 	}

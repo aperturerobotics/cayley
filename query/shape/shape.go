@@ -781,10 +781,11 @@ func (s QuadsAction) Optimize(ctx context.Context, r Optimizer) (Shape, bool, er
 		return s, false, nil
 	}
 	s.Size = sz // computing size is already an optimization
-	if sz == 0 {
+	switch sz {
+	case 0:
 		// nothing here, collapse the tree
 		return nil, true, nil
-	} else if sz == 1 {
+	case 1:
 		// only one quad matches this set of filters
 		// try to load it from quad store, do all operations and bake result as a fixed node/tags
 		if q, ok := ind.LookupQuadIndex(s.Filter); ok {
@@ -1359,7 +1360,7 @@ func (s IntersectOpt) Optimize(ctx context.Context, r Optimizer) (_ Shape, opt b
 		case Intersect:
 			s.Sub = sub
 		case IntersectOpt:
-			sub.Opt = append(sub.Opt)
+			sub.Opt = append([]Shape{}, sub.Opt...)
 			s = sub
 			opt = true
 		default:

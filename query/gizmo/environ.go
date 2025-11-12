@@ -234,7 +234,7 @@ func cmpRegexp(vm *goja.Runtime, call goja.FunctionCall) goja.Value {
 	default:
 		return throwErr(vm, fmt.Errorf("regexp from non-string value: %T", v))
 	}
-	re, err := regexp.Compile(string(s))
+	re, err := regexp.Compile(s)
 	if err != nil {
 		return throwErr(vm, err)
 	}

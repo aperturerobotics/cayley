@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -22,10 +21,10 @@ import (
 type Person struct {
 	// dummy field to enforce all object to have a <id> <rdf:type> <ex:Person> relation
 	// means nothing for Go itself
-	rdfType struct{} `quad:"@type > ex:Person"`
-	ID      quad.IRI `json:"@id"`     // tag @id is a special one - graph node value will be stored in this field
-	Name    string   `json:"ex:name"` // field name (predicate) may be written as json field name
-	Age     int      `quad:"ex:age"`  // or in a quad tag
+	_    struct{} `quad:"@type > ex:Person"`
+	ID   quad.IRI `json:"@id"`     // tag @id is a special one - graph node value will be stored in this field
+	Name string   `json:"ex:name"` // field name (predicate) may be written as json field name
+	Age  int      `quad:"ex:age"`  // or in a quad tag
 }
 
 type Coords struct {
@@ -57,7 +56,7 @@ func main() {
 	}
 
 	// File for your new BoltDB. Use path to regular file and not temporary in the real world
-	tmpdir, err := ioutil.TempDir("", "example")
+	tmpdir, err := os.MkdirTemp("", "example")
 	checkErr(err)
 
 	defer os.RemoveAll(tmpdir) // clean up

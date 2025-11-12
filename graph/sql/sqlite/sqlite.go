@@ -1,5 +1,4 @@
 //go:build cgo
-// +build cgo
 
 package sqlite
 
@@ -100,8 +99,6 @@ func runTxSqlite(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadU
 	if s := updateValue; s != nil {
 		s.Close()
 	}
-	insertValue = nil
-	updateValue = nil
 
 	// now we can deal with quads
 	ignore := ""
@@ -124,7 +121,6 @@ func runTxSqlite(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadU
 				if err != nil {
 					return err
 				}
-				insertValue = make(map[csql.ValueType]*sql.Stmt)
 			}
 			_, err := insertQuad.Exec(dirs...)
 			err = convInsertError(err)

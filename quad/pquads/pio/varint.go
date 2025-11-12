@@ -30,15 +30,9 @@ package pio
 import (
 	"bufio"
 	"encoding/binary"
-	"errors"
 	"io"
 
 	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
-)
-
-var (
-	errSmallBuffer = errors.New("Buffer Too Small")
-	errLargeValue  = errors.New("Value is Larger than 64 bits")
 )
 
 func NewWriter(w io.Writer) Writer {
@@ -60,15 +54,16 @@ func (w *varintWriter) WriteMsg(msg protobuf_go_lite.Message) (_ int, err error)
 			if err != nil {
 				return 0, err
 			}
+		} else {
+			if n >= len(w.buffer) {
+				w.buffer = make([]byte, n)
+			}
+			_, err = m.MarshalTo(w.buffer)
+			if err != nil {
+				return 0, err
+			}
+			data = w.buffer[:n]
 		}
-		if n >= len(w.buffer) {
-			w.buffer = make([]byte, n)
-		}
-		_, err = m.MarshalTo(w.buffer)
-		if err != nil {
-			return 0, err
-		}
-		data = w.buffer[:n]
 	} else {
 		data, err = msg.MarshalVT()
 		if err != nil {

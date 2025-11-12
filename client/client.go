@@ -15,7 +15,7 @@ func New(addr string) *Client {
 }
 
 // Client is a struct used for communicating with a Cayley server through HTTP
-// Deprecated: Client exists for backwards compatability. New code should use
+// Deprecated: Client exists for backwards compatibility. New code should use
 // the updated client github.com/cayleygraph/go-client
 type Client struct {
 	addr string
@@ -68,7 +68,7 @@ type funcCloser struct {
 	closed bool
 }
 
-func (c funcCloser) Close() error {
+func (c *funcCloser) Close() error {
 	if c.closed {
 		return nil
 	}
@@ -102,7 +102,7 @@ func (c *Client) QuadWriter() (quad.WriteCloser, error) {
 		Full:   false,
 		Strict: false,
 	})
-	qw.SetCloser(funcCloser{f: func() error {
+	qw.SetCloser(&funcCloser{f: func() error {
 		pw.Close()
 		return <-errc
 	}})

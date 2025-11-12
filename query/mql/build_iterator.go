@@ -90,7 +90,7 @@ func (q *Query) buildShape(query interface{}, path Path) (s shape.Shape, optiona
 		s = buildAllResult(path)
 		optional = true
 	default:
-		err = fmt.Errorf("Unknown JSON type: %T", query)
+		err = fmt.Errorf("unknown JSON type: %T", query)
 	}
 	if err != nil {
 		return nil, false, err

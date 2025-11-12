@@ -30,11 +30,11 @@ func (s *Properties) Description() string {
 
 func resolveNames(names *linkedql.PropertyPath) (linkedql.PropertyIRIs, error) {
 	if names == nil {
-		return nil, fmt.Errorf("Not implemented: should tag all properties")
+		return nil, fmt.Errorf("not implemented: should tag all properties")
 	}
 	switch n := names.PropertyPathI.(type) {
 	case linkedql.PropertyStep:
-		return nil, fmt.Errorf("Not implemented: should use step to resolve to properties")
+		return nil, fmt.Errorf("not implemented: should use step to resolve to properties")
 	case linkedql.PropertyIRIs:
 		return n, nil
 	case linkedql.PropertyIRIStrings:
@@ -44,7 +44,7 @@ func resolveNames(names *linkedql.PropertyPath) (linkedql.PropertyIRIs, error) {
 	case linkedql.PropertyIRIString:
 		return linkedql.PropertyIRIs{linkedql.PropertyIRI(n)}, nil
 	default:
-		return nil, fmt.Errorf("Unexpected type")
+		return nil, fmt.Errorf("unexpected type")
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	bolt "go.etcd.io/bbolt"
+	bolterrors "go.etcd.io/bbolt/errors"
 
 	"github.com/aperturerobotics/cayley/kv"
 	"github.com/aperturerobotics/cayley/kv/base"
@@ -165,7 +166,7 @@ func (tx *Tx) Put(ctx context.Context, k kv.Key, v kv.Value) error {
 		return nil // bucket creation, no need to put value
 	}
 	err = b.Put(k[0], v)
-	if err == bolt.ErrTxNotWritable {
+	if err == bolterrors.ErrTxNotWritable {
 		err = kv.ErrReadOnly
 	}
 	return err
@@ -177,7 +178,7 @@ func (tx *Tx) Del(ctx context.Context, k kv.Key) error {
 		return nil
 	}
 	err := b.Delete(k[0])
-	if err == bolt.ErrTxNotWritable {
+	if err == bolterrors.ErrTxNotWritable {
 		err = kv.ErrReadOnly
 	}
 	return err

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 
@@ -15,7 +14,7 @@ import (
 
 func main() {
 	// File for your new BoltDB. Use path to regular file and not temporary in the real world
-	tmpdir, err := ioutil.TempDir("", "example")
+	tmpdir, err := os.MkdirTemp("", "example")
 	if err != nil {
 		log.Fatal(err)
 	}

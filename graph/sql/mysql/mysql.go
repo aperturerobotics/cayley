@@ -86,8 +86,6 @@ func runTxMysql(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUp
 	if s := updateValue; s != nil {
 		s.Close()
 	}
-	insertValue = nil
-	updateValue = nil
 
 	// now we can deal with quads
 	ignore := ""
@@ -110,7 +108,6 @@ func runTxMysql(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUp
 				if err != nil {
 					return err
 				}
-				insertValue = make(map[csql.ValueType]*sql.Stmt)
 			}
 			_, err := insertQuad.Exec(dirs...)
 			err = convInsertError(err)

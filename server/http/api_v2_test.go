@@ -58,6 +58,7 @@ func TestV2Write(t *testing.T) {
 	api := makeServerV2(t)
 	ctx := context.Background()
 	buf, err := newQuadsBuffer(ctx, quads)
+	require.NoError(t, err)
 
 	req, err := http.NewRequest(http.MethodGet, prefix+"/write", buf)
 	require.NoError(t, err)

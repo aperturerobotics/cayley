@@ -2,7 +2,6 @@ package kvtest
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"sync"
@@ -48,7 +47,7 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 		opts = &Options{}
 	}
 	RunTest(t, func(t testing.TB) kv.KV {
-		dir, err := ioutil.TempDir("", "dal-kv-")
+		dir, err := os.MkdirTemp("", "dal-kv-")
 		require.NoError(t, err)
 		t.Cleanup(func() {
 			_ = os.RemoveAll(dir)

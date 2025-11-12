@@ -17,7 +17,7 @@ func NewHealthCmd() *cobra.Command {
 		Short:   "Health check HTTP server",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 1 {
-				return fmt.Errorf("Too many arguments provided, expected 0 or 1")
+				return fmt.Errorf("too many arguments provided, expected 0 or 1")
 			}
 			address := defaultAddress
 			if len(args) == 1 {
