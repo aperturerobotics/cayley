@@ -265,9 +265,32 @@ func toValue(t ld.Node) quad.Value {
 	switch t := t.(type) {
 	case *ld.IRI:
 		return quad.IRI(t.Value)
+	case ld.IRI:
+		return quad.IRI(t.Value)
 	case *ld.BlankNode:
 		return quad.BNode(t.Attribute)
+	case ld.BlankNode:
+		return quad.BNode(t.Attribute)
 	case *ld.Literal:
+		if t.Language != "" {
+			return quad.LangString{
+				Value: quad.String(t.Value),
+				Lang:  t.Language,
+			}
+		} else if t.Datatype != "" && t.Datatype != stringDataType {
+			ts := quad.TypedString{
+				Value: quad.String(t.Value),
+				Type:  quad.IRI(t.Datatype),
+			}
+			if AutoConvertTypedString {
+				if v, err := ts.ParseValue(); err == nil {
+					return v
+				}
+			}
+			return ts
+		}
+		return quad.String(t.Value)
+	case ld.Literal:
 		if t.Language != "" {
 			return quad.LangString{
 				Value: quad.String(t.Value),
