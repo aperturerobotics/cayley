@@ -1,11 +1,11 @@
 module github.com/aperturerobotics/cayley
 
-go 1.24.0
+go 1.25
 
 toolchain go1.25.4
 
 require (
-	github.com/aperturerobotics/common v0.22.12
+	github.com/aperturerobotics/common v0.22.14
 	github.com/aperturerobotics/protobuf-go-lite v0.11.0
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
@@ -26,12 +26,15 @@ require (
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tylertreat/BoomFilters v0.0.0-20251001182300-5b3723cc64ae
+	github.com/tylertreat/BoomFilters v0.0.0-20251113175358-29763467fea6
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 	go.etcd.io/bbolt v1.4.3
 )
 
-require github.com/cockroachdb/pebble v1.1.5
+require (
+	github.com/cockroachdb/pebble v1.1.5
+	github.com/cockroachdb/pebble/v2 v2.1.1
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
