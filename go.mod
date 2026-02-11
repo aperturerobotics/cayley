@@ -10,11 +10,9 @@ require (
 
 require (
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
-	github.com/cockroachdb/pebble/v2 v2.1.4
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dgraph-io/badger/v4 v4.9.1
-	github.com/docker/docker v28.3.3+incompatible // indirect
 	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
 	github.com/fsouza/go-dockerclient v1.13.0
 	github.com/go-sql-driver/mysql v1.9.3
@@ -62,7 +60,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
-	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -73,7 +70,6 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.5-0.20231225225746-43d5d4cd4e0e // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
@@ -83,8 +79,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
 	github.com/moby/moby/api v1.53.0 // indirect
 	github.com/moby/moby/client v0.2.2 // indirect
@@ -94,7 +88,6 @@ require (
 	github.com/moby/sys/user v0.4.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	github.com/moby/term v0.5.2 // indirect
-	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
