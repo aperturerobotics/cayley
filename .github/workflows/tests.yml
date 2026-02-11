@@ -31,5 +31,5 @@ jobs:
           key: ${{ runner.os }}-aptre-tools-${{ hashFiles('**/go.sum') }}
       - name: Test Go
         run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre test
-      - name: Lint Go (Expected to not pass yet)
-        run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre lint || true
+      - name: Lint Go
+        run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre lint

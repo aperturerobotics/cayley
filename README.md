@@ -7,7 +7,7 @@
 [Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/cayley
 [Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/cayley
 
-Cayley is an open-source database for [Linked Data](https://www.w3.org/standards/semanticweb/data). It is inspired by the graph database behind Google's [Knowledge Graph](https://en.wikipedia.org/wiki/Knowledge_Graph) (formerly [Freebase](https://en.wikipedia.org/wiki/Freebase_(database))).
+Cayley is an open-source database for [Linked Data](https://www.w3.org/standards/semanticweb/data). It is inspired by the graph database behind Google's [Knowledge Graph](https://en.wikipedia.org/wiki/Knowledge_Graph) (formerly [Freebase](<https://en.wikipedia.org/wiki/Freebase_(database)>)).
 
 **This is a fork of the [upstream project].**
 
@@ -16,6 +16,7 @@ Cayley is an open-source database for [Linked Data](https://www.w3.org/standards
 ## Features
 
 ### 🗄️ Multiple Backend Stores
+
 - **In-memory, ephemeral**
   - btree in-memory-database
 - **[Key-Value Stores](./kv/kv.go)**
@@ -29,15 +30,36 @@ Cayley is an open-source database for [Linked Data](https://www.w3.org/standards
   - [MySQL](https://github.com/go-sql-driver/mysql)
 
 ### 🔍 Efficient Data Management
+
 - Automatic indexing of quad directions (subject, predicate, object, label)
 - Transactions for atomic updates
 
 ### 🔧 Powerful Query Capabilities
+
 - Expressive query languages (Gizmo, Go API) for traversing and analyzing the graph
 
 ### 🌐 API and CLI
+
 - RESTful API for interacting with the database
 - Command-line interface for querying and managing databases
+
+## Development
+
+Build and development commands are available via `make`, which wraps the [aptre](https://github.com/aperturerobotics/common) build tool:
+
+| Command          | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `make gen`       | Generate protobuf code                      |
+| `make test`      | Run tests                                   |
+| `make lint`      | Run golangci-lint                           |
+| `make fix`       | Run golangci-lint with --fix                |
+| `make format`    | Format code with gofumpt                    |
+| `make goimports` | Run goimports                               |
+| `make deps`      | Ensure all build dependencies are installed |
+| `make vendor`    | Update the vendor directory                 |
+| `make outdated`  | Show outdated dependencies                  |
+| `make clean`     | Remove generated files and cache            |
+| `make release`   | Run goreleaser                              |
 
 ## License
 
