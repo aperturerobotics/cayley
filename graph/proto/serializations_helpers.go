@@ -5,8 +5,6 @@ import (
 	"github.com/aperturerobotics/cayley/quad/pquads"
 )
 
-//go:generate protoc --proto_path=$GOPATH/src:. --gogo_out=. serializations.proto
-
 // GetNativeValue returns the value stored in Node.
 func (m *NodeData) GetNativeValue() quad.Value {
 	if m == nil {

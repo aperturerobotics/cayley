@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "protocFlagsHash": "2500e00c110c5f6755fe456b00ef61289e2f65cb916594c669ea4782dc11c92d",
+  "toolVersions": "protoc=embedded,protobuf-go-lite=v0.12.1,starpc=v0.46.1",
+  "packages": {
+    "github.com/aperturerobotics/cayley/graph/proto": {
+      "hash": "ca9faf6ca0e03ae9e524c9cd9a1d154c11319faec368ba3cbe7cebf3bb13faad",
+      "generatedFiles": [
+        "graph/proto/primitive.pb.cc",
+        "graph/proto/primitive.pb.go",
+        "graph/proto/primitive.pb.h",
+        "graph/proto/primitive.pb.rs",
+        "graph/proto/serializations.pb.go",
+        "graph/proto/serializations.pb.h",
+        "graph/proto/serializations.pb.cc"
+      ],
+      "protoFiles": [
+        "graph/proto/primitive.proto",
+        "graph/proto/serializations.proto"
+      ]
+    },
+    "github.com/aperturerobotics/cayley/quad/pquads": {
+      "hash": "4d6ca01e9fb6872cb259f146e8d2868b2778fd453c94635c0ec639209d6882ea",
+      "generatedFiles": [
+        "quad/pquads/quads.pb.cc",
+        "quad/pquads/quads.pb.go",
+        "quad/pquads/quads.pb.h",
+        "quad/pquads/quads.pb.rs"
+      ],
+      "protoFiles": [
+        "quad/pquads/quads.proto"
+      ]
+    },
+    "github.com/aperturerobotics/cayley/quad/pquads/pio/test": {
+      "hash": "a695b361b59c44b5af92309baf5627db8005ea47a537adbf16bc7daaf9022636",
+      "generatedFiles": [
+        "quad/pquads/pio/test/test.pb.cc",
+        "quad/pquads/pio/test/test.pb.go",
+        "quad/pquads/pio/test/test.pb.h",
+        "quad/pquads/pio/test/test.pb.rs"
+      ],
+      "protoFiles": [
+        "quad/pquads/pio/test/test.proto"
+      ]
+    }
+  }
+}

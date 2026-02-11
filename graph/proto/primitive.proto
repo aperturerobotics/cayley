@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package proto;
 
+option go_package = "github.com/aperturerobotics/cayley/graph/proto";
+
 message Primitive {
   uint64 ID = 1;
   uint64 Subject = 2;

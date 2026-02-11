@@ -2,10 +2,10 @@ name: Tests
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "master" ]
+    branches: ["master"]
 
 # Builds images for target boards.
 permissions:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.25']
+        go: ["1.25"]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -24,7 +24,12 @@ jobs:
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: ${{ matrix.go }}
+      - name: Cache tools
+        uses: actions/cache@v5
+        with:
+          path: ./.tools
+          key: ${{ runner.os }}-aptre-tools-${{ hashFiles('**/go.sum') }}
       - name: Test Go
-        run: make test
+        run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre test
       - name: Lint Go (Expected to not pass yet)
-        run: make lint || true
+        run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre lint || true

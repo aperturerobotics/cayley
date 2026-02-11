@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package proto;
 
+option go_package = "github.com/aperturerobotics/cayley/graph/proto";
+
 import "github.com/aperturerobotics/cayley/quad/pquads/quads.proto";
 
 message LogDelta {
