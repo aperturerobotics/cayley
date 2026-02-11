@@ -10,9 +10,9 @@
         "graph/proto/primitive.pb.go",
         "graph/proto/primitive.pb.h",
         "graph/proto/primitive.pb.rs",
+        "graph/proto/serializations.pb.cc",
         "graph/proto/serializations.pb.go",
-        "graph/proto/serializations.pb.h",
-        "graph/proto/serializations.pb.cc"
+        "graph/proto/serializations.pb.h"
       ],
       "protoFiles": [
         "graph/proto/primitive.proto",

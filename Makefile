@@ -9,6 +9,9 @@ vendor:
 generate gen genproto:
 	$(APTRE) generate
 
+gen-force:
+	$(APTRE) generate --force
+
 clean:
 	$(APTRE) clean
 
@@ -36,4 +39,4 @@ outdated:
 release:
 	$(APTRE) release
 
-.PHONY: all vendor generate gen genproto clean deps protodeps lint fix test format fmt gofumpt goimports outdated release
+.PHONY: all vendor generate gen genproto gen-force clean deps protodeps lint fix test format fmt gofumpt goimports outdated release
