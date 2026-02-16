@@ -21,7 +21,7 @@ func LoadGraph(t testing.TB, path string) []quad.Quad {
 		err error
 	)
 	const levels = 5
-	for i := 0; i < levels; i++ {
+	for i := range levels {
 		f, err = os.Open(path)
 		if i+1 < levels && os.IsNotExist(err) {
 			path = filepath.Join("../", path)

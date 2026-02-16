@@ -18,6 +18,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/aperturerobotics/cayley/graph"
@@ -33,9 +34,9 @@ func (qs *QuadStore) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Sh
 	return qs.opt.OptimizeShape(ctx, s)
 }
 
-func (qs *QuadStore) prepareQuery(s Shape) (string, []interface{}) {
+func (qs *QuadStore) prepareQuery(s Shape) (string, []any) {
 	args := s.Args()
-	vals := make([]interface{}, 0, len(args))
+	vals := make([]any, 0, len(args))
 	for _, a := range args {
 		vals = append(vals, a.SQLValue())
 	}
@@ -143,9 +144,7 @@ func (it *iteratorBase) TagResults(ctx context.Context, m map[string]graph.Ref) 
 	if err := it.Err(); err != nil {
 		return err
 	}
-	for tag, val := range it.tags {
-		m[tag] = val
-	}
+	maps.Copy(m, it.tags)
 	return nil
 }
 
@@ -180,7 +179,7 @@ func (it *iteratorBase) ensureColumns() {
 func (it *iteratorBase) scanValue(r *sql.Rows) bool {
 	it.ensureColumns()
 	nodes := make([]NodeHash, len(it.cols))
-	pointers := make([]interface{}, len(nodes))
+	pointers := make([]any, len(nodes))
 	for i := range pointers {
 		pointers[i] = &nodes[i]
 	}

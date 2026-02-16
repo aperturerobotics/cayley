@@ -237,10 +237,8 @@ func increment(t testing.TB, db kv.KV) {
 	ready := make(chan struct{})
 	errc := make(chan error, n)
 	var wg sync.WaitGroup
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range n {
+		wg.Go(func() {
 			ctx := context.Background()
 			<-ready
 			err := kv.Update(ctx, db, func(tx kv.Tx) error {
@@ -259,7 +257,7 @@ func increment(t testing.TB, db kv.KV) {
 			if err != nil {
 				errc <- err
 			}
-		}()
+		})
 	}
 	close(ready)
 	wg.Wait()

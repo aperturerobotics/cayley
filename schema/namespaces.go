@@ -18,7 +18,7 @@ type namespace struct {
 
 // WriteNamespaces will writes namespaces list into graph.
 func (c *Config) WriteNamespaces(ctx context.Context, w quad.Writer, n *voc.Namespaces) error {
-	rules, err := c.rulesFor(reflect.TypeOf(namespace{}))
+	rules, err := c.rulesFor(reflect.TypeFor[namespace]())
 	if err != nil {
 		return fmt.Errorf("can't load rules: %v", err)
 	}

@@ -18,6 +18,7 @@ package iterator
 
 import (
 	"context"
+	"maps"
 
 	"github.com/aperturerobotics/cayley/clog"
 	"github.com/aperturerobotics/cayley/graph/refs"
@@ -98,7 +99,7 @@ type materializeNext struct {
 	sub  Shape
 	next Scanner
 
-	containsMap map[interface{}]int
+	containsMap map[any]int
 	values      [][]result
 	index       int
 	subindex    int
@@ -109,7 +110,7 @@ type materializeNext struct {
 
 func newMaterializeNext(ctx context.Context, sub Shape) *materializeNext {
 	return &materializeNext{
-		containsMap: make(map[interface{}]int),
+		containsMap: make(map[any]int),
 		sub:         sub,
 		next:        sub.Iterate(ctx),
 		index:       -1,
@@ -138,9 +139,7 @@ func (it *materializeNext) TagResults(ctx context.Context, dst map[string]refs.R
 		return err
 	}
 	if res != nil {
-		for tag, value := range it.values[it.index][it.subindex].tags {
-			dst[tag] = value
-		}
+		maps.Copy(dst, it.values[it.index][it.subindex].tags)
 	}
 	return nil
 }

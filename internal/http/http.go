@@ -27,7 +27,7 @@ import (
 	cayleyhttp "github.com/aperturerobotics/cayley/server/http"
 )
 
-func jsonResponse(w http.ResponseWriter, code int, err interface{}) {
+func jsonResponse(w http.ResponseWriter, code int, err any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write([]byte(`{"error": `))

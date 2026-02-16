@@ -39,7 +39,7 @@ func (e errArgCount) Error() string {
 }
 
 type errNotQuadValue struct {
-	Val interface{}
+	Val any
 }
 
 func (e errNotQuadValue) Error() string {

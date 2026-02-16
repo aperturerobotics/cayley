@@ -19,12 +19,12 @@ import (
 )
 
 type TestCase struct {
-	Data    interface{} `json:"data"`
-	Query   interface{} `json:"query"`
-	Results interface{} `json:"results"`
+	Data    any `json:"data"`
+	Query   any `json:"query"`
+	Results any `json:"results"`
 }
 
-func readData(data interface{}) ([]quad.Quad, error) {
+func readData(data any) ([]quad.Quad, error) {
 	d, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func readData(data interface{}) ([]quad.Quad, error) {
 	return quads, nil
 }
 
-func readQuery(raw interface{}) (linkedql.Step, error) {
+func readQuery(raw any) (linkedql.Step, error) {
 	d, err := json.Marshal(raw)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func TestLinkedQL(t *testing.T) {
 			ctx := context.TODO()
 			iterator, err := linkedql.BuildIterator(ctx, query, store, &voc)
 			require.NoError(t, err)
-			var results []interface{}
+			var results []any
 			for iterator.Next(ctx) {
 				resi, err := iterator.Result(ctx)
 				require.NoError(t, err)

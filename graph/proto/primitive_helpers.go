@@ -33,7 +33,7 @@ func (p Primitive) IsNode() bool {
 	return len(p.Value) != 0
 }
 
-func (p Primitive) Key() interface{} {
+func (p Primitive) Key() any {
 	return p.ID
 }
 

@@ -75,11 +75,11 @@ const (
 )
 
 func (fieldNameMapper) MethodName(t reflect.Type, m reflect.Method) string {
-	if strings.HasPrefix(m.Name, backwardsCompatibilityPrefix) {
-		return strings.TrimPrefix(m.Name, backwardsCompatibilityPrefix)
+	if after, ok := strings.CutPrefix(m.Name, backwardsCompatibilityPrefix); ok {
+		return after
 	}
-	if strings.HasPrefix(m.Name, constructMethodPrefix) {
-		return strings.TrimPrefix(m.Name, constructMethodPrefix)
+	if after, ok := strings.CutPrefix(m.Name, constructMethodPrefix); ok {
+		return after
 	}
 	return lcFirst(m.Name)
 }
@@ -121,7 +121,7 @@ func (s *Session) buildEnv() error {
 	return nil
 }
 
-func (s *Session) quadValueToNative(v quad.Value) interface{} {
+func (s *Session) quadValueToNative(v quad.Value) any {
 	if v == nil {
 		return nil
 	}
@@ -135,8 +135,8 @@ func (s *Session) quadValueToNative(v quad.Value) interface{} {
 	return out
 }
 
-func (s *Session) tagsToValueMap(m map[string]graph.Ref) (map[string]interface{}, error) {
-	outputMap := make(map[string]interface{})
+func (s *Session) tagsToValueMap(m map[string]graph.Ref) (map[string]any, error) {
+	outputMap := make(map[string]any)
 	for k, v := range m {
 		nv, err := s.qs.NameOf(s.context(), v)
 		if err != nil {
@@ -152,10 +152,10 @@ func (s *Session) tagsToValueMap(m map[string]graph.Ref) (map[string]interface{}
 	return outputMap, nil
 }
 
-func (s *Session) runIteratorToArray(it iterator.Shape, limit int) ([]map[string]interface{}, error) {
+func (s *Session) runIteratorToArray(it iterator.Shape, limit int) ([]map[string]any, error) {
 	ctx := s.context()
 
-	output := make([]map[string]interface{}, 0)
+	output := make([]map[string]any, 0)
 	err := iterator.Iterate(it).Limit(limit).TagEach(ctx, func(tags map[string]graph.Ref) error {
 		tm, err := s.tagsToValueMap(tags)
 		if err != nil {
@@ -172,10 +172,10 @@ func (s *Session) runIteratorToArray(it iterator.Shape, limit int) ([]map[string
 	return output, nil
 }
 
-func (s *Session) runIteratorToArrayNoTags(it iterator.Shape, limit int) ([]interface{}, error) {
+func (s *Session) runIteratorToArrayNoTags(it iterator.Shape, limit int) ([]any, error) {
 	ctx := s.context()
 
-	output := make([]interface{}, 0)
+	output := make([]any, 0)
 	err := iterator.Iterate(it).Paths(false).Limit(limit).EachValue(ctx, s.qs, func(v quad.Value) error {
 		if o := s.quadValueToNative(v); o != nil {
 			output = append(output, o)
@@ -251,11 +251,11 @@ func (s *Session) countResults(it iterator.Shape) (int64, error) {
 
 type Result struct {
 	Meta bool
-	Val  interface{}
+	Val  any
 	Tags map[string]graph.Ref
 }
 
-func (r *Result) Result(ctx context.Context) (interface{}, error) {
+func (r *Result) Result(ctx context.Context) (any, error) {
 	if r.Tags != nil {
 		return r.Tags, nil
 	}
@@ -360,7 +360,7 @@ func (it *results) Next(ctx context.Context) bool {
 	}
 }
 
-func (it *results) Result(ctx context.Context) (interface{}, error) {
+func (it *results) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
@@ -378,7 +378,7 @@ func (it *results) Result(ctx context.Context) (interface{}, error) {
 	return nil, nil
 }
 
-func (it *results) jsonResult(ctx context.Context) (interface{}, error) {
+func (it *results) jsonResult(ctx context.Context) (any, error) {
 	data := it.cur
 	if data.Meta {
 		return nil, nil
@@ -386,7 +386,7 @@ func (it *results) jsonResult(ctx context.Context) (interface{}, error) {
 	if data.Val != nil {
 		return data.Val, nil
 	}
-	obj := make(map[string]interface{})
+	obj := make(map[string]any)
 	tags := data.Tags
 	var tagKeys []string
 	for k := range tags {
@@ -408,7 +408,7 @@ func (it *results) jsonResult(ctx context.Context) (interface{}, error) {
 	return obj, nil
 }
 
-func (it *results) replResult(ctx context.Context) (interface{}, error) {
+func (it *results) replResult(ctx context.Context) (any, error) {
 	data := it.cur
 	if data.Meta {
 		if data.Val != nil {
@@ -448,7 +448,7 @@ func (it *results) replResult(ctx context.Context) (interface{}, error) {
 			for k, v := range export {
 				out += fmt.Sprintf("%s : %s\n", k, v)
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			for k, v := range export {
 				out += fmt.Sprintf("%s : %v\n", k, v)
 			}

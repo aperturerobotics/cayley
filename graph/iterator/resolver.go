@@ -155,7 +155,7 @@ func (it *resolverNext) NextPath(ctx context.Context) bool {
 type resolverContains struct {
 	qs     refs.Namer
 	order  []quad.Value
-	nodes  map[interface{}]quad.Value
+	nodes  map[any]quad.Value
 	cached bool
 	err    error
 	result refs.Ref
@@ -191,7 +191,7 @@ func (it *resolverContains) resolve(ctx context.Context) error {
 	}
 	// Generally there are going to be no/few duplicates given
 	// so allocate maps large enough to accommodate all
-	it.nodes = make(map[interface{}]quad.Value, len(it.order))
+	it.nodes = make(map[any]quad.Value, len(it.order))
 	for index, value := range values {
 		node := it.order[index]
 		it.nodes[value.Key()] = node

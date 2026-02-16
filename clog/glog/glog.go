@@ -13,19 +13,19 @@ func init() {
 
 type Logger struct{}
 
-func (Logger) Infof(format string, args ...interface{}) {
+func (Logger) Infof(format string, args ...any) {
 	glog.InfoDepth(3, fmt.Sprintf(format, args...))
 }
 
-func (Logger) Warningf(format string, args ...interface{}) {
+func (Logger) Warningf(format string, args ...any) {
 	glog.WarningDepth(3, fmt.Sprintf(format, args...))
 }
 
-func (Logger) Errorf(format string, args ...interface{}) {
+func (Logger) Errorf(format string, args ...any) {
 	glog.ErrorDepth(3, fmt.Sprintf(format, args...))
 }
 
-func (Logger) Fatalf(format string, args ...interface{}) {
+func (Logger) Fatalf(format string, args ...any) {
 	glog.FatalDepth(3, fmt.Sprintf(format, args...))
 }
 

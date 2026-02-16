@@ -3,6 +3,7 @@ package steps
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/quad"
@@ -117,20 +118,18 @@ func buildPatternPath(pattern []quad.Quad, ns *voc.Namespaces) *path.Path {
 }
 
 func contextualizePattern(pattern linkedql.GraphPattern, ns *voc.Namespaces) linkedql.GraphPattern {
-	context := make(map[string]interface{})
+	context := make(map[string]any)
 	for _, namespace := range ns.List() {
 		context[namespace.Prefix] = namespace.Full
 	}
 	patternClone := linkedql.GraphPattern{
 		"@context": context,
 	}
-	for key, value := range pattern {
-		patternClone[key] = value
-	}
+	maps.Copy(patternClone, pattern)
 	return pattern
 }
 
-func quadsFromMap(ctx context.Context, o interface{}) ([]quad.Quad, error) {
+func quadsFromMap(ctx context.Context, o any) ([]quad.Quad, error) {
 	reader := jsonld.NewReaderFromMap(o)
 	return quad.ReadAll(ctx, reader)
 }

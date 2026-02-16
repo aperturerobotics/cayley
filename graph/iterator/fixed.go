@@ -146,13 +146,13 @@ func (it *fixedNext) NextPath(ctx context.Context) bool {
 // an equality function.
 type fixedContains struct {
 	values []refs.Ref
-	keys   []interface{}
+	keys   []any
 	result refs.Ref
 }
 
 // Creates a new Fixed iterator with a custom comparator.
 func newFixedContains(vals []refs.Ref) *fixedContains {
-	keys := make([]interface{}, 0, len(vals))
+	keys := make([]any, 0, len(vals))
 	for _, v := range vals {
 		keys = append(keys, refs.ToKey(v))
 	}

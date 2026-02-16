@@ -36,7 +36,7 @@ var (
 
 func simpleFixedIterator() *Fixed {
 	f := NewFixed()
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		f.Add(Int64Node(i))
 	}
 	return f

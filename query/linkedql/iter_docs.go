@@ -62,11 +62,11 @@ func (it *DocumentIterator) Next(ctx context.Context) bool {
 }
 
 // Result implements query.Iterator.
-func (it *DocumentIterator) Result(ctx context.Context) (interface{}, error) {
+func (it *DocumentIterator) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
-	context := make(map[string]interface{})
+	context := make(map[string]any)
 	opts := ld.NewJsonLdOptions("")
 	c, err := datasetToCompact(it.dataset, context, opts)
 	if err != nil {

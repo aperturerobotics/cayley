@@ -125,7 +125,7 @@ func (gs *GraphStream) makeOneNode(id string, v quad.Value, props map[quad.Value
 	setStringProp(&slabel, props, rdfs.Label)
 	setStringProp(&slabel, props, schema.Name)
 
-	var label interface{}
+	var label any
 	if slabel != "" {
 		label = slabel
 	} else {
@@ -153,7 +153,7 @@ func (gs *GraphStream) AddNode(v quad.Value, props map[quad.Value]quad.Value) st
 	return gs.addNode(v, h, props)
 }
 
-func (gs *GraphStream) encode(o interface{}) {
+func (gs *GraphStream) encode(o any) {
 	data, _ := json.Marshal(o)
 	gs.buf.Write(data)
 	// Gephi requires \r character at the end of each line
@@ -205,7 +205,7 @@ func (gs *GraphStream) Flush() error {
 }
 
 type (
-	streamNode map[string]interface{}
+	streamNode map[string]any
 	streamEdge struct {
 		Subject   string `json:"source"`
 		Label     string `json:"label"`

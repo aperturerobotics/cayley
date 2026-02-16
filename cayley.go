@@ -37,11 +37,11 @@ func (h *Handle) Close() error {
 	return err
 }
 
-func Triple(subject, predicate, object interface{}) quad.Quad {
+func Triple(subject, predicate, object any) quad.Quad {
 	return Quad(subject, predicate, object, nil)
 }
 
-func Quad(subject, predicate, object, label interface{}) quad.Quad {
+func Quad(subject, predicate, object, label any) quad.Quad {
 	return quad.Make(subject, predicate, object, label)
 }
 

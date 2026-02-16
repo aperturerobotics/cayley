@@ -66,11 +66,11 @@ func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (m
 				if q.isRepeated[currentPath] && currentPath != "" {
 					switch t := q.queryResult[targetPath][key].(type) {
 					case nil:
-						x := make([]interface{}, 0)
+						x := make([]any, 0)
 						x = append(x, newStruct)
 						q.queryResult[targetPath][key] = x
 						q.queryResult[namePath] = newStruct
-					case []interface{}:
+					case []any:
 						q.queryResult[targetPath][key] = append(t, newStruct)
 						q.queryResult[namePath] = newStruct
 					}
@@ -101,10 +101,10 @@ func (q *Query) treeifyResult(ctx context.Context, tags map[string]graph.Ref) (m
 			if q.isRepeated[currentPath] {
 				switch t := q.queryResult[targetPath][key].(type) {
 				case nil:
-					x := make([]interface{}, 0)
+					x := make([]any, 0)
 					x = append(x, value)
 					q.queryResult[targetPath][key] = x
-				case []interface{}:
+				case []any:
 					q.queryResult[targetPath][key] = append(t, value)
 				}
 			} else {

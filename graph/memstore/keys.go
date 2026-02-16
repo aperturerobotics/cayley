@@ -78,10 +78,10 @@ func init() {
 }
 
 var (
-	btDPool = sync.Pool{New: func() interface{} { return &d{} }}
-	btEPool = btEpool{sync.Pool{New: func() interface{} { return &Enumerator{} }}}
-	btTPool = btTpool{sync.Pool{New: func() interface{} { return &Tree{} }}}
-	btXPool = sync.Pool{New: func() interface{} { return &x{} }}
+	btDPool = sync.Pool{New: func() any { return &d{} }}
+	btEPool = btEpool{sync.Pool{New: func() any { return &Enumerator{} }}}
+	btTPool = btTpool{sync.Pool{New: func() any { return &Tree{} }}}
+	btXPool = sync.Pool{New: func() any { return &x{} }}
 )
 
 type btTpool struct{ sync.Pool }
@@ -145,12 +145,12 @@ type (
 		cmp   Cmp
 		first *d
 		last  *d
-		r     interface{}
+		r     any
 		ver   int64
 	}
 
 	xe struct { // x element
-		ch interface{}
+		ch any
 		k  int64
 	}
 
@@ -170,7 +170,7 @@ var ( // R/O zero values
 	zxe xe
 )
 
-func clr(q interface{}) {
+func clr(q any) {
 	switch x := q.(type) {
 	case *x:
 		for i := 0; i <= x.c; i++ { // Ch0 Sep0 ... Chn-1 Sepn-1 Chn
@@ -186,7 +186,7 @@ func clr(q interface{}) {
 
 // -------------------------------------------------------------------------- x
 
-func newX(ch0 interface{}) *x {
+func newX(ch0 any) *x {
 	r := btXPool.Get().(*x)
 	r.x[0].ch = ch0
 	return r
@@ -202,7 +202,7 @@ func (q *x) extract(i int) {
 	}
 }
 
-func (q *x) insert(i int, k int64, ch interface{}) *x {
+func (q *x) insert(i int, k int64, ch any) *x {
 	c := q.c
 	if i < c {
 		q.x[c+1].ch = q.x[c].ch
@@ -393,7 +393,7 @@ func (t *Tree) extract(q *d, i int) { // (r *primitive) {
 	t.c--
 }
 
-func (t *Tree) find(q interface{}, k int64) (i int, ok bool) {
+func (t *Tree) find(q any, k int64) (i int, ok bool) {
 	var mk int64
 	l := 0
 	switch x := q.(type) {

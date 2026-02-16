@@ -65,13 +65,13 @@ type uniqueNext struct {
 	subIt  Scanner
 	result refs.Ref
 	err    error
-	seen   map[interface{}]bool
+	seen   map[any]bool
 }
 
 func newUniqueNext(subIt Scanner) *uniqueNext {
 	return &uniqueNext{
 		subIt: subIt,
-		seen:  make(map[interface{}]bool),
+		seen:  make(map[any]bool),
 	}
 }
 

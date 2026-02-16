@@ -2,6 +2,7 @@ package iterator
 
 import (
 	"context"
+	"maps"
 	"sort"
 
 	"github.com/aperturerobotics/cayley/graph/refs"
@@ -97,9 +98,7 @@ func newSortNext(namer refs.Namer, subIt Scanner) *sortNext {
 }
 
 func (it *sortNext) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
-	for tag, value := range it.result.tags {
-		dst[tag] = value
-	}
+	maps.Copy(dst, it.result.tags)
 	return nil
 }
 

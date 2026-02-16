@@ -16,6 +16,7 @@ package sexp
 
 import (
 	"context"
+	"strings"
 
 	"github.com/badgerodon/peg"
 
@@ -189,17 +190,17 @@ func parseQuery(input string) *peg.ExpressionTree {
 }
 
 func getIdentString(tree *peg.ExpressionTree) string {
-	out := ""
+	var out strings.Builder
 	if len(tree.Children) > 0 {
 		for _, child := range tree.Children {
-			out += getIdentString(child)
+			out.WriteString(getIdentString(child))
 		}
 	} else {
 		if tree.Value != '"' {
-			out += string([]rune{rune(tree.Value)})
+			out.WriteString(string([]rune{rune(tree.Value)}))
 		}
 	}
-	return out
+	return out.String()
 }
 
 func lookup(s string) shape.Shape {

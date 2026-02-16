@@ -48,7 +48,7 @@ var (
 )
 
 // Make creates a quad with provided values.
-func Make(subject, predicate, object, label interface{}) (q Quad) {
+func Make(subject, predicate, object, label any) (q Quad) {
 	var ok bool
 	if q.Subject, ok = AsValue(subject); !ok {
 		q.Subject = String(fmt.Sprint(subject))

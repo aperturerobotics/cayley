@@ -16,6 +16,7 @@ package mql
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/aperturerobotics/cayley/graph/iterator"
@@ -30,9 +31,9 @@ type Query struct {
 	ses            *Session
 	it             iterator.Shape
 	isRepeated     map[Path]bool
-	queryStructure map[Path]map[string]interface{}
-	queryResult    map[ResultPath]map[string]interface{}
-	results        []interface{}
+	queryStructure map[Path]map[string]any
+	queryResult    map[ResultPath]map[string]any
+	results        []any
 	resultOrder    []string
 	err            error
 }
@@ -41,11 +42,9 @@ func (q *Query) isError() bool {
 	return q.err != nil
 }
 
-func (q *Query) copyPathStructure(path Path) map[string]interface{} {
-	output := make(map[string]interface{})
-	for k, v := range q.queryStructure[path] {
-		output[k] = v
-	}
+func (q *Query) copyPathStructure(path Path) map[string]any {
+	output := make(map[string]any)
+	maps.Copy(output, q.queryStructure[path])
 	return output
 }
 

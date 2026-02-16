@@ -85,7 +85,7 @@ func dirTag(d quad.Direction) string {
 }
 
 type Value interface {
-	SQLValue() interface{}
+	SQLValue() any
 }
 
 type Shape interface {

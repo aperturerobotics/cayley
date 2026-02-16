@@ -124,7 +124,7 @@ func RunTx(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUpdate,
 			if err != nil {
 				return err
 			}
-			values = append([]interface{}{n.RefInc}, values...)
+			values = append([]any{n.RefInc}, values...)
 			stmt, ok := insertValue[nodeKey]
 			if !ok {
 				ph := make([]string, len(values))
@@ -174,7 +174,7 @@ func RunTx(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUpdate,
 		err        error
 	)
 	for _, d := range quads {
-		dirs := make([]interface{}, 0, len(quad.Directions))
+		dirs := make([]any, 0, len(quad.Directions))
 		for _, h := range d.Quad.Dirs() {
 			dirs = append(dirs, csql.NodeHash{ValueHash: h}.SQLValue())
 		}

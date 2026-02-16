@@ -2,6 +2,7 @@ package shape
 
 import (
 	"context"
+	"maps"
 	"os"
 	"reflect"
 	"regexp"
@@ -112,7 +113,7 @@ func Optimize(ctx context.Context, s Shape, qs graph.QuadStore) (Shape, bool, er
 	return s, opt, nil
 }
 
-var rtShape = reflect.TypeOf((*Shape)(nil)).Elem()
+var rtShape = reflect.TypeFor[Shape]()
 
 // Walk calls provided function for each shape in the tree.
 func Walk(s Shape, fnc WalkFunc) {
@@ -634,9 +635,7 @@ func (s NodesFrom) Optimize(ctx context.Context, r Optimizer) (Shape, bool, erro
 				q = nquad
 			}
 			q[i].Values = ft.On
-			for k, v := range ft.Tags {
-				tags[k] = v
-			}
+			maps.Copy(tags, ft.Tags)
 		}
 	}
 	if tags != nil {
@@ -714,18 +713,14 @@ func (s *QuadsAction) SetFilter(d quad.Direction, v refs.Ref) {
 func (s QuadsAction) Clone() QuadsAction {
 	if n := len(s.Save); n != 0 {
 		s2 := make(map[quad.Direction][]string, n)
-		for k, v := range s.Save {
-			s2[k] = v
-		}
+		maps.Copy(s2, s.Save)
 		s.Save = s2
 	} else {
 		s.Save = nil
 	}
 	if n := len(s.Filter); n != 0 {
 		f2 := make(map[quad.Direction]refs.Ref, n)
-		for k, v := range s.Filter {
-			f2[k] = v
-		}
+		maps.Copy(f2, s.Filter)
 		s.Filter = f2
 	} else {
 		s.Filter = nil
@@ -883,12 +878,8 @@ func (s FixedTags) Optimize(ctx context.Context, r Optimizer) (Shape, bool, erro
 		return s.On, true, nil
 	} else if s2, ok := s.On.(FixedTags); ok {
 		tags := make(map[string]refs.Ref, len(s.Tags)+len(s2.Tags))
-		for k, v := range s.Tags {
-			tags[k] = v
-		}
-		for k, v := range s2.Tags {
-			tags[k] = v
-		}
+		maps.Copy(tags, s.Tags)
+		maps.Copy(tags, s2.Tags)
 		s, opt = FixedTags{On: s2.On, Tags: tags}, true
 	}
 	if r != nil {
@@ -1010,9 +1001,7 @@ func clearFixedTags(arr []Shape) ([]Shape, map[string]refs.Ref) {
 				arr = na
 			}
 			arr[i] = ft.On
-			for k, v := range ft.Tags {
-				tags[k] = v
-			}
+			maps.Copy(tags, ft.Tags)
 		}
 	}
 	return arr, tags

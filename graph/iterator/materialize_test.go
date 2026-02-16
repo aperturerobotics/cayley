@@ -53,7 +53,7 @@ func TestMaterializeIteratorErrorAbort(t *testing.T) {
 	mIt := NewMaterialize(or).Iterate(ctx)
 
 	// We should get all the underlying values...
-	for i := 0; i < MaterializeLimit+1; i++ {
+	for range MaterializeLimit + 1 {
 		require.True(t, mIt.Next(ctx))
 		require.NoError(t, mIt.Err())
 	}

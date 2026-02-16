@@ -59,7 +59,7 @@ func TestOrIteratorBasics(t *testing.T) {
 	require.Equal(t, int64(7), st.Size.Value)
 
 	expect := []int{1, 2, 3, 3, 9, 20, 21}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, expect, iterated(t, or))
 	}
 
@@ -112,7 +112,7 @@ func TestShortCircuitingOrBasics(t *testing.T) {
 	or.AddSubIterator(f1)
 	or.AddSubIterator(f2)
 	expect := []int{1, 2, 3}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, expect, iterated(t, or))
 	}
 
@@ -144,7 +144,7 @@ func TestShortCircuitingOrBasics(t *testing.T) {
 	or.AddSubIterator(f2)
 
 	expect = []int{3, 9, 20, 21}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, expect, iterated(t, or))
 	}
 	// Check optimization works.

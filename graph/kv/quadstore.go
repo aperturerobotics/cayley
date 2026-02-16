@@ -408,4 +408,4 @@ func (qs *QuadStore) getPrimitives(ctx context.Context, vals []uint64) ([]*proto
 
 type Int64Value uint64
 
-func (v Int64Value) Key() interface{} { return v }
+func (v Int64Value) Key() any { return v }

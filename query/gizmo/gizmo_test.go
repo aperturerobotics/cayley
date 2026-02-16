@@ -741,7 +741,6 @@ func TestGizmo(t *testing.T) {
 	multiGraph := testutil.LoadGraph(t, multiGraphTestFile)
 
 	for _, test := range testQueries {
-		test := test
 		t.Run(test.message, func(t *testing.T) {
 			rec := func() {
 				if r := recover(); r != nil {
@@ -835,7 +834,7 @@ const issue718Limit = 5
 
 func issue718Graph() []quad.Quad {
 	var quads []quad.Quad
-	for i := 0; i < issue718Limit; i++ {
+	for i := range issue718Limit {
 		n := fmt.Sprintf("n%d", i+1)
 		quads = append(quads, quad.MakeIRI("a", "b", n, ""))
 	}
@@ -845,7 +844,7 @@ func issue718Graph() []quad.Quad {
 func issue718Nodes() []string {
 	var nodes []string
 	nodes = append(nodes, "<a>", "<b>")
-	for i := 0; i < issue718Limit-2; i++ {
+	for i := range issue718Limit - 2 {
 		n := fmt.Sprintf("<n%d>", i+1)
 		nodes = append(nodes, n)
 	}

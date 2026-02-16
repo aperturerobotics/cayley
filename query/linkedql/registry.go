@@ -38,7 +38,7 @@ type RegistryItem interface {
 // Register adds an Item type to the registry.
 func Register(typ RegistryItem) {
 	tp := reflect.TypeOf(typ)
-	if tp.Kind() == reflect.Ptr {
+	if tp.Kind() == reflect.Pointer {
 		tp = tp.Elem()
 	}
 	if tp.Kind() != reflect.Struct {
@@ -53,11 +53,11 @@ func Register(typ RegistryItem) {
 }
 
 var (
-	graphPattern   = reflect.TypeOf(GraphPattern(nil))
-	quadValue      = reflect.TypeOf((*quad.Value)(nil)).Elem()
-	quadSliceValue = reflect.TypeOf([]quad.Value{})
-	quadIRI        = reflect.TypeOf(quad.IRI(""))
-	quadSliceIRI   = reflect.TypeOf([]quad.IRI{})
+	graphPattern   = reflect.TypeFor[GraphPattern]()
+	quadValue      = reflect.TypeFor[quad.Value]()
+	quadSliceValue = reflect.TypeFor[[]quad.Value]()
+	quadIRI        = reflect.TypeFor[quad.IRI]()
+	quadSliceIRI   = reflect.TypeFor[[]quad.IRI]()
 )
 
 // Unmarshal attempts to unmarshal an Item or returns error.
@@ -98,7 +98,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 		fv := item.Field(i)
 		switch f.Type {
 		case graphPattern:
-			var a interface{}
+			var a any
 			err := json.Unmarshal(v, &a)
 			if err != nil {
 				return nil, err
@@ -106,7 +106,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			fv.Set(reflect.ValueOf(a))
 			continue
 		case quadValue:
-			var a interface{}
+			var a any
 			err := json.Unmarshal(v, &a)
 			if err != nil {
 				return nil, err
@@ -118,14 +118,14 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			fv.Set(reflect.ValueOf(value))
 			continue
 		case quadSliceValue:
-			var a interface{}
+			var a any
 			err := json.Unmarshal(v, &a)
 			if err != nil {
 				return nil, err
 			}
-			arr, ok := a.([]interface{})
+			arr, ok := a.([]any)
 			if !ok {
-				arr = []interface{}{a}
+				arr = []any{a}
 			}
 			var values []quad.Value
 			for _, item := range arr {
@@ -138,7 +138,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			fv.Set(reflect.ValueOf(values))
 			continue
 		case quadIRI:
-			var a interface{}
+			var a any
 			err := json.Unmarshal(v, &a)
 			if err != nil {
 				return nil, err
@@ -154,14 +154,14 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 			fv.Set(reflect.ValueOf(val))
 			continue
 		case quadSliceIRI:
-			var a interface{}
+			var a any
 			err := json.Unmarshal(v, &a)
 			if err != nil {
 				return nil, err
 			}
-			arr, ok := a.([]interface{})
+			arr, ok := a.([]any)
 			if !ok {
-				arr = []interface{}{a}
+				arr = []any{a}
 			}
 			var values []quad.IRI
 			for _, item := range arr {
@@ -226,7 +226,7 @@ func Unmarshal(data []byte) (RegistryItem, error) {
 }
 
 func normalizeQuery(data []byte) ([]byte, error) {
-	var query interface{}
+	var query any
 	json.Unmarshal(data, &query)
 	processor := ld.NewJsonLdProcessor()
 	opts := ld.NewJsonLdOptions("")
@@ -261,8 +261,8 @@ func parseIdentifier(s string) (quad.Value, error) {
 	return nil, fmt.Errorf("can not parse JSON-LD identifier: %#v", s)
 }
 
-func parseIdentifierString(a interface{}) (string, error) {
-	m, ok := a.(map[string]interface{})
+func parseIdentifierString(a any) (string, error) {
+	m, ok := a.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("unexpected type: %T", a)
 	}
@@ -273,7 +273,7 @@ func parseIdentifierString(a interface{}) (string, error) {
 	return id, nil
 }
 
-func parseLiteral(a interface{}) (quad.Value, error) {
+func parseLiteral(a any) (quad.Value, error) {
 	switch a := a.(type) {
 	case string:
 		return quad.String(a), nil
@@ -287,7 +287,7 @@ func parseLiteral(a interface{}) (quad.Value, error) {
 		return quad.Float(a), nil
 	case bool:
 		return quad.Bool(a), nil
-	case map[string]interface{}:
+	case map[string]any:
 		if val, ok := a["@value"].(string); ok {
 			if lang, ok := a["@language"].(string); ok {
 				return quad.LangString{Value: quad.String(val), Lang: lang}, nil
@@ -300,7 +300,7 @@ func parseLiteral(a interface{}) (quad.Value, error) {
 	return nil, fmt.Errorf("can not parse %#v as a literal", a)
 }
 
-func parseValue(a interface{}) (quad.Value, error) {
+func parseValue(a any) (quad.Value, error) {
 	identifierString, err := parseIdentifierString(a)
 	if err == nil {
 		identifier, err := parseIdentifier(identifierString)

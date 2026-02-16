@@ -7,7 +7,7 @@ import (
 
 func TestMarshalSchema(t *testing.T) {
 	out := Generate()
-	var o interface{}
+	var o any
 	err := json.Unmarshal(out, &o)
 	if err != nil {
 		t.Fatal(err)

@@ -36,31 +36,31 @@ var _ Value = StringVal("")
 
 type StringVal string
 
-func (v StringVal) SQLValue() interface{} {
+func (v StringVal) SQLValue() any {
 	return escapeNullByte(string(v))
 }
 
 type IntVal int64
 
-func (v IntVal) SQLValue() interface{} {
+func (v IntVal) SQLValue() any {
 	return int64(v)
 }
 
 type FloatVal float64
 
-func (v FloatVal) SQLValue() interface{} {
+func (v FloatVal) SQLValue() any {
 	return float64(v)
 }
 
 type BoolVal bool
 
-func (v BoolVal) SQLValue() interface{} {
+func (v BoolVal) SQLValue() any {
 	return bool(v)
 }
 
 type TimeVal time.Time
 
-func (v TimeVal) SQLValue() interface{} {
+func (v TimeVal) SQLValue() any {
 	return time.Time(v)
 }
 
@@ -68,14 +68,14 @@ type NodeHash struct {
 	refs.ValueHash
 }
 
-func (h NodeHash) SQLValue() interface{} {
+func (h NodeHash) SQLValue() any {
 	if !h.Valid() {
 		return nil
 	}
 	return h.ValueHash[:]
 }
 
-func (h *NodeHash) Scan(src interface{}) error {
+func (h *NodeHash) Scan(src any) error {
 	if src == nil {
 		*h = NodeHash{}
 		return nil
@@ -293,10 +293,10 @@ func (t ValueType) Columns() []string {
 	return nodeInsertColumns[t]
 }
 
-func NodeValues(h NodeHash, v quad.Value) (ValueType, []interface{}, error) {
+func NodeValues(h NodeHash, v quad.Value) (ValueType, []any, error) {
 	var (
 		nodeKey ValueType
-		values  = []interface{}{h.SQLValue(), nil, nil}[:1]
+		values  = []any{h.SQLValue(), nil, nil}[:1]
 	)
 	switch v := v.(type) {
 	case quad.IRI:
@@ -411,7 +411,7 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, opts gra
 		)
 		fixNodes := make(map[refs.ValueHash]int)
 		for _, d := range deltas.QuadDel {
-			dirs := make([]interface{}, 0, len(quad.Directions))
+			dirs := make([]any, 0, len(quad.Directions))
 			for _, h := range d.Quad.Dirs() {
 				dirs = append(dirs, NodeHash{h}.SQLValue())
 			}
@@ -569,7 +569,7 @@ type NullTime struct {
 }
 
 // Scan implements the Scanner interface.
-func (nt *NullTime) Scan(value interface{}) error {
+func (nt *NullTime) Scan(value any) error {
 	if value == nil {
 		nt.Time, nt.Valid = time.Time{}, false
 		return nil

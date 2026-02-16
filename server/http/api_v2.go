@@ -476,10 +476,10 @@ func defaultErrorFunc(w query.ResponseWriter, err error) {
 	w.Write([]byte("}\n"))
 }
 
-func writeResults(w io.Writer, r interface{}) {
+func writeResults(w io.Writer, r any) {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	enc.Encode(map[string]interface{}{
+	enc.Encode(map[string]any{
 		"result": r,
 	})
 }
@@ -573,7 +573,7 @@ func (api *APIv2) ServeQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	defer it.Close()
 
-	var out []interface{}
+	var out []any
 	for it.Next(ctx) {
 		res, err := it.Result(ctx)
 		if err != nil {

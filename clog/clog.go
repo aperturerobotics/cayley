@@ -19,10 +19,10 @@ import "log"
 
 // Logger is the clog logging interface.
 type Logger interface {
-	Infof(format string, args ...interface{})
-	Warningf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
-	Fatalf(format string, args ...interface{})
+	Infof(format string, args ...any)
+	Warningf(format string, args ...any)
+	Errorf(format string, args ...any)
+	Fatalf(format string, args ...any)
 	V(int) bool
 	SetV(level int)
 }
@@ -50,28 +50,28 @@ func SetV(level int) {
 }
 
 // Infof logs information level messages.
-func Infof(format string, args ...interface{}) {
+func Infof(format string, args ...any) {
 	if logger != nil {
 		logger.Infof(format, args...)
 	}
 }
 
 // Warningf logs warning level messages.
-func Warningf(format string, args ...interface{}) {
+func Warningf(format string, args ...any) {
 	if logger != nil {
 		logger.Warningf(format, args...)
 	}
 }
 
 // Errorf logs error level messages.
-func Errorf(format string, args ...interface{}) {
+func Errorf(format string, args ...any) {
 	if logger != nil {
 		logger.Errorf(format, args...)
 	}
 }
 
 // Fatalf logs fatal messages and terminates the program.
-func Fatalf(format string, args ...interface{}) {
+func Fatalf(format string, args ...any) {
 	if logger != nil {
 		logger.Fatalf(format, args...)
 	}
@@ -82,9 +82,9 @@ type stdlog struct {
 	verbosity int
 }
 
-func (stdlog) Infof(format string, args ...interface{})    { log.Printf(format, args...) }
-func (stdlog) Warningf(format string, args ...interface{}) { log.Printf("WARN: "+format, args...) }
-func (stdlog) Errorf(format string, args ...interface{})   { log.Printf("ERROR: "+format, args...) }
-func (stdlog) Fatalf(format string, args ...interface{})   { log.Fatalf("FATAL: "+format, args...) }
-func (s stdlog) V(level int) bool                          { return s.verbosity >= level }
-func (s *stdlog) SetV(level int)                           { s.verbosity = level }
+func (stdlog) Infof(format string, args ...any)    { log.Printf(format, args...) }
+func (stdlog) Warningf(format string, args ...any) { log.Printf("WARN: "+format, args...) }
+func (stdlog) Errorf(format string, args ...any)   { log.Printf("ERROR: "+format, args...) }
+func (stdlog) Fatalf(format string, args ...any)   { log.Fatalf("FATAL: "+format, args...) }
+func (s stdlog) V(level int) bool                  { return s.verbosity >= level }
+func (s *stdlog) SetV(level int)                   { s.verbosity = level }

@@ -97,7 +97,6 @@ func NewConvertCmd() *cobra.Command {
 			loadf, _ := cmd.Flags().GetString(flagLoadFormat)
 			var multi multiReader
 			for _, path := range files {
-				path := path
 				multi.rc = append(multi.rc, newLazyReader(func() (quad.ReadCloser, error) {
 					if dump == "-" {
 						clog.Infof("reading %q", path)

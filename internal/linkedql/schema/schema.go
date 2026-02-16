@@ -23,13 +23,13 @@ const (
 )
 
 var (
-	pathStep         = reflect.TypeOf((*linkedql.PathStep)(nil)).Elem()
-	iteratorStep     = reflect.TypeOf((*linkedql.IteratorStep)(nil)).Elem()
-	entityIdentifier = reflect.TypeOf((*linkedql.EntityIdentifier)(nil)).Elem()
-	value            = reflect.TypeOf((*quad.Value)(nil)).Elem()
-	propertyPath     = reflect.TypeOf((*linkedql.PropertyPath)(nil))
-	stringMap        = reflect.TypeOf(map[string]string{})
-	graphPattern     = reflect.TypeOf(linkedql.GraphPattern(nil))
+	pathStep         = reflect.TypeFor[linkedql.PathStep]()
+	iteratorStep     = reflect.TypeFor[linkedql.IteratorStep]()
+	entityIdentifier = reflect.TypeFor[linkedql.EntityIdentifier]()
+	value            = reflect.TypeFor[quad.Value]()
+	propertyPath     = reflect.TypeFor[*linkedql.PropertyPath]()
+	stringMap        = reflect.TypeFor[map[string]string]()
+	graphPattern     = reflect.TypeFor[linkedql.GraphPattern]()
 )
 
 func typeToRange(t reflect.Type) string {
@@ -148,22 +148,22 @@ func getOWLPropertyType(kind reflect.Kind) string {
 
 // property is used to declare a property
 type property struct {
-	ID     string      `json:"@id"`
-	Type   string      `json:"@type"`
-	Domain interface{} `json:"rdfs:domain"`
-	Range  interface{} `json:"rdfs:range"`
+	ID     string `json:"@id"`
+	Type   string `json:"@type"`
+	Domain any    `json:"rdfs:domain"`
+	Range  any    `json:"rdfs:range"`
 }
 
 // class is used to declare a class
 type class struct {
-	ID           string        `json:"@id"`
-	Type         string        `json:"@type"`
-	Comment      string        `json:"rdfs:comment"`
-	SuperClasses []interface{} `json:"rdfs:subClassOf"`
+	ID           string `json:"@id"`
+	Type         string `json:"@type"`
+	Comment      string `json:"rdfs:comment"`
+	SuperClasses []any  `json:"rdfs:subClassOf"`
 }
 
 // newClass creates a new class struct
-func newClass(id string, superClasses []interface{}, comment string) class {
+func newClass(id string, superClasses []any, comment string) class {
 	return class{
 		ID:           id,
 		Type:         rdfs.Class,
@@ -185,10 +185,10 @@ func getStepTypeClasses(t reflect.Type) []string {
 }
 
 type list struct {
-	Members []interface{} `json:"@list"`
+	Members []any `json:"@list"`
 }
 
-func newList(members []interface{}) list {
+func newList(members []any) list {
 	return list{
 		Members: members,
 	}
@@ -201,7 +201,7 @@ type unionOf struct {
 }
 
 func newUnionOf(classes []string) unionOf {
-	var members []interface{}
+	var members []any
 	for _, class := range classes {
 		members = append(members, newIdentified(class))
 	}
@@ -221,15 +221,15 @@ func newGenerator() *generator {
 }
 
 type generator struct {
-	out           []interface{}
+	out           []any
 	propToTypes   map[string]map[string]struct{}
 	propToDomains map[string]map[string]struct{}
 	propToRanges  map[string]map[string]struct{}
 }
 
 // returns super types
-func (g *generator) addTypeFields(name string, t reflect.Type, indirect bool) []interface{} {
-	var super []interface{}
+func (g *generator) addTypeFields(name string, t reflect.Type, indirect bool) []any {
+	var super []any
 	for j := 0; j < t.NumField(); j++ {
 		f := t.Field(j)
 		if f.Anonymous {
@@ -282,7 +282,7 @@ func (g *generator) AddType(name string, t reflect.Type) {
 	if !ok {
 		return
 	}
-	var super []interface{}
+	var super []any
 	stepTypeClasses := getStepTypeClasses(reflect.PointerTo(t))
 	for _, typeClass := range stepTypeClasses {
 		super = append(super, newIdentified(typeClass))
@@ -309,13 +309,13 @@ func (g *generator) Generate() []byte {
 		for r := range g.propToRanges[prop] {
 			ranges = append(ranges, r)
 		}
-		var dom interface{}
+		var dom any
 		if len(domains) == 1 {
 			dom = identified{domains[0]}
 		} else {
 			dom = newUnionOf(domains)
 		}
-		var rng interface{}
+		var rng any
 		if len(ranges) == 1 {
 			rng = newIdentified(ranges[0])
 		} else {
@@ -328,25 +328,25 @@ func (g *generator) Generate() []byte {
 			Range:  rng,
 		})
 	}
-	graph := []interface{}{
+	graph := []any{
 		map[string]string{
 			"@id":   linkedql.Prefix + "Step",
 			"@type": owl.Class,
 		},
-		map[string]interface{}{
+		map[string]any{
 			"@id":           linkedql.Prefix + "PathStep",
 			"@type":         owl.Class,
 			rdfs.SubClassOf: identified{ID: linkedql.Prefix + "Step"},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"@id":           linkedql.Prefix + "IteratorStep",
 			"@type":         owl.Class,
 			rdfs.SubClassOf: identified{ID: linkedql.Prefix + "Step"},
 		},
 	}
 	graph = append(graph, g.out...)
-	data, err := json.Marshal(map[string]interface{}{
-		"@context": map[string]interface{}{
+	data, err := json.Marshal(map[string]any{
+		"@context": map[string]any{
 			"rdf":      rdf.NS,
 			"rdfs":     rdfs.NS,
 			"owl":      owl.NS,

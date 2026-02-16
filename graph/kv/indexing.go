@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -820,12 +821,7 @@ func (qs *QuadStore) bestUnique() ([]QuadIndex, error) {
 }
 
 func hasDir(dirs []quad.Direction, d quad.Direction) bool {
-	for _, d2 := range dirs {
-		if d == d2 {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(dirs, d)
 }
 
 func (qs *QuadStore) bestIndexes(dirs []quad.Direction) []QuadIndex {

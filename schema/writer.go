@@ -15,7 +15,7 @@ import (
 // Otherwise, a new BNode will be generated using GenerateID function.
 //
 // See LoadTo for a list of quads mapping rules.
-func (c *Config) WriteAsQuads(ctx context.Context, w quad.Writer, o interface{}) (quad.Value, error) {
+func (c *Config) WriteAsQuads(ctx context.Context, w quad.Writer, o any) (quad.Value, error) {
 	wr := c.newWriter(w)
 	return wr.writeAsQuads(ctx, reflect.ValueOf(o))
 }
@@ -62,13 +62,13 @@ func (w *writer) writeTypeInfo(ctx context.Context, id quad.Value, rt reflect.Ty
 
 func (w *writer) writeValueAs(ctx context.Context, id quad.Value, rv reflect.Value, pref string, rules fieldRules) error {
 	switch kind := rv.Kind(); kind {
-	case reflect.Ptr, reflect.Map:
+	case reflect.Pointer, reflect.Map:
 		ptr := rv.Pointer()
 		if _, ok := w.seen[ptr]; ok {
 			return nil
 		}
 		w.seen[ptr] = id
-		if kind == reflect.Ptr {
+		if kind == reflect.Pointer {
 			rv = rv.Elem()
 		}
 	}
@@ -125,12 +125,12 @@ func (w *writer) writeAsQuads(ctx context.Context, rv reflect.Value) (quad.Value
 	kind := rt.Kind()
 	// check if we've seen this node already
 	switch kind {
-	case reflect.Ptr, reflect.Map:
+	case reflect.Pointer, reflect.Map:
 		ptr := prv.Pointer()
 		if sid, ok := w.seen[ptr]; ok {
 			return sid, nil
 		}
-		if kind == reflect.Ptr {
+		if kind == reflect.Pointer {
 			rv = rv.Elem()
 			rt = rv.Type()
 			kind = rt.Kind()
@@ -174,7 +174,7 @@ func (w *writer) writeAsQuads(ctx context.Context, rv reflect.Value) (quad.Value
 	}
 	// save a node ID to avoid loops
 	switch prv.Kind() {
-	case reflect.Ptr, reflect.Map:
+	case reflect.Pointer, reflect.Map:
 		ptr := prv.Pointer()
 		w.seen[ptr] = id
 	}

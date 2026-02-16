@@ -109,9 +109,9 @@ type QuadStore interface {
 	Close() error
 }
 
-type Options map[string]interface{}
+type Options map[string]any
 
-var typeInt = reflect.TypeOf(int(0))
+var typeInt = reflect.TypeFor[int]()
 
 func (d Options) IntKey(key string, def int) (int, error) {
 	if val, ok := d[key]; ok {

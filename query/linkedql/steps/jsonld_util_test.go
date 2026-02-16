@@ -9,67 +9,67 @@ import (
 
 var testCases = []struct {
 	name     string
-	source   interface{}
-	target   interface{}
+	source   any
+	target   any
 	expected error
 }{
 	{
 		name:     "Single matching IDs",
-		source:   map[string]interface{}{"@id": "a"},
-		target:   map[string]interface{}{"@id": "a"},
+		source:   map[string]any{"@id": "a"},
+		target:   map[string]any{"@id": "a"},
 		expected: nil,
 	},
 	{
 		name:     "Single non matching IDs",
-		source:   map[string]interface{}{"@id": "a"},
-		target:   map[string]interface{}{"@id": "b"},
+		source:   map[string]any{"@id": "a"},
+		target:   map[string]any{"@id": "b"},
 		expected: fmt.Errorf("expected \"a\" but instead received \"b\""),
 	},
 	{
 		name:     "Single matching properties",
-		source:   map[string]interface{}{"http://example.com/name": "Alice"},
-		target:   map[string]interface{}{"http://example.com/name": "Alice"},
+		source:   map[string]any{"http://example.com/name": "Alice"},
+		target:   map[string]any{"http://example.com/name": "Alice"},
 		expected: nil,
 	},
 	{
 		name:     "Single non matching properties",
-		source:   map[string]interface{}{"http://example.com/name": "Alice"},
-		target:   map[string]interface{}{"http://example.com/name": "Bob"},
+		source:   map[string]any{"http://example.com/name": "Alice"},
+		target:   map[string]any{"http://example.com/name": "Bob"},
 		expected: fmt.Errorf("expected \"Alice\" but instead received \"Bob\""),
 	},
 	{
 		name:     "Single matching property with multiple values ordered",
-		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
-		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
+		source:   map[string]any{"http://example.com/name": []any{"Alice", "Bob"}},
+		target:   map[string]any{"http://example.com/name": []any{"Alice", "Bob"}},
 		expected: nil,
 	},
 	{
 		name:     "Single matching property with multiple values unordered",
-		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
-		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Bob", "Alice"}},
+		source:   map[string]any{"http://example.com/name": []any{"Alice", "Bob"}},
+		target:   map[string]any{"http://example.com/name": []any{"Bob", "Alice"}},
 		expected: nil,
 	},
 	{
 		name:     "Single non matching property with multiple values",
-		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
-		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Dan", "Alice"}},
+		source:   map[string]any{"http://example.com/name": []any{"Alice", "Bob"}},
+		target:   map[string]any{"http://example.com/name": []any{"Dan", "Alice"}},
 		expected: fmt.Errorf("no matching values for the item \"Bob\" in []interface {}{\"Dan\", \"Alice\"}"),
 	},
 	{
 		name:     "Single non matching property with multiple values non matching length",
-		source:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice", "Bob"}},
-		target:   map[string]interface{}{"http://example.com/name": []interface{}{"Alice"}},
+		source:   map[string]any{"http://example.com/name": []any{"Alice", "Bob"}},
+		target:   map[string]any{"http://example.com/name": []any{"Alice"}},
 		expected: fmt.Errorf("expected multiple values but instead received the single value: \"Alice\""),
 	},
 	{
 		name: "Single matching nested",
-		source: map[string]interface{}{
-			"http://example.com/friend": map[string]interface{}{
+		source: map[string]any{
+			"http://example.com/friend": map[string]any{
 				"@id": "alice",
 			},
 		},
-		target: map[string]interface{}{
-			"http://example.com/friend": map[string]interface{}{
+		target: map[string]any{
+			"http://example.com/friend": map[string]any{
 				"@id": "alice",
 			},
 		},
@@ -77,13 +77,13 @@ var testCases = []struct {
 	},
 	{
 		name: "Single non matching nested",
-		source: map[string]interface{}{
-			"http://example.com/friend": map[string]interface{}{
+		source: map[string]any{
+			"http://example.com/friend": map[string]any{
 				"@id": "alice",
 			},
 		},
-		target: map[string]interface{}{
-			"http://example.com/friend": map[string]interface{}{
+		target: map[string]any{
+			"http://example.com/friend": map[string]any{
 				"@id": "bob",
 			},
 		},
@@ -91,38 +91,38 @@ var testCases = []struct {
 	},
 	{
 		name:     "Single matching properties with @value string",
-		source:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
-		target:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
+		source:   map[string]any{"http://example.com/name": map[string]any{"@value": "Alice"}},
+		target:   map[string]any{"http://example.com/name": map[string]any{"@value": "Alice"}},
 		expected: nil,
 	},
 	{
 		name:     "Single non matching properties with @value string",
-		source:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
-		target:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Bob"}},
+		source:   map[string]any{"http://example.com/name": map[string]any{"@value": "Alice"}},
+		target:   map[string]any{"http://example.com/name": map[string]any{"@value": "Bob"}},
 		expected: fmt.Errorf("expected \"Alice\" but instead received \"Bob\""),
 	},
 	{
 		name:     "Single matching properties with @value string and string",
-		source:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
-		target:   map[string]interface{}{"http://example.com/name": "Alice"},
+		source:   map[string]any{"http://example.com/name": map[string]any{"@value": "Alice"}},
+		target:   map[string]any{"http://example.com/name": "Alice"},
 		expected: nil,
 	},
 	{
 		name:     "Single matching properties with string and @value string",
-		source:   map[string]interface{}{"http://example.com/name": "Alice"},
-		target:   map[string]interface{}{"http://example.com/name": map[string]interface{}{"@value": "Alice"}},
+		source:   map[string]any{"http://example.com/name": "Alice"},
+		target:   map[string]any{"http://example.com/name": map[string]any{"@value": "Alice"}},
 		expected: nil,
 	},
 	{
 		name:     "Single matching properties with @value string array string",
-		source:   map[string]interface{}{"http://example.com/name": []interface{}{map[string]interface{}{"@value": "Alice"}}},
-		target:   map[string]interface{}{"http://example.com/name": "Alice"},
+		source:   map[string]any{"http://example.com/name": []any{map[string]any{"@value": "Alice"}}},
+		target:   map[string]any{"http://example.com/name": "Alice"},
 		expected: nil,
 	},
 	{
 		name:     "Single matching properties with string and @value string array",
-		source:   map[string]interface{}{"http://example.com/name": "Alice"},
-		target:   map[string]interface{}{"http://example.com/name": []interface{}{map[string]interface{}{"@value": "Alice"}}},
+		source:   map[string]any{"http://example.com/name": "Alice"},
+		target:   map[string]any{"http://example.com/name": []any{map[string]any{"@value": "Alice"}}},
 		expected: nil,
 	},
 }

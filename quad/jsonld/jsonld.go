@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/voc"
@@ -31,7 +32,7 @@ func init() {
 
 // NewReader returns quad reader for JSON-LD stream.
 func NewReader(r io.Reader) *Reader {
-	var o interface{}
+	var o any
 	if err := json.NewDecoder(r).Decode(&o); err != nil {
 		return &Reader{err: err}
 	}
@@ -39,7 +40,7 @@ func NewReader(r io.Reader) *Reader {
 }
 
 // NewReaderFromMap returns quad reader for JSON-LD map object.
-func NewReaderFromMap(o interface{}) *Reader {
+func NewReaderFromMap(o any) *Reader {
 	opts := ld.NewJsonLdOptions("")
 	processor := ld.NewJsonLdProcessor()
 	data, err := processor.ToRDF(o, opts)
@@ -108,7 +109,7 @@ var _ quad.Writer = &Writer{}
 type Writer struct {
 	w   io.Writer
 	ds  *ld.RDFDataset
-	ctx interface{}
+	ctx any
 }
 
 // NewWriter constructs a new Writer
@@ -118,7 +119,7 @@ func NewWriter(w io.Writer) *Writer {
 
 // SetLdContext defines a context for the emitted JSON-LD data
 // See: https://json-ld.org/spec/latest/json-ld/#the-context
-func (w *Writer) SetLdContext(ctx interface{}) {
+func (w *Writer) SetLdContext(ctx any) {
 	w.ctx = ctx
 }
 
@@ -161,7 +162,7 @@ func (w *Writer) Close() error {
 	opts := ld.NewJsonLdOptions("")
 	api := ld.NewJsonLdApi()
 	processor := ld.NewJsonLdProcessor()
-	var data interface{}
+	var data any
 	data, err := api.FromRDF(w.ds, opts)
 	if err != nil {
 		return err
@@ -196,20 +197,20 @@ func toTerm(v quad.Value) ld.Node {
 }
 
 // FromValue converts quad value to a JSON-LD compatible object.
-func FromValue(v quad.Value) interface{} {
+func FromValue(v quad.Value) any {
 	switch v := v.(type) {
 	case quad.IRI:
-		return map[string]interface{}{
+		return map[string]any{
 			"@id": string(v),
 		}
 	case quad.BNode:
-		return map[string]interface{}{
+		return map[string]any{
 			"@id": v.String(),
 		}
 	case quad.String:
 		return string(v)
 	case quad.LangString:
-		return map[string]interface{}{
+		return map[string]any{
 			"@value":    string(v.Value),
 			"@language": v.Lang,
 		}
@@ -241,19 +242,14 @@ func ToNode(value quad.Value) (ld.Node, error) {
 }
 
 func isKnownTimeType(dataType quad.IRI) bool {
-	for _, iri := range quad.KnownTimeTypes {
-		if iri == dataType {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(quad.KnownTimeTypes, dataType)
 }
 
-func typedStringToJSON(v quad.TypedString) interface{} {
+func typedStringToJSON(v quad.TypedString) any {
 	if AutoConvertTypedString && quad.HasStringConversion(v.Type) && !isKnownTimeType(v.Type) {
 		return v.Native()
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"@value": string(v.Value),
 		"@type":  string(v.Type),
 	}

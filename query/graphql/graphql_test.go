@@ -95,7 +95,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-type M = map[string]interface{}
+type M = map[string]any
 
 var casesExecute = []struct {
 	name   string
@@ -299,7 +299,7 @@ var casesExecute = []struct {
 	},
 }
 
-func toJSON(o interface{}) string {
+func toJSON(o any) string {
 	buf := bytes.NewBuffer(nil)
 	json.NewEncoder(buf).Encode(o)
 	buf2 := bytes.NewBuffer(nil)

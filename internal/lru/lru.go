@@ -31,7 +31,7 @@ type Cache struct {
 
 type kv struct {
 	key   string
-	value interface{}
+	value any
 }
 
 func New(size int) *Cache {
@@ -42,7 +42,7 @@ func New(size int) *Cache {
 	}
 }
 
-func (lru *Cache) Put(key string, value interface{}) {
+func (lru *Cache) Put(key string, value any) {
 	if _, ok := lru.Get(key); ok {
 		return
 	}
@@ -68,7 +68,7 @@ func (lru *Cache) Del(key string) {
 	lru.priority.Remove(e)
 }
 
-func (lru *Cache) Get(key string) (interface{}, bool) {
+func (lru *Cache) Get(key string) (any, bool) {
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 	if element, ok := lru.cache[key]; ok {

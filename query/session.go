@@ -44,7 +44,7 @@ type Iterator interface {
 	// Err returns any error that was encountered by the Iterator.
 	Err() error
 	// Result returns the current result. The type depends on the collation mode of the query.
-	Result(ctx context.Context) (interface{}, error)
+	Result(ctx context.Context) (any, error)
 	// Close the iterator and do internal cleanup.
 	Close() error
 }

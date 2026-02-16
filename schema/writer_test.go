@@ -52,7 +52,7 @@ func TestWriteAsQuads(t *testing.T) {
 
 var testWriteValueCases = []struct {
 	name   string
-	obj    interface{}
+	obj    any
 	id     quad.Value
 	expect []quad.Quad
 	err    error

@@ -27,7 +27,7 @@ type Size struct {
 type Ref interface {
 	// Key returns a dynamic type that is comparable according to the Go language specification.
 	// The returned value must be unique for each receiver value.
-	Key() interface{}
+	Key() any
 }
 
 type Namer interface {
@@ -60,7 +60,7 @@ type ValueHash [quad.HashSize]byte
 func (h ValueHash) Valid() bool {
 	return h != ValueHash{}
 }
-func (h ValueHash) Key() interface{} { return h }
+func (h ValueHash) Key() any { return h }
 func (h ValueHash) String() string {
 	if !h.Valid() {
 		return ""
@@ -85,10 +85,10 @@ type fetchedValue struct {
 
 func (v fetchedValue) IsNode() bool       { return true }
 func (v fetchedValue) NameOf() quad.Value { return v.Val }
-func (v fetchedValue) Key() interface{}   { return v.Val }
+func (v fetchedValue) Key() any           { return v.Val }
 
 // ToKey prepares Ref to be stored inside maps, calling Key() if necessary.
-func ToKey(v Ref) interface{} {
+func ToKey(v Ref) any {
 	if v == nil {
 		return nil
 	}
@@ -112,7 +112,7 @@ func (q QuadHash) Dirs() [4]ValueHash {
 		q.Label,
 	}
 }
-func (q QuadHash) Key() interface{} { return q }
+func (q QuadHash) Key() any { return q }
 func (q QuadHash) Get(d quad.Direction) ValueHash {
 	switch d {
 	case quad.Subject:

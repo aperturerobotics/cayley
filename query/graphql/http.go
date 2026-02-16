@@ -12,7 +12,7 @@ import (
 )
 
 type httpResult struct {
-	Data   interface{}                `json:"data"`
+	Data   any                        `json:"data"`
 	Errors []gqlerrors.FormattedError `json:"errors,omitempty"`
 }
 

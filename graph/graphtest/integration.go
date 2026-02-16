@@ -86,7 +86,7 @@ var queries = []struct {
 	tag     string
 	// for testing
 	skip   bool
-	expect []interface{}
+	expect []any
 }{
 	// Easy one to get us started. How quick is the most straightforward retrieval?
 	{
@@ -94,7 +94,7 @@ var queries = []struct {
 		query: `
 		g.V("Humphrey Bogart").in("<name>").all()
 		`,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": "</en/humphrey_bogart>"},
 		},
 	},
@@ -135,7 +135,7 @@ var queries = []struct {
 				}
 			})
 			`,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": "</en/sterling_holloway>"},
 			map[string]string{"id": "</en/billy_gilbert>"},
 		},
@@ -151,7 +151,7 @@ var queries = []struct {
 			g.V().as("person").in("<name>").in().in().out("<name>").is("Casablanca").all()
 			`,
 		tag: "person",
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": "Casablanca", "person": "Ingrid Bergman"},
 			map[string]string{"id": "Casablanca", "person": "Madeleine LeBeau"},
 			map[string]string{"id": "Casablanca", "person": "Joy Page"},
@@ -187,7 +187,7 @@ var queries = []struct {
 			g.V().as("person").in("<name>").except(g.V("Ingrid Bergman").in("<name>")).in().in().out("<name>").is("Casablanca").all()
 			`,
 		tag: "person",
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": "Casablanca", "person": "Madeleine LeBeau"},
 			map[string]string{"id": "Casablanca", "person": "Joy Page"},
 			map[string]string{"id": "Casablanca", "person": "Claude Rains"},
@@ -211,7 +211,7 @@ var queries = []struct {
 		message: "Net and Speed",
 		query: common + `m1_actors.intersect(m2_actors).out("<name>").all()
 `,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": SandraB, "movie1": "The Net", "movie2": nSpeed},
 		},
 	},
@@ -231,7 +231,7 @@ var queries = []struct {
 		message: "Keanu in Speed",
 		query: common + `actor2.intersect(m2_actors).out("<name>").all()
 `,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": KeanuR, "movie2": nSpeed},
 		},
 	},
@@ -244,7 +244,7 @@ var queries = []struct {
 		long:    true,
 		query: common + `actor2.follow(coStars1).intersect(m1_actors).out("<name>").all()
 `,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"id": SandraB, "movie1": "The Net", "costar1_movie": nSpeed},
 			map[string]string{"movie1": "The Net", "costar1_movie": nLakeH, "id": SandraB},
 		},
@@ -258,7 +258,7 @@ var queries = []struct {
 		long:    true,
 		query: common + `actor1.save("<name>","costar1_actor").follow(coStars1).intersect(actor2.save("<name>","costar2_actor").follow(coStars2)).out("<name>").all()
 `,
-		expect: []interface{}{
+		expect: []any{
 			costarTag(SandraB, SandraB, "The Proposal", KeanuR, nSpeed),
 			costarTag(SandraB, SandraB, "The Proposal", KeanuR, nLakeH),
 			costarTag("Mary Steenburgen", SandraB, "The Proposal", KeanuR, "Parenthood"),
@@ -432,7 +432,7 @@ var queries = []struct {
 		query: `
 		g.V("_:9037", "_:49278", "_:44112", "_:44709", "_:43382").save("</film/performance/character>", "char").save("</film/performance/actor>", "act").saveR("</film/film/starring>", "film").all()
 		`,
-		expect: []interface{}{
+		expect: []any{
 			map[string]string{"act": "</en/humphrey_bogart>", "char": "Rick Blaine", "film": "</en/casablanca_1942>", "id": "_:9037"},
 			map[string]string{"act": "</en/humphrey_bogart>", "char": "Sam Spade", "film": "</en/the_maltese_falcon_1941>", "id": "_:49278"},
 			map[string]string{"act": "</en/humphrey_bogart>", "char": "Philip Marlowe", "film": "</en/the_big_sleep_1946>", "id": "_:44112"},
@@ -521,7 +521,7 @@ func checkQueries(t *testing.T, qs graph.QuadStore, timeout time.Duration) {
 				t.Fatal(err)
 			}
 			defer it.Close()
-			var got []interface{}
+			var got []any
 			for it.Next(ctx) {
 				resi, err := it.Result(ctx)
 				require.NoError(t, err)
@@ -544,13 +544,13 @@ func checkQueries(t *testing.T, qs graph.QuadStore, timeout time.Duration) {
 	}
 }
 
-func unsortedEqual(got, expect []interface{}) bool {
+func unsortedEqual(got, expect []any) bool {
 	gotList := convertToStringList(got)
 	expectList := convertToStringList(expect)
 	return reflect.DeepEqual(gotList, expectList)
 }
 
-func convertToStringList(in []interface{}) []string {
+func convertToStringList(in []any) []string {
 	var out []string
 	for _, x := range in {
 		if xc, ok := x.(map[string]string); ok {
@@ -558,7 +558,7 @@ func convertToStringList(in []interface{}) []string {
 				out = append(out, fmt.Sprint(k, ":", v))
 			}
 		} else {
-			for k, v := range x.(map[string]interface{}) {
+			for k, v := range x.(map[string]any) {
 				out = append(out, fmt.Sprint(k, ":", v))
 			}
 		}

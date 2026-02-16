@@ -130,10 +130,7 @@ func (it *LinksTo) getSize(ctx context.Context) refs.Size {
 	// TODO(barakmich): It should really come from the quadstore itself
 	const fanoutFactor = 20
 	st, _ := it.primary.Stats(ctx)
-	value := st.Size.Value * fanoutFactor
-	if value > maxSize {
-		value = maxSize
-	}
+	value := min(st.Size.Value*fanoutFactor, maxSize)
 	it.size.Value, it.size.Exact = value, false
 	return it.size
 }

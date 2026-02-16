@@ -67,7 +67,7 @@ func (it *ValueIterator) Value(ctx context.Context) (quad.Value, error) {
 }
 
 // Result implements query.Iterator.
-func (it *ValueIterator) Result(ctx context.Context) (interface{}, error) {
+func (it *ValueIterator) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}

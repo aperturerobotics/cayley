@@ -17,7 +17,7 @@ package sql
 import (
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/aperturerobotics/cayley/graph/iterator"
@@ -72,9 +72,7 @@ func (opt *Optimizer) ensureAliases(s *Select) {
 }
 
 func sortDirs(dirs []quad.Direction) {
-	sort.Slice(dirs, func(i, j int) bool {
-		return dirs[i] < dirs[j]
-	})
+	slices.Sort(dirs)
 }
 
 func (opt *Optimizer) OptimizeShape(ctx context.Context, s shape.Shape) (shape.Shape, bool, error) {

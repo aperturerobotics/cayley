@@ -2,6 +2,7 @@
 package voc
 
 import (
+	"maps"
 	"strings"
 	"sync"
 )
@@ -91,9 +92,7 @@ func (p *Namespaces) Clone() *Namespaces {
 	p2 := Namespaces{
 		prefixes: make(map[string]string, len(p.prefixes)),
 	}
-	for pref, ns := range p.prefixes {
-		p2.prefixes[pref] = ns
-	}
+	maps.Copy(p2.prefixes, p.prefixes)
 	return &p2
 }
 
@@ -113,9 +112,7 @@ func (p *Namespaces) CloneTo(p2 *Namespaces) {
 	if p2.prefixes == nil {
 		p2.prefixes = make(map[string]string, len(p.prefixes))
 	}
-	for pref, ns := range p.prefixes {
-		p2.prefixes[pref] = ns
-	}
+	maps.Copy(p2.prefixes, p.prefixes)
 }
 
 var global Namespaces

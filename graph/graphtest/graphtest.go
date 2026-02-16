@@ -446,7 +446,7 @@ func Test1K(t *testing.T, gen testutil.DatabaseFunc, c *Config) {
 	ctx := context.Background()
 	qw := graph.NewWriter(w)
 	exp := make([]quad.Quad, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		q := quad.Make(i, i, i, nil)
 		exp = append(exp, q)
 		_, err = qw.WriteQuads(ctx, []quad.Quad{q})
@@ -594,7 +594,7 @@ func TestIterator(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 		"status_graph",
 	}
 	sort.Strings(expect)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		got := IteratedStrings(t, qs, it)
 		sort.Strings(got)
 		require.Equal(t, expect, got, "Unexpected iterated result on repeat %d", i)
@@ -661,10 +661,10 @@ func TestHasA(t testing.TB, gen testutil.DatabaseFunc, conf *Config) {
 	require.NoError(t, err)
 
 	var exp []quad.Value
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		exp = append(exp, quad.Raw("follows"))
 	}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		exp = append(exp, quad.Raw("status"))
 	}
 	ExpectIteratedValues(t, qs, it, exp, false)
@@ -1280,7 +1280,7 @@ func TestDeleteReinserted(t testing.TB, gen testutil.DatabaseFunc, _ *Config) {
 	require.NoError(t, err, "Add quadset failed")
 
 	q := quad.Make("<bob>", "<follows>", "<sally>", nil)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		err = w.AddQuad(ctx, q)
 		require.NoError(t, err, "Add quad failed")
 		err = w.RemoveQuad(ctx, q)
@@ -1310,7 +1310,7 @@ func TestDeleteReinsertedDup(t testing.TB, gen testutil.DatabaseFunc, _ *Config)
 	require.NoError(t, err, "Add quadset failed")
 
 	q := quad.Make("<bob>", "<follows>", "<x>", nil)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		err = w.AddQuad(ctx, q)
 		require.NoError(t, err, "Add quad failed")
 		// must be ignored
@@ -1339,7 +1339,7 @@ func TestDeleteReinsertedDup(t testing.TB, gen testutil.DatabaseFunc, _ *Config)
 	}
 }
 
-func irif(format string, args ...interface{}) quad.IRI {
+func irif(format string, args ...any) quad.IRI {
 	return quad.IRI(fmt.Sprintf(format, args...))
 }
 

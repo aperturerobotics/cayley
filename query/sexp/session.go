@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/graph/iterator"
@@ -112,7 +113,7 @@ func (it *results) Next(ctx context.Context) bool {
 	return false
 }
 
-func (it *results) Result(ctx context.Context) (interface{}, error) {
+func (it *results) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
@@ -123,7 +124,8 @@ func (it *results) Result(ctx context.Context) (interface{}, error) {
 	if it.col == query.Raw {
 		return m, nil
 	}
-	out := "****\n"
+	var out strings.Builder
+	out.WriteString("****\n")
 	tagKeys := make([]string, len(m))
 	i := 0
 	for k := range m {
@@ -140,9 +142,9 @@ func (it *results) Result(ctx context.Context) (interface{}, error) {
 			it.err = err
 			return nil, err
 		}
-		out += fmt.Sprintf("%s : %s\n", k, knv)
+		out.WriteString(fmt.Sprintf("%s : %s\n", k, knv))
 	}
-	return out, nil
+	return out.String(), nil
 }
 
 func (it *results) Err() error {

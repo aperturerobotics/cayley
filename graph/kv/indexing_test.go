@@ -43,7 +43,7 @@ func TestIndexlist(t *testing.T) {
 	if len(out) != len(init) {
 		t.Fatalf("mismatched lengths. got %#v expected %#v", out, init)
 	}
-	for i := 0; i < len(out); i++ {
+	for i := range out {
 		if out[i] != init[i] {
 			t.Fatalf("mismatched element %d. got %#v expected %#v", i, out, init)
 		}

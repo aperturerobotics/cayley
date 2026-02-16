@@ -163,7 +163,7 @@ var testQueries = []struct {
 	},
 }
 
-func runQuery(t testing.TB, g []quad.Quad, qu string) interface{} {
+func runQuery(t testing.TB, g []quad.Quad, qu string) any {
 	s := makeTestSession(t, g)
 	ctx := context.Background()
 	it, err := s.Execute(ctx, qu, query.Options{Collation: query.JSON})
@@ -171,7 +171,7 @@ func runQuery(t testing.TB, g []quad.Quad, qu string) interface{} {
 		t.Fatal(err)
 	}
 	defer it.Close()
-	var out []interface{}
+	var out []any
 	for it.Next(ctx) {
 		resi, err := it.Result(ctx)
 		require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestMQL(t *testing.T) {
 	for _, test := range testQueries {
 		t.Run(test.message, func(t *testing.T) {
 			got := runQuery(t, simpleGraph, test.query)
-			var expect interface{}
+			var expect any
 			json.Unmarshal([]byte(test.expect), &expect)
 			require.Equal(t, expect, got)
 		})

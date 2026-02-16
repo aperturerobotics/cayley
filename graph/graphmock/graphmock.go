@@ -17,11 +17,11 @@ var (
 
 type IntVal int
 
-func (v IntVal) Key() interface{} { return v }
+func (v IntVal) Key() any { return v }
 
 type StringNode string
 
-func (s StringNode) Key() interface{} { return s }
+func (s StringNode) Key() any { return s }
 
 // Oldstore is a mocked version of the QuadStore interface, for use in tests.
 type Oldstore struct {
@@ -149,7 +149,7 @@ type quadValue struct {
 	q quad.Quad
 }
 
-func (q quadValue) Key() interface{} {
+func (q quadValue) Key() any {
 	return q.q.String()
 }
 

@@ -2,6 +2,7 @@ package iterator
 
 import (
 	"context"
+	"maps"
 	"math"
 
 	"github.com/aperturerobotics/cayley/graph/refs"
@@ -95,11 +96,11 @@ type recursiveNext struct {
 	err    error
 
 	morphism      Morphism
-	seen          map[interface{}]seenAt
+	seen          map[any]seenAt
 	nextIt        Scanner
 	depth         int
 	maxDepth      int
-	pathMap       map[interface{}][]map[string]refs.Ref
+	pathMap       map[any][]map[string]refs.Ref
 	pathIndex     int
 	containsValue refs.Ref
 	depthTags     []string
@@ -114,10 +115,10 @@ func newRecursiveNext(it Scanner, morphism Morphism, maxDepth int, depthTags []s
 		maxDepth:  maxDepth,
 		depthTags: depthTags,
 
-		seen:    make(map[interface{}]seenAt),
+		seen:    make(map[any]seenAt),
 		nextIt:  &Null{},
 		baseIt:  NewFixed(),
-		pathMap: make(map[interface{}][]map[string]refs.Ref),
+		pathMap: make(map[any][]map[string]refs.Ref),
 	}
 }
 
@@ -133,9 +134,7 @@ func (it *recursiveNext) TagResults(ctx context.Context, dst map[string]refs.Ref
 	if it.containsValue != nil {
 		paths := it.pathMap[refs.ToKey(it.containsValue)]
 		if len(paths) != 0 {
-			for k, v := range paths[it.pathIndex] {
-				dst[k] = v
-			}
+			maps.Copy(dst, paths[it.pathIndex])
 		}
 	}
 	if it.nextIt != nil {
@@ -302,9 +301,7 @@ func (it *recursiveContains) TagResults(ctx context.Context, dst map[string]refs
 	if err := it.next.TagResults(ctx, dst); err != nil {
 		return err
 	}
-	for k, v := range it.tags {
-		dst[k] = v
-	}
+	maps.Copy(dst, it.tags)
 	return nil
 }
 

@@ -22,7 +22,7 @@ func TestUniqueIteratorBasics(t *testing.T) {
 	u := NewUnique(allIt)
 
 	expect := []int{1, 2, 3}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, expect, iterated(t, u))
 	}
 

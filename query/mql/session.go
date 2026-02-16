@@ -47,7 +47,7 @@ type mqlIterator struct {
 	col query.Collation
 	it  iterator.Scanner
 	err error
-	res []interface{}
+	res []any
 }
 
 func (it *mqlIterator) Next(ctx context.Context) bool {
@@ -94,7 +94,7 @@ func (it *mqlIterator) Next(ctx context.Context) bool {
 	return len(it.res) != 0
 }
 
-func (it *mqlIterator) Result(ctx context.Context) (interface{}, error) {
+func (it *mqlIterator) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func (s *Session) Execute(ctx context.Context, input string, opt query.Options) 
 	default:
 		return nil, &query.ErrUnsupportedCollation{Collation: opt.Collation}
 	}
-	var mqlQuery interface{}
+	var mqlQuery any
 	if err := json.Unmarshal([]byte(input), &mqlQuery); err != nil {
 		return nil, err
 	}

@@ -23,32 +23,32 @@ var (
 
 var patternTestCases = []struct {
 	name     string
-	pattern  map[string]interface{}
+	pattern  map[string]any
 	expected *path.Path
 }{
 	{
 		name:     "Empty Pattern",
-		pattern:  map[string]interface{}{},
+		pattern:  map[string]any{},
 		expected: path.StartMorphism(),
 	},
 	{
 		name: "Single Entity",
-		pattern: map[string]interface{}{
+		pattern: map[string]any{
 			"@id": string(alice),
 		},
 		expected: path.StartMorphism().Is(alice),
 	},
 	{
 		name: "Single Property Value",
-		pattern: map[string]interface{}{
-			string(likes): map[string]interface{}{"@id": string(bob)},
+		pattern: map[string]any{
+			string(likes): map[string]any{"@id": string(bob)},
 		},
 		expected: path.StartMorphism().Has(likes, bob),
 	},
 	{
 		name: "Nested Structure",
-		pattern: map[string]interface{}{
-			string(address): map[string]interface{}{
+		pattern: map[string]any{
+			string(address): map[string]any{
 				string(street): "Lafayette",
 			},
 		},
@@ -63,9 +63,9 @@ var patternTestCases = []struct {
 	},
 	{
 		name: "Two Level Nested Structure",
-		pattern: map[string]interface{}{
-			string(address): map[string]interface{}{
-				string(country): map[string]interface{}{
+		pattern: map[string]any{
+			string(address): map[string]any{
+				string(country): map[string]any{
 					string(name): "The United States of America",
 				},
 			},

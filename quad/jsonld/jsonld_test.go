@@ -98,7 +98,7 @@ func TestRead(t *testing.T) {
 
 var testWriteCases = []struct {
 	data   []quad.Quad
-	ctx    interface{}
+	ctx    any
 	expect string
 }{
 	{
@@ -138,7 +138,7 @@ var testWriteCases = []struct {
 				Label:     nil,
 			},
 		},
-		map[string]interface{}{
+		map[string]any{
 			"ex": "http://example.org/",
 		},
 		`{
@@ -258,7 +258,7 @@ func TestRoundtrip(t *testing.T) {
 var fromValueTestCases = []struct {
 	name   string
 	value  quad.Value
-	jsonLd interface{}
+	jsonLd any
 }{
 	{
 		name:   "Simple text",
@@ -268,7 +268,7 @@ var fromValueTestCases = []struct {
 	{
 		name:   "Localized text",
 		value:  quad.LangString{Value: "Alice", Lang: "en"},
-		jsonLd: map[string]interface{}{"@value": "Alice", "@language": "en"},
+		jsonLd: map[string]any{"@value": "Alice", "@language": "en"},
 	},
 	{
 		name:   "Known typed string",
@@ -293,7 +293,7 @@ var fromValueTestCases = []struct {
 	{
 		name:  "Datetime",
 		value: quad.Time(time.Time{}),
-		jsonLd: map[string]interface{}{
+		jsonLd: map[string]any{
 			"@value": "0001-01-01T00:00:00Z",
 			"@type":  xsd.DateTime,
 		},

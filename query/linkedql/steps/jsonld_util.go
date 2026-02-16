@@ -5,11 +5,11 @@ import (
 )
 
 type (
-	ldArray = []interface{}
-	ldMap   = map[string]interface{}
+	ldArray = []any
+	ldMap   = map[string]any
 )
 
-func unwrapValue(i interface{}) interface{} {
+func unwrapValue(i any) any {
 	m, ok := i.(ldMap)
 	if ok && len(m) == 1 {
 		v, ok := m["@value"]
@@ -20,7 +20,7 @@ func unwrapValue(i interface{}) interface{} {
 	return i
 }
 
-func unwrapSingle(i interface{}) interface{} {
+func unwrapSingle(i any) any {
 	a, ok := i.(ldArray)
 	if ok && len(a) == 1 {
 		return a[0]
@@ -32,7 +32,7 @@ func unwrapSingle(i interface{}) interface{} {
 // semantically. This function is not complete and is maintained for testing
 // purposes. Hopefully in the future it can be proven sufficient for general
 // purpose use.
-func isomorphic(source interface{}, target interface{}) error {
+func isomorphic(source any, target any) error {
 	source = unwrapValue(unwrapSingle(source))
 	target = unwrapValue(unwrapSingle(target))
 	switch s := source.(type) {

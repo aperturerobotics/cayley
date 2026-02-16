@@ -74,7 +74,7 @@ func (it *testIteratorContains) Err() error {
 
 type Int64Quad int64
 
-func (v Int64Quad) Key() interface{} { return v }
+func (v Int64Quad) Key() any { return v }
 
 func (Int64Quad) IsNode() bool { return false }
 

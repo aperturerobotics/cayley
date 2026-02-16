@@ -25,7 +25,7 @@ func Global() *Config {
 	return global
 }
 
-var reflQuadValue = reflect.TypeOf((*quad.Value)(nil)).Elem()
+var reflQuadValue = reflect.TypeFor[quad.Value]()
 
 type ErrReqFieldNotSet struct {
 	Field string
@@ -60,7 +60,7 @@ type Config struct {
 	IRIs IRIMode
 
 	// GenerateID is called when any object without an ID field is being saved.
-	GenerateID func(_ interface{}) quad.Value
+	GenerateID func(_ any) quad.Value
 
 	// Label will be added to all quads written. Does not affect queries.
 	Label quad.Value
@@ -69,10 +69,10 @@ type Config struct {
 	rulesForType   map[reflect.Type]fieldRules
 }
 
-func (c *Config) genID(o interface{}) quad.Value {
+func (c *Config) genID(o any) quad.Value {
 	gen := c.GenerateID
 	if gen == nil {
-		gen = func(_ interface{}) quad.Value {
+		gen = func(_ any) quad.Value {
 			return quad.RandomBlankNode()
 		}
 	}
@@ -201,7 +201,7 @@ func (c *Config) fieldRule(fld reflect.StructField) (rule, error) {
 }
 
 func checkFieldType(ftp reflect.Type) error {
-	for ftp.Kind() == reflect.Ptr || ftp.Kind() == reflect.Slice {
+	for ftp.Kind() == reflect.Pointer || ftp.Kind() == reflect.Slice {
 		ftp = ftp.Elem()
 	}
 	switch ftp.Kind() {
@@ -230,14 +230,14 @@ func getTypeIRI(rt reflect.Type) quad.IRI {
 // RegisterType associates an IRI with a given Go type.
 //
 // All queries and writes will require or add a type triple.
-func RegisterType(iri quad.IRI, obj interface{}) {
+func RegisterType(iri quad.IRI, obj any) {
 	var rt reflect.Type
 	if obj != nil {
 		if t, ok := obj.(reflect.Type); ok {
 			rt = t
 		} else {
 			rt = reflect.TypeOf(obj)
-			if rt.Kind() == reflect.Ptr {
+			if rt.Kind() == reflect.Pointer {
 				rt = rt.Elem()
 			}
 		}
@@ -269,7 +269,7 @@ func (c *Config) PathForType(rt reflect.Type) (*path.Path, error) {
 
 func anonFieldType(fld reflect.StructField) (reflect.Type, bool) {
 	ft := fld.Type
-	if ft.Kind() == reflect.Ptr {
+	if ft.Kind() == reflect.Pointer {
 		ft = ft.Elem()
 	}
 	if ft.Kind() == reflect.Struct {
@@ -360,7 +360,7 @@ func init() {
 		} else if st.ConvertibleTo(dt) {
 			dst.Set(src.Convert(dt))
 			return nil
-		} else if dt.Kind() == reflect.Ptr {
+		} else if dt.Kind() == reflect.Pointer {
 			v := reflect.New(dt.Elem())
 			if err := DefaultConverter.SetValue(v.Elem(), src); err != nil {
 				return err
@@ -386,7 +386,7 @@ func isNative(rt reflect.Type) bool { // TODO(dennwc): replace
 
 func keysEqual(v1, v2 graph.Ref) bool {
 	type key interface {
-		Key() interface{}
+		Key() any
 	}
 	e1, ok1 := v1.(key)
 	e2, ok2 := v2.(key)
@@ -406,7 +406,7 @@ func isExported(name string) bool {
 
 func isZero(rv reflect.Value) bool {
 	switch rv.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return rv.IsNil()
 	case reflect.Slice, reflect.Map:
 		return rv.IsNil() || rv.Len() == 0

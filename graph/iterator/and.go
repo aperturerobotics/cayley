@@ -303,7 +303,7 @@ func (it *andContains) Contains(ctx context.Context, val refs.Ref) (bool, error)
 			// with the (already verified) result and throw away the result,
 			// which will be 'true'
 			if prev != nil {
-				for j := 0; j < i; j++ {
+				for j := range i {
 					it.sub[j].Contains(ctx, prev)
 					if err := it.sub[j].Err(); err != nil {
 						it.err = err

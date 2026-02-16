@@ -24,6 +24,6 @@ package iterator
 
 type Int64Node int64
 
-func (v Int64Node) Key() interface{} { return v }
+func (v Int64Node) Key() any { return v }
 
 func (Int64Node) IsNode() bool { return true }

@@ -53,7 +53,7 @@ func runTxMysql(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUp
 			if err != nil {
 				return err
 			}
-			values = append([]interface{}{n.RefInc}, values...)
+			values = append([]any{n.RefInc}, values...)
 			values = append(values, n.RefInc) // one more time for UPDATE
 			stmt, ok := insertValue[nodeKey]
 			if !ok {
@@ -98,7 +98,7 @@ func runTxMysql(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.QuadUp
 		err        error
 	)
 	for _, d := range quads {
-		dirs := make([]interface{}, 0, len(quad.Directions))
+		dirs := make([]any, 0, len(quad.Directions))
 		for _, h := range d.Quad.Dirs() {
 			dirs = append(dirs, csql.NodeHash{ValueHash: h}.SQLValue())
 		}

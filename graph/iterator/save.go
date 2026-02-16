@@ -3,6 +3,7 @@ package iterator
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/aperturerobotics/cayley/graph/refs"
 )
@@ -81,9 +82,7 @@ func (it *Save) CopyFromTagger(st TaggerBase) {
 	if it.fixedTags == nil {
 		it.fixedTags = make(map[string]refs.Ref, len(fixed))
 	}
-	for k, v := range fixed {
-		it.fixedTags[k] = v
-	}
+	maps.Copy(it.fixedTags, fixed)
 }
 
 func (it *Save) Stats(ctx context.Context) (Costs, error) {
@@ -141,9 +140,7 @@ func (it *saveNext) TagResults(ctx context.Context, dst map[string]refs.Ref) err
 		dst[tag] = v
 	}
 
-	for tag, value := range it.fixedTags {
-		dst[tag] = value
-	}
+	maps.Copy(dst, it.fixedTags)
 	return nil
 }
 
@@ -194,9 +191,7 @@ func (it *saveContains) TagResults(ctx context.Context, dst map[string]refs.Ref)
 		dst[tag] = v
 	}
 
-	for tag, value := range it.fixed {
-		dst[tag] = value
-	}
+	maps.Copy(dst, it.fixed)
 	return nil
 }
 

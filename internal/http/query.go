@@ -29,7 +29,7 @@ import (
 )
 
 type SuccessQueryWrapper struct {
-	Result interface{} `json:"result"`
+	Result any `json:"result"`
 }
 
 type ErrorQueryWrapper struct {
@@ -42,7 +42,7 @@ func WriteError(w io.Writer, err error) error {
 	return enc.Encode(ErrorQueryWrapper{err.Error()})
 }
 
-func WriteResult(w io.Writer, result interface{}) error {
+func WriteResult(w io.Writer, result any) error {
 	enc := json.NewEncoder(w)
 	// enc.SetIndent("", " ")
 	return enc.Encode(SuccessQueryWrapper{result})
@@ -123,7 +123,7 @@ func (api *API) ServeV1Query(w http.ResponseWriter, r *http.Request, params http
 	}
 	defer it.Close()
 
-	var out []interface{}
+	var out []any
 	for it.Next(ctx) {
 		res, err := it.Result(ctx)
 		if err != nil {

@@ -41,13 +41,13 @@ func init() {
 
 type bnode int64
 
-func (n bnode) Key() interface{} { return n }
+func (n bnode) Key() any { return n }
 
 type qprim struct {
 	p *Primitive
 }
 
-func (n qprim) Key() interface{} { return n.p.ID }
+func (n qprim) Key() any { return n.p.ID }
 
 var _ quad.Writer = (*QuadStore)(nil)
 

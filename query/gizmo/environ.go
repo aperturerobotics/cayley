@@ -266,15 +266,15 @@ var defaultEnv = map[string]func(vm *goja.Runtime, call goja.FunctionCall) goja.
 	"like":  cmpWildcard,
 }
 
-func unwrap(o interface{}) interface{} {
+func unwrap(o any) any {
 	switch v := o.(type) {
 	case *pathObject:
 		o = v.path
-	case []interface{}:
+	case []any:
 		for i, val := range v {
 			v[i] = unwrap(val)
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		for k, val := range v {
 			v[k] = unwrap(val)
 		}
@@ -282,11 +282,11 @@ func unwrap(o interface{}) interface{} {
 	return o
 }
 
-func exportArgs(args []goja.Value) []interface{} {
+func exportArgs(args []goja.Value) []any {
 	if len(args) == 0 {
 		return nil
 	}
-	out := make([]interface{}, 0, len(args))
+	out := make([]any, 0, len(args))
 	for _, a := range args {
 		o := a.Export()
 		out = append(out, unwrap(o))
@@ -294,7 +294,7 @@ func exportArgs(args []goja.Value) []interface{} {
 	return out
 }
 
-func toInt(o interface{}) (int, bool) {
+func toInt(o any) (int, bool) {
 	switch v := o.(type) {
 	case int:
 		return v, true
@@ -307,7 +307,7 @@ func toInt(o interface{}) (int, bool) {
 	}
 }
 
-func toQuadValue(o interface{}) (quad.Value, error) {
+func toQuadValue(o any) (quad.Value, error) {
 	var qv quad.Value
 	switch v := o.(type) {
 	case quad.Value:
@@ -334,7 +334,7 @@ func toQuadValue(o interface{}) (quad.Value, error) {
 	return qv, nil
 }
 
-func toQuadValues(objs []interface{}) ([]quad.Value, error) {
+func toQuadValues(objs []any) ([]quad.Value, error) {
 	if len(objs) == 0 {
 		return nil, nil
 	}
@@ -349,7 +349,7 @@ func toQuadValues(objs []interface{}) ([]quad.Value, error) {
 	return vals, nil
 }
 
-func toStrings(objs []interface{}) []string {
+func toStrings(objs []any) []string {
 	if len(objs) == 0 {
 		return nil
 	}
@@ -362,7 +362,7 @@ func toStrings(objs []interface{}) []string {
 			out = append(out, quad.StringOf(v))
 		case []string:
 			out = append(out, v...)
-		case []interface{}:
+		case []any:
 			out = append(out, toStrings(v)...)
 		default:
 			panic(fmt.Errorf("expected string, got: %T", o))
@@ -371,16 +371,16 @@ func toStrings(objs []interface{}) []string {
 	return out
 }
 
-func toVia(via []interface{}) []interface{} {
+func toVia(via []any) []any {
 	if len(via) == 0 {
 		return nil
 	} else if len(via) == 1 {
 		if via[0] == nil {
 			return nil
-		} else if v, ok := via[0].([]interface{}); ok {
+		} else if v, ok := via[0].([]any); ok {
 			return toVia(v)
 		} else if v, ok := via[0].([]string); ok {
-			arr := make([]interface{}, 0, len(v))
+			arr := make([]any, 0, len(v))
 			for _, s := range v {
 				arr = append(arr, s)
 			}
@@ -401,9 +401,9 @@ func toVia(via []interface{}) []interface{} {
 	return via
 }
 
-func toViaData(objs []interface{}) (predicates []interface{}, tags []string, ok bool) {
+func toViaData(objs []any) (predicates []any, tags []string, ok bool) {
 	if len(objs) != 0 {
-		predicates = toVia([]interface{}{objs[0]})
+		predicates = toVia([]any{objs[0]})
 	}
 	if len(objs) > 1 {
 		tags = toStrings(objs[1:])
@@ -412,9 +412,9 @@ func toViaData(objs []interface{}) (predicates []interface{}, tags []string, ok 
 	return
 }
 
-func toViaDepthData(objs []interface{}) (predicates []interface{}, maxDepth int, tags []string, ok bool) {
+func toViaDepthData(objs []any) (predicates []any, maxDepth int, tags []string, ok bool) {
 	if len(objs) != 0 {
-		predicates = toVia([]interface{}{objs[0]})
+		predicates = toVia([]any{objs[0]})
 	}
 	if len(objs) > 1 {
 		maxDepth, ok = toInt(objs[1])

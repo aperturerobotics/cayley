@@ -30,7 +30,7 @@ func TestNotIteratorBasics(t *testing.T) {
 	require.Equal(t, int64(2), st.Size.Value)
 
 	expect := []int{1, 3}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		require.Equal(t, expect, iterated(t, not))
 	}
 

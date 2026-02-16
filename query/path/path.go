@@ -17,6 +17,7 @@ package path
 import (
 	"context"
 	"regexp"
+	"slices"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/graph/iterator"
@@ -211,7 +212,7 @@ func (p *Path) Tag(tags ...string) *Path {
 //	// Will return []string{"F"} if there is a predicate (edge) from "B"
 //	// to "F" labelled "follows".
 //	StartPath(qs, "A").Out("follows")
-func (p *Path) Out(via ...interface{}) *Path {
+func (p *Path) Out(via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, outMorphism(nil, via...))
 	return np
@@ -227,7 +228,7 @@ func (p *Path) Out(via ...interface{}) *Path {
 //	// Will return []string{"A", "C", "D"} if there are the appropriate
 //	// edges from those nodes to "B" labelled "follows".
 //	StartPath(qs, "B").In("follows")
-func (p *Path) In(via ...interface{}) *Path {
+func (p *Path) In(via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, inMorphism(nil, via...))
 	return np
@@ -235,7 +236,7 @@ func (p *Path) In(via ...interface{}) *Path {
 
 // InWithTags is exactly like In, except it tags the value of the predicate
 // traversed with the tags provided.
-func (p *Path) InWithTags(tags []string, via ...interface{}) *Path {
+func (p *Path) InWithTags(tags []string, via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, inMorphism(tags, via...))
 	return np
@@ -243,7 +244,7 @@ func (p *Path) InWithTags(tags []string, via ...interface{}) *Path {
 
 // OutWithTags is exactly like In, except it tags the value of the predicate
 // traversed with the tags provided.
-func (p *Path) OutWithTags(tags []string, via ...interface{}) *Path {
+func (p *Path) OutWithTags(tags []string, via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, outMorphism(tags, via...))
 	return np
@@ -258,7 +259,7 @@ func (p *Path) OutWithTags(tags []string, via ...interface{}) *Path {
 //	// Will return []string{"A", "C", "D", "F} if there are the appropriate
 //	// edges from those nodes to "B" labelled "follows", in either direction.
 //	StartPath(qs, "B").Both("follows")
-func (p *Path) Both(via ...interface{}) *Path {
+func (p *Path) Both(via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, bothMorphism(nil, via...))
 	return np
@@ -266,7 +267,7 @@ func (p *Path) Both(via ...interface{}) *Path {
 
 // BothWithTags is exactly like Both, except it tags the value of the predicate
 // traversed with the tags provided.
-func (p *Path) BothWithTags(tags []string, via ...interface{}) *Path {
+func (p *Path) BothWithTags(tags []string, via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, bothMorphism(tags, via...))
 	return np
@@ -395,7 +396,7 @@ func (p *Path) FollowReverse(path *Path) *Path {
 // first time the result node was seen.
 //
 // This is a very expensive operation in practice. Be sure to use it wisely.
-func (p *Path) FollowRecursive(via interface{}, maxDepth int, depthTags []string) *Path {
+func (p *Path) FollowRecursive(via any, maxDepth int, depthTags []string) *Path {
 	var path *Path
 	switch v := via.(type) {
 	case string:
@@ -420,7 +421,7 @@ func (p *Path) FollowRecursive(via interface{}, maxDepth int, depthTags []string
 //
 //	// Will return []map[string]string{{"social_status: "cool"}}
 //	StartPath(qs, "B").Save("status", "social_status"
-func (p *Path) Save(via interface{}, tag string) *Path {
+func (p *Path) Save(via any, tag string) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, saveMorphism(via, tag))
 	return np
@@ -428,21 +429,21 @@ func (p *Path) Save(via interface{}, tag string) *Path {
 
 // SaveReverse is the same as Save, only in the reverse direction
 // (the subject of the linkage should be tagged, instead of the object).
-func (p *Path) SaveReverse(via interface{}, tag string) *Path {
+func (p *Path) SaveReverse(via any, tag string) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, saveReverseMorphism(via, tag))
 	return np
 }
 
 // SaveOptional is the same as Save, but does not require linkage to exist.
-func (p *Path) SaveOptional(via interface{}, tag string) *Path {
+func (p *Path) SaveOptional(via any, tag string) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, saveOptionalMorphism(via, tag))
 	return np
 }
 
 // SaveOptionalReverse is the same as SaveReverse, but does not require linkage to exist.
-func (p *Path) SaveOptionalReverse(via interface{}, tag string) *Path {
+func (p *Path) SaveOptionalReverse(via any, tag string) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, saveOptionalReverseMorphism(via, tag))
 	return np
@@ -457,7 +458,7 @@ func (p *Path) HasPath(p2 *Path) *Path {
 
 // Has limits the paths to be ones where the current nodes have some linkage
 // to some known node.
-func (p *Path) Has(via interface{}, nodes ...quad.Value) *Path {
+func (p *Path) Has(via any, nodes ...quad.Value) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, hasMorphism(via, false, nodes...))
 	return np
@@ -465,7 +466,7 @@ func (p *Path) Has(via interface{}, nodes ...quad.Value) *Path {
 
 // HasReverse limits the paths to be ones where some known node have some linkage
 // to the current nodes.
-func (p *Path) HasReverse(via interface{}, nodes ...quad.Value) *Path {
+func (p *Path) HasReverse(via any, nodes ...quad.Value) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, hasMorphism(via, true, nodes...))
 	return np
@@ -473,7 +474,7 @@ func (p *Path) HasReverse(via interface{}, nodes ...quad.Value) *Path {
 
 // HasFilter limits the paths to be ones where the current nodes have some linkage
 // to some nodes that pass provided filters.
-func (p *Path) HasFilter(via interface{}, rev bool, filt ...shape.ValueFilter) *Path {
+func (p *Path) HasFilter(via any, rev bool, filt ...shape.ValueFilter) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, hasFilterMorphism(via, rev, filt))
 	return np
@@ -481,7 +482,7 @@ func (p *Path) HasFilter(via interface{}, rev bool, filt ...shape.ValueFilter) *
 
 // LabelContext restricts the following operations (such as In, Out) to only
 // traverse edges that match the given set of labels.
-func (p *Path) LabelContext(via ...interface{}) *Path {
+func (p *Path) LabelContext(via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, labelContextMorphism(nil, via...))
 	return np
@@ -489,7 +490,7 @@ func (p *Path) LabelContext(via ...interface{}) *Path {
 
 // LabelContextWithTags is exactly like LabelContext, except it tags the value
 // of the label used in the traversal with the tags provided.
-func (p *Path) LabelContextWithTags(tags []string, via ...interface{}) *Path {
+func (p *Path) LabelContextWithTags(tags []string, via ...any) *Path {
 	np := p.clone()
 	np.stack = append(np.stack, labelContextMorphism(tags, via...))
 	return np
@@ -510,12 +511,10 @@ func (p *Path) Back(tag string) *Path {
 			return p.Reverse()
 		}
 		if p.stack[i].IsTag {
-			for _, x := range p.stack[i].tags {
-				if x == tag {
-					// Found what we're looking for.
-					p.stack = p.stack[:i+1]
-					return p.And(newPath)
-				}
+			if slices.Contains(p.stack[i].tags, tag) {
+				// Found what we're looking for.
+				p.stack = p.stack[:i+1]
+				return p.And(newPath)
 			}
 		}
 		var revMorphism morphism

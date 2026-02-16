@@ -127,7 +127,7 @@ func runTxCockroach(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.Qu
 	// Each of those will require a separate INSERT statement.
 	type nodeEntry struct {
 		refInc int
-		values []interface{} // usually two, but sometimes three elements (includes hash)
+		values []any // usually two, but sometimes three elements (includes hash)
 	}
 	nodeEntries := make(map[csql.ValueType][]nodeEntry)
 	for _, n := range nodes {
@@ -147,7 +147,7 @@ func runTxCockroach(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.Qu
 	// Next, build and execute the INSERT statements for each type.
 	for nodeType, entries := range nodeEntries {
 		var query bytes.Buffer
-		var allValues []interface{}
+		var allValues []any
 		valCols := nodeType.Columns()
 		fmt.Fprintf(&query, "INSERT INTO nodes (refs, hash, %s) VALUES ", strings.Join(valCols, ", "))
 		ph := 1 // next placeholder counter
@@ -188,7 +188,7 @@ func runTxCockroach(tx *sql.Tx, nodes []graphlog.NodeUpdate, quads []graphlog.Qu
 	}
 
 	var query bytes.Buffer
-	var allValues []interface{}
+	var allValues []any
 	fmt.Fprintf(&query, "INSERT INTO quads (subject_hash, predicate_hash, object_hash, label_hash, ts) VALUES ")
 	for i, d := range quads {
 		if d.Del {

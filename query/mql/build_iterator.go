@@ -36,11 +36,11 @@ func buildAllResult(path Path) shape.Shape {
 	}
 }
 
-func (q *Query) BuildIteratorTree(ctx context.Context, query interface{}) {
+func (q *Query) BuildIteratorTree(ctx context.Context, query any) {
 	q.isRepeated = make(map[Path]bool)
-	q.queryStructure = make(map[Path]map[string]interface{})
-	q.queryResult = make(map[ResultPath]map[string]interface{})
-	q.queryResult[""] = make(map[string]interface{})
+	q.queryStructure = make(map[Path]map[string]any)
+	q.queryResult = make(map[ResultPath]map[string]any)
+	q.queryResult[""] = make(map[string]any)
 
 	var (
 		opt bool
@@ -53,7 +53,7 @@ func (q *Query) BuildIteratorTree(ctx context.Context, query interface{}) {
 	q.it = shape.BuildIterator(ctx, q.ses.qs, s)
 }
 
-func (q *Query) buildShape(query interface{}, path Path) (s shape.Shape, optional bool, err error) {
+func (q *Query) buildShape(query any, path Path) (s shape.Shape, optional bool, err error) {
 	err = nil
 	optional = false
 	switch t := query.(type) {
@@ -72,7 +72,7 @@ func (q *Query) buildShape(query interface{}, path Path) (s shape.Shape, optiona
 	case string:
 		// for JSON strings
 		s = buildFixed(t)
-	case []interface{}:
+	case []any:
 		// for JSON arrays
 		q.isRepeated[path] = true
 		if len(t) == 0 {
@@ -83,7 +83,7 @@ func (q *Query) buildShape(query interface{}, path Path) (s shape.Shape, optiona
 		} else {
 			err = fmt.Errorf("multiple fields at location root %s", path.DisplayString())
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		// for JSON objects
 		s, err = q.buildShapeMap(t, path)
 	case nil:
@@ -102,13 +102,13 @@ func (q *Query) buildShape(query interface{}, path Path) (s shape.Shape, optiona
 	return s, optional, nil
 }
 
-func (q *Query) buildShapeMap(query map[string]interface{}, path Path) (shape.Shape, error) {
+func (q *Query) buildShapeMap(query map[string]any, path Path) (shape.Shape, error) {
 	it := shape.IntersectOpt{
 		Sub: shape.Intersect{
 			shape.AllNodes{},
 		},
 	}
-	outputStructure := make(map[string]interface{})
+	outputStructure := make(map[string]any)
 	for key, subquery := range query {
 		optional := false
 		outputStructure[key] = nil

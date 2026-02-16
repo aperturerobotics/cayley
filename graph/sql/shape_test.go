@@ -14,11 +14,11 @@ import (
 
 type stringVal string
 
-func (s stringVal) Key() interface{} {
+func (s stringVal) Key() any {
 	return string(s)
 }
 
-func (s stringVal) SQLValue() interface{} {
+func (s stringVal) SQLValue() any {
 	return string(s)
 }
 

@@ -89,7 +89,7 @@ func (it *TagsIterator) addResultsToDataset(ctx context.Context, dataset *ld.RDF
 }
 
 // Result implements query.Iterator.
-func (it *TagsIterator) Result(ctx context.Context) (interface{}, error) {
+func (it *TagsIterator) Result(ctx context.Context) (any, error) {
 	if err := it.err; err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (it *TagsIterator) Result(ctx context.Context) (interface{}, error) {
 		return nil, err
 	}
 	if !it.ExcludeID {
-		m := doc.(map[string]interface{})
+		m := doc.(map[string]any)
 		delete(m, "@id")
 		return m, nil
 	}

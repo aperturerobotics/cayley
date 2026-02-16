@@ -49,7 +49,7 @@ func (p *pathObject) toArray(call goja.FunctionCall, withTags bool) goja.Value {
 	it := p.buildIteratorTree()
 	it = iterator.Tag(it, TopResultTag)
 	var (
-		array interface{}
+		array any
 		err   error
 	)
 	if !withTags {
@@ -87,7 +87,7 @@ func (p *pathObject) TagArray(call goja.FunctionCall) goja.Value {
 	return p.toArray(call, true)
 }
 
-func (p *pathObject) toValue(withTags bool) (interface{}, error) {
+func (p *pathObject) toValue(withTags bool) (any, error) {
 	it := p.buildIteratorTree()
 	it = iterator.Tag(it, TopResultTag)
 	const limit = 1
@@ -112,12 +112,12 @@ func (p *pathObject) toValue(withTags bool) (interface{}, error) {
 }
 
 // ToValue is the same as ToArray, but limited to one result node.
-func (p *pathObject) ToValue() (interface{}, error) {
+func (p *pathObject) ToValue() (any, error) {
 	return p.toValue(false)
 }
 
 // TagValue is the same as TagArray, but limited to one result node. Returns a tag-to-string map.
-func (p *pathObject) TagValue() (interface{}, error) {
+func (p *pathObject) TagValue() (any, error) {
 	return p.toValue(true)
 }
 
@@ -193,15 +193,15 @@ func (p *pathObject) CapitalizedTagArray(call goja.FunctionCall) goja.Value {
 	return p.TagArray(call)
 }
 
-func (p *pathObject) CapitalizedtoValue(withTags bool) (interface{}, error) {
+func (p *pathObject) CapitalizedtoValue(withTags bool) (any, error) {
 	return p.toValue(withTags)
 }
 
-func (p *pathObject) CapitalizedToValue() (interface{}, error) {
+func (p *pathObject) CapitalizedToValue() (any, error) {
 	return p.ToValue()
 }
 
-func (p *pathObject) CapitalizedTagValue() (interface{}, error) {
+func (p *pathObject) CapitalizedTagValue() (any, error) {
 	return p.TagValue()
 }
 

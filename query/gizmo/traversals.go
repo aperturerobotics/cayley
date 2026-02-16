@@ -471,7 +471,7 @@ func (p *pathObject) save(call goja.FunctionCall, rev, opt bool) goja.Value {
 	if len(args) > 2 || len(args) == 0 {
 		return throwErr(p.s.vm, errArgCount{Got: len(args)})
 	}
-	var vtag interface{} = ""
+	var vtag any = ""
 	if len(args) == 2 {
 		vtag = args[1]
 	}

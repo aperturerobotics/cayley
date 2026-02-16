@@ -89,13 +89,13 @@ func IsNotFound(err error) bool {
 //		ThirdName string `quad:"thirdName,optional"` // can be empty
 //		FollowedBy []quad.IRI `quad:"follows"`
 //	}
-func (c *Config) LoadTo(ctx context.Context, qs graph.QuadStore, dst interface{}, ids ...quad.Value) error {
+func (c *Config) LoadTo(ctx context.Context, qs graph.QuadStore, dst any, ids ...quad.Value) error {
 	return c.LoadToDepth(ctx, qs, dst, -1, ids...)
 }
 
 // LoadToDepth is the same as LoadTo, but stops at a specified depth.
 // Negative value means unlimited depth, and zero means top level only.
-func (c *Config) LoadToDepth(ctx context.Context, qs graph.QuadStore, dst interface{}, depth int, ids ...quad.Value) error {
+func (c *Config) LoadToDepth(ctx context.Context, qs graph.QuadStore, dst any, depth int, ids ...quad.Value) error {
 	if dst == nil {
 		return fmt.Errorf("nil destination object")
 	}
@@ -121,7 +121,7 @@ func (c *Config) LoadToDepth(ctx context.Context, qs graph.QuadStore, dst interf
 }
 
 // LoadPathTo is the same as LoadTo, but starts loading objects from a given path.
-func (c *Config) LoadPathTo(ctx context.Context, qs graph.QuadStore, dst interface{}, p *path.Path) error {
+func (c *Config) LoadPathTo(ctx context.Context, qs graph.QuadStore, dst any, p *path.Path) error {
 	return c.LoadIteratorTo(ctx, qs, reflect.ValueOf(dst), p.BuildIterator(ctx))
 }
 
@@ -169,7 +169,7 @@ func (c *Config) newLoader(qs graph.QuadStore) *loader {
 }
 
 func (l *loader) makePathForType(rt reflect.Type, tagPref string, rootOnly bool) (*path.Path, error) {
-	for rt.Kind() == reflect.Ptr {
+	for rt.Kind() == reflect.Pointer {
 		rt = rt.Elem()
 	}
 	if rt.Kind() != reflect.Struct {
@@ -213,7 +213,7 @@ func (l *loader) makePathForType(rt reflect.Type, tagPref string, rootOnly bool)
 			continue
 		}
 		ft := f.Type
-		if ft.Kind() == reflect.Ptr {
+		if ft.Kind() == reflect.Pointer {
 			ft = ft.Elem()
 		}
 		if err = checkFieldType(ft); err != nil {
@@ -294,7 +294,7 @@ func (l *loader) loadToValue(ctx context.Context, dst reflect.Value, depth int, 
 	if ctx == nil {
 		ctx = context.TODO()
 	}
-	for dst.Kind() == reflect.Ptr {
+	for dst.Kind() == reflect.Pointer {
 		dst = dst.Elem()
 	}
 	rt := dst.Type()
@@ -348,12 +348,12 @@ func (l *loader) loadToValue(ctx context.Context, dst reflect.Value, depth int, 
 		}
 		ft := f.Type
 		native := isNative(ft)
-		ptr := ft.Kind() == reflect.Ptr
-		for ft.Kind() == reflect.Ptr || ft.Kind() == reflect.Slice {
+		ptr := ft.Kind() == reflect.Pointer
+		for ft.Kind() == reflect.Pointer || ft.Kind() == reflect.Slice {
 			ft = ft.Elem()
 			native = native || isNative(ft)
 			switch ft.Kind() {
-			case reflect.Ptr:
+			case reflect.Pointer:
 				ptr = true
 			case reflect.Slice:
 				ptr = false
@@ -425,7 +425,7 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 	if ctx == nil {
 		ctx = context.TODO()
 	}
-	if dst.Kind() == reflect.Ptr {
+	if dst.Kind() == reflect.Pointer {
 		dst = dst.Elem()
 	}
 	et := dst.Type()
@@ -483,7 +483,7 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 					dst.Set(reflect.Append(dst, sv.Elem()))
 				} else if chanl {
 					dst.Send(sv.Elem())
-				} else if dst.Kind() != reflect.Ptr {
+				} else if dst.Kind() != reflect.Pointer {
 					dst.Set(sv.Elem())
 					return nil
 				} else {
@@ -524,7 +524,7 @@ func (l *loader) loadIteratorToDepth(ctx context.Context, dst reflect.Value, dep
 		}
 		if id != nil {
 			sv := cur
-			if sv.Kind() != reflect.Ptr && sv.CanAddr() {
+			if sv.Kind() != reflect.Pointer && sv.CanAddr() {
 				sv = sv.Addr()
 			}
 			l.seen[id] = sv

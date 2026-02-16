@@ -16,6 +16,7 @@ package iterator
 
 import (
 	"context"
+	"slices"
 	"sort"
 
 	"github.com/aperturerobotics/cayley/clog"
@@ -239,12 +240,7 @@ func optimizeSubIterators(ctx context.Context, its []Shape) ([]Shape, error) {
 
 // Check a list of iterators for any Null iterators.
 func hasAnyNullIterators(its []Shape) bool {
-	for _, it := range its {
-		if IsNull(it) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(its, IsNull)
 }
 
 func materializeIts(ctx context.Context, its []Shape) ([]Shape, error) {

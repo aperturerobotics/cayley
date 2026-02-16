@@ -104,7 +104,7 @@ func hasPathMorphism(p *Path) morphism {
 
 // hasMorphism is the set of nodes that is reachable via either a *Path, a
 // single node.(string) or a list of nodes.([]string).
-func hasMorphism(via interface{}, rev bool, nodes ...quad.Value) morphism {
+func hasMorphism(via any, rev bool, nodes ...quad.Value) morphism {
 	var node shape.Shape
 	if len(nodes) == 0 {
 		node = shape.AllNodes{}
@@ -116,7 +116,7 @@ func hasMorphism(via interface{}, rev bool, nodes ...quad.Value) morphism {
 
 // hasShapeMorphism is the set of nodes that is reachable via either a *Path, a
 // single node.(string) or a list of nodes.([]string).
-func hasShapeMorphism(via interface{}, rev bool, nodes shape.Shape) morphism {
+func hasShapeMorphism(via any, rev bool, nodes shape.Shape) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return hasShapeMorphism(via, rev, nodes), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -127,7 +127,7 @@ func hasShapeMorphism(via interface{}, rev bool, nodes shape.Shape) morphism {
 
 // hasFilterMorphism is the set of nodes that is reachable via either a *Path, a
 // single node.(string) or a list of nodes.([]string) and that passes provided filters.
-func hasFilterMorphism(via interface{}, rev bool, filt []shape.ValueFilter) morphism {
+func hasFilterMorphism(via any, rev bool, filt []shape.ValueFilter) morphism {
 	return hasShapeMorphism(via, rev, shape.Filter{
 		From:    shape.AllNodes{},
 		Filters: filt,
@@ -146,7 +146,7 @@ func tagMorphism(tags ...string) morphism {
 }
 
 // outMorphism iterates forward one RDF triple or via an entire path.
-func outMorphism(tags []string, via ...interface{}) morphism {
+func outMorphism(tags []string, via ...any) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return inMorphism(tags, via...), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -157,7 +157,7 @@ func outMorphism(tags []string, via ...interface{}) morphism {
 }
 
 // inMorphism iterates backwards one RDF triple or via an entire path.
-func inMorphism(tags []string, via ...interface{}) morphism {
+func inMorphism(tags []string, via ...any) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return outMorphism(tags, via...), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -167,7 +167,7 @@ func inMorphism(tags []string, via ...interface{}) morphism {
 	}
 }
 
-func bothMorphism(tags []string, via ...interface{}) morphism {
+func bothMorphism(tags []string, via ...any) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return bothMorphism(tags, via...), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -181,7 +181,7 @@ func bothMorphism(tags []string, via ...interface{}) morphism {
 	}
 }
 
-func labelContextMorphism(tags []string, via ...interface{}) morphism {
+func labelContextMorphism(tags []string, via ...any) morphism {
 	var path shape.Shape
 	if len(via) == 0 {
 		path = nil
@@ -357,7 +357,7 @@ func uniqueMorphism() morphism {
 	}
 }
 
-func saveMorphism(via interface{}, tag string) morphism {
+func saveMorphism(via any, tag string) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return saveMorphism(via, tag), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -367,7 +367,7 @@ func saveMorphism(via interface{}, tag string) morphism {
 	}
 }
 
-func saveReverseMorphism(via interface{}, tag string) morphism {
+func saveReverseMorphism(via any, tag string) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return saveReverseMorphism(via, tag), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -377,7 +377,7 @@ func saveReverseMorphism(via interface{}, tag string) morphism {
 	}
 }
 
-func saveOptionalMorphism(via interface{}, tag string) morphism {
+func saveOptionalMorphism(via any, tag string) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return saveOptionalMorphism(via, tag), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -387,7 +387,7 @@ func saveOptionalMorphism(via interface{}, tag string) morphism {
 	}
 }
 
-func saveOptionalReverseMorphism(via interface{}, tag string) morphism {
+func saveOptionalReverseMorphism(via any, tag string) morphism {
 	return morphism{
 		Reversal: func(ctx *pathContext) (morphism, *pathContext) { return saveOptionalReverseMorphism(via, tag), ctx },
 		Apply: func(in shape.Shape, ctx *pathContext) (shape.Shape, *pathContext) {
@@ -397,7 +397,7 @@ func saveOptionalReverseMorphism(via interface{}, tag string) morphism {
 	}
 }
 
-func buildVia(via ...interface{}) shape.Shape {
+func buildVia(via ...any) shape.Shape {
 	if len(via) == 0 {
 		return shape.AllNodes{}
 	} else if len(via) == 1 {

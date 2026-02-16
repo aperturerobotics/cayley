@@ -80,7 +80,7 @@ func TestLoadIteratorTo(t *testing.T) {
 			qs := memstore.New(c.quads...)
 			rt := reflect.TypeOf(c.expect)
 			var out reflect.Value
-			if rt.Kind() == reflect.Ptr {
+			if rt.Kind() == reflect.Pointer {
 				out = reflect.New(rt.Elem())
 			} else {
 				out = reflect.New(rt)
@@ -103,8 +103,8 @@ func TestLoadIteratorTo(t *testing.T) {
 				t.Errorf("case %d failed: %v", i+1, err)
 				return
 			}
-			var got interface{}
-			if rt.Kind() == reflect.Ptr {
+			var got any
+			if rt.Kind() == reflect.Pointer {
 				got = out.Interface()
 			} else {
 				got = out.Elem().Interface()
@@ -130,7 +130,7 @@ func TestLoadIteratorTo(t *testing.T) {
 
 var testFillValueCases = []struct {
 	name   string
-	expect interface{}
+	expect any
 	quads  []quad.Quad
 	depth  int
 	from   []quad.Value

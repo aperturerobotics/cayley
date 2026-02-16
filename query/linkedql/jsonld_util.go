@@ -7,7 +7,7 @@ import (
 )
 
 // datasetToCompact transforms a RDF dataset to a compact JSON-LD document.
-func datasetToCompact(dataset *ld.RDFDataset, context interface{}, opts *ld.JsonLdOptions) (interface{}, error) {
+func datasetToCompact(dataset *ld.RDFDataset, context any, opts *ld.JsonLdOptions) (any, error) {
 	api := ld.NewJsonLdApi()
 	proc := ld.NewJsonLdProcessor()
 	d, err := api.FromRDF(dataset, opts)
@@ -22,7 +22,7 @@ func datasetToCompact(dataset *ld.RDFDataset, context interface{}, opts *ld.Json
 }
 
 // singleDocumentFromRDF transforms a RDF dataset to a single map JSON-LD document.
-func singleDocumentFromRDF(dataset *ld.RDFDataset) (interface{}, error) {
+func singleDocumentFromRDF(dataset *ld.RDFDataset) (any, error) {
 	api := ld.NewJsonLdApi()
 	opts := ld.NewJsonLdOptions("")
 	documents, err := api.FromRDF(dataset, opts)

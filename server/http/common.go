@@ -9,7 +9,7 @@ import (
 	httpgraph "github.com/aperturerobotics/cayley/graph/http"
 )
 
-func jsonResponse(w http.ResponseWriter, code int, err interface{}) {
+func jsonResponse(w http.ResponseWriter, code int, err any) {
 	w.Header().Set("Content-Type", contentTypeJSON)
 	w.WriteHeader(code)
 	w.Write([]byte(`{"error": `))

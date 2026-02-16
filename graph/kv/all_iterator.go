@@ -145,7 +145,7 @@ func (it *allIteratorNext) Next(ctx context.Context) bool {
 				return false
 			}
 			ids := make([]uint64, 0, nextBatch)
-			for i := 0; i < nextBatch; i++ {
+			for range nextBatch {
 				it.id++
 				if it.id > uint64(it.horizon) {
 					break

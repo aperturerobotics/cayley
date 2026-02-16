@@ -36,7 +36,7 @@ type Value interface {
 	// Native converts Value to a closest native Go type.
 	//
 	// If type has no analogs in Go, Native return an object itself.
-	Native() interface{}
+	Native() any
 }
 
 var (
@@ -63,7 +63,7 @@ type Equaler interface {
 const HashSize = sha1.Size
 
 var hashPool = sync.Pool{
-	New: func() interface{} { return sha1.New() },
+	New: func() any { return sha1.New() },
 }
 
 // HashOf calculates a hash of value v.
@@ -97,7 +97,7 @@ func StringOf(v Value) string {
 }
 
 // NativeOf safely call v.Native, returning nil in case of nil Value.
-func NativeOf(v Value) interface{} {
+func NativeOf(v Value) any {
 	if v == nil {
 		return nil
 	}
@@ -106,7 +106,7 @@ func NativeOf(v Value) interface{} {
 
 // AsValue converts native type into closest Value representation.
 // It returns false if type was not recognized.
-func AsValue(v interface{}) (out Value, ok bool) {
+func AsValue(v any) (out Value, ok bool) {
 	if v == nil {
 		return nil, true
 	}
@@ -208,7 +208,7 @@ func (s String) String() string {
 func (s String) GoString() string {
 	return "quad.String(" + strconv.Quote(string(s)) + ")"
 }
-func (s String) Native() interface{} { return string(s) }
+func (s String) Native() any { return string(s) }
 
 // TypedString is an RDF value with type (ex: "name"^^<type>).
 type TypedString struct {
@@ -220,7 +220,7 @@ func (s TypedString) String() string {
 	return s.Value.String() + `^^` + s.Type.String()
 }
 
-func (s TypedString) Native() interface{} {
+func (s TypedString) Native() any {
 	if s.Type == "" {
 		return s.Value.Native()
 	}
@@ -252,7 +252,7 @@ type LangString struct {
 func (s LangString) String() string {
 	return s.Value.String() + `@` + s.Lang
 }
-func (s LangString) Native() interface{} { return s.Value.Native() }
+func (s LangString) Native() any { return s.Value.Native() }
 
 // IRIFormat is a format of IRI.
 type IRIFormat int
@@ -304,7 +304,7 @@ func (s IRI) Full() IRI {
 }
 
 // Native returns an IRI value unchanged (to not collide with String values).
-func (s IRI) Native() interface{} {
+func (s IRI) Native() any {
 	return s
 }
 
@@ -328,7 +328,7 @@ func (s BNode) String() string { return `_:` + string(s) }
 func (s BNode) GoString() string {
 	return "quad.BNode(" + strconv.Quote(string(s)) + ")"
 }
-func (s BNode) Native() interface{} { return s }
+func (s BNode) Native() any { return s }
 
 // Native support for basic types
 
@@ -464,7 +464,7 @@ type Int int64
 func (s Int) String() string {
 	return s.TypedString().String()
 }
-func (s Int) Native() interface{} { return int64(s) }
+func (s Int) Native() any { return int64(s) }
 func (s Int) TypedString() TypedString {
 	return TypedString{
 		Value: String(strconv.Itoa(int(s))),
@@ -480,7 +480,7 @@ type Float float64
 func (s Float) String() string {
 	return s.TypedString().String()
 }
-func (s Float) Native() interface{} { return float64(s) }
+func (s Float) Native() any { return float64(s) }
 func (s Float) TypedString() TypedString {
 	return TypedString{
 		Value: String(strconv.FormatFloat(float64(s), 'E', -1, 64)),
@@ -499,7 +499,7 @@ func (s Bool) String() string {
 	}
 	return `"False"^^<` + string(defaultBoolType) + `>`
 }
-func (s Bool) Native() interface{} { return bool(s) }
+func (s Bool) Native() any { return bool(s) }
 func (s Bool) TypedString() TypedString {
 	v := "False"
 	if bool(s) {
@@ -521,7 +521,7 @@ type Time time.Time
 func (s Time) String() string {
 	return s.TypedString().String()
 }
-func (s Time) Native() interface{} { return time.Time(s) }
+func (s Time) Native() any { return time.Time(s) }
 func (s Time) Equal(v Value) bool {
 	t, ok := v.(Time)
 	if !ok {

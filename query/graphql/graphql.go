@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"strconv"
 	"strings"
 	"unicode"
@@ -76,7 +77,7 @@ type results struct {
 	s   *Session
 	q   *Query
 	col query.Collation
-	res map[string]interface{}
+	res map[string]any
 	err error
 }
 
@@ -89,7 +90,7 @@ func (it *results) Next(ctx context.Context) bool {
 	return it.err == nil && len(it.res) != 0
 }
 
-func (it *results) Result(ctx context.Context) (interface{}, error) {
+func (it *results) Result(ctx context.Context) (any, error) {
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func (f field) isSave() bool { return len(f.Has)+len(f.Fields) == 0 && !f.AllFie
 
 type object struct {
 	id     graph.Ref
-	fields map[string]interface{}
+	fields map[string]any
 }
 
 func buildIterator(ctx context.Context, qs graph.QuadStore, p *path.Path) iterator.Shape {
@@ -159,7 +160,7 @@ func buildIterator(ctx context.Context, qs graph.QuadStore, p *path.Path) iterat
 	return it
 }
 
-func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Path) (out []map[string]interface{}, _ error) {
+func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Path) (out []map[string]any, _ error) {
 	if len(f.Labels) != 0 {
 		p = p.LabelContext(f.Labels)
 	} else {
@@ -185,10 +186,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 			if h.Via == quad.IRI(LimitKey) {
 				limit = int(n)
 			} else {
-				skip = int(n)
-				if skip < 0 {
-					skip = 0
-				}
+				skip = max(int(n), 0)
 			}
 		default: // everything else - Has constraint
 			if len(h.Labels) != 0 {
@@ -233,7 +231,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 			if err != nil {
 				return nil, err
 			}
-			obj := make(map[string]interface{})
+			obj := make(map[string]any)
 			obj[ValueKey], err = qs.NameOf(ctx, nv)
 			if err != nil {
 				return nil, err
@@ -345,7 +343,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 		}
 		obj := object{id: res}
 		if len(fields) > 0 {
-			obj.fields = make(map[string]interface{}, len(fields))
+			obj.fields = make(map[string]any, len(fields))
 			for k, arr := range fields {
 				vals, err := graph.ValuesOf(ctx, qs, arr)
 				if err != nil {
@@ -368,7 +366,7 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 	for _, r := range results {
 		obj := r.fields
 		if obj == nil {
-			obj = make(map[string]interface{})
+			obj = make(map[string]any)
 		}
 		for _, f2 := range f.Fields {
 			if f2.isSave() {
@@ -398,11 +396,9 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 				} else if len(arr) == 0 {
 					continue
 				}
-				for k, v := range arr[0] {
-					obj[k] = v
-				}
+				maps.Copy(obj, arr[0])
 			} else {
-				var v interface{}
+				var v any
 				if len(arr) == 1 {
 					v = arr[0]
 				} else if len(arr) > 1 {
@@ -416,14 +412,14 @@ func iterateObject(ctx context.Context, qs graph.QuadStore, f *field, p *path.Pa
 	return out, nil
 }
 
-func (q *Query) Execute(ctx context.Context, qs graph.QuadStore) (map[string]interface{}, error) {
-	out := make(map[string]interface{})
+func (q *Query) Execute(ctx context.Context, qs graph.QuadStore) (map[string]any, error) {
+	out := make(map[string]any)
 	for _, f := range q.fields {
 		arr, err := iterateObject(ctx, qs, &f, path.StartPath(qs))
 		if err != nil {
 			return out, err
 		}
-		var v interface{}
+		var v any
 		if len(arr) == 1 {
 			v = arr[0]
 		} else if len(arr) > 1 {
