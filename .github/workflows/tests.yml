@@ -29,6 +29,8 @@ jobs:
         with:
           path: ./.tools
           key: ${{ runner.os }}-aptre-tools-${{ hashFiles('**/go.sum') }}
+      - name: Vendor Go modules
+        run: go mod vendor
       - name: Test Go
         run: go run -mod=mod github.com/aperturerobotics/common/cmd/aptre test
       - name: Lint Go
