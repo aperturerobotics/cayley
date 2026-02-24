@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/aperturerobotics/bbolt v0.0.0-20260224225952-2d545a75bdc1
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
@@ -29,15 +30,9 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tylertreat/BoomFilters v0.0.0-20251117164519-53813c36cc1b
 	github.com/vmihailenco/msgpack/v5 v5.4.1
-	go.etcd.io/bbolt v1.4.3
 )
 
 require github.com/cockroachdb/pebble v1.1.5
-
-require (
-	github.com/cznic/fileutil v0.0.0-20181122101858-4d67cfea8c87
-	github.com/cznic/strutil v0.0.0-20181122101858-275e90344537
-)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

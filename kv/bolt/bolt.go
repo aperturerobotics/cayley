@@ -19,8 +19,8 @@ import (
 	"context"
 	"time"
 
-	bolt "go.etcd.io/bbolt"
-	bolterrors "go.etcd.io/bbolt/errors"
+	bolt "github.com/aperturerobotics/bbolt"
+	bolterrors "github.com/aperturerobotics/bbolt/errors"
 
 	"github.com/aperturerobotics/cayley/kv"
 	"github.com/aperturerobotics/cayley/kv/base"
