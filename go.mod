@@ -3,9 +3,9 @@ module github.com/aperturerobotics/cayley
 go 1.25.0
 
 require (
-	github.com/aperturerobotics/common v0.30.3
+	github.com/aperturerobotics/common v0.31.1
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
-	github.com/aperturerobotics/protobuf-go-lite v0.12.1
+	github.com/aperturerobotics/protobuf-go-lite v0.12.2
 )
 
 require (
@@ -14,7 +14,7 @@ require (
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dgraph-io/badger/v4 v4.9.1
-	github.com/dop251/goja v0.0.0-20260106131823-651366fbe6e3
+	github.com/dop251/goja v0.0.0-20260219130522-0ba9a5494a59
 	github.com/fsouza/go-dockerclient v1.13.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/glog v1.2.5
@@ -24,7 +24,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mr-tron/base58 v1.2.0
 	github.com/peterh/liner v1.2.2
-	github.com/piprate/json-gold v0.7.0
+	github.com/piprate/json-gold v0.8.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
@@ -42,6 +42,7 @@ require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cayleygraph/quad v1.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/cockroachdb/datadriven v1.0.3-0.20250407164829-2945557346d5 // indirect
@@ -89,7 +90,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
+	github.com/pquerna/cachecontrol v0.2.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
