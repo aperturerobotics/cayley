@@ -3,7 +3,7 @@ module github.com/aperturerobotics/cayley
 go 1.25.0
 
 require (
-	github.com/aperturerobotics/common v0.31.1
+	github.com/aperturerobotics/common v0.32.0
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf-go-lite v0.12.2
 )
@@ -14,7 +14,7 @@ require (
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dgraph-io/badger/v4 v4.9.1
-	github.com/dop251/goja v0.0.0-20260219130522-0ba9a5494a59
+	github.com/dop251/goja v0.0.0-20260226184354-913bd86fb70c
 	github.com/fsouza/go-dockerclient v1.13.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang/glog v1.2.5
@@ -32,7 +32,10 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
 
-require github.com/cockroachdb/pebble v1.1.5
+require (
+	github.com/cockroachdb/pebble v1.1.5
+	github.com/cockroachdb/pebble/v2 v2.1.4
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
