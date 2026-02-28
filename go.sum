@@ -16,6 +16,8 @@ github.com/aperturerobotics/bbolt v0.0.0-20260224225952-2d545a75bdc1 h1:d0WhyJkN
 github.com/aperturerobotics/bbolt v0.0.0-20260224225952-2d545a75bdc1/go.mod h1:Hcs0czu8ZTqit90wUjdgaKcRlm22+Oe9DcNDN6Sx8Zs=
 github.com/aperturerobotics/common v0.31.1 h1:96qvPkxaUsEUcyJBGfJAfqUS7/IOe5sWnv4kIDm0ltQ=
 github.com/aperturerobotics/common v0.31.1/go.mod h1:NzI3t/yRVy00JyvOxSGVcrhkE1QUEh8Fu795g/32dJo=
+github.com/aperturerobotics/common v0.32.0 h1:wKKKUMGs8HZC2exPGVNtj81zqW687mf/rhSbme45CFs=
+github.com/aperturerobotics/common v0.32.0/go.mod h1:m46OxaMDdhPjsWBSdIwkPPCmuFVMuJiRc8/DvC0wStM=
 github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 h1:4B1F0DzuqPzb6WqgCjWaqDD7JU9RDsevQG5OP0DFBgs=
 github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726/go.mod h1:SvGGBv3OVxUyqO0ZxA/nvs6z3cg7NIbZ64TnbV2OISo=
 github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 h1:4Dy3BAHh2kgVdHAqtlwcFsgY0kAwUe2m3rfFcaGwGQg=
@@ -42,6 +44,7 @@ github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b h1:r6VH0faHjZe
 github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b/go.mod h1:Vz9DsVWQQhf3vs21MhPMZpMGSht7O/2vFW2xusFUVOs=
 github.com/cockroachdb/pebble v1.1.5 h1:5AAWCBWbat0uE0blr8qzufZP5tBjkRyy/jWe1QWLnvw=
 github.com/cockroachdb/pebble v1.1.5/go.mod h1:17wO9el1YEigxkP/YtV8NtCivQDgoCyBg5c4VR/eOWo=
+github.com/cockroachdb/pebble/v2 v2.1.4/go.mod h1:Reo1RTniv1UjVTAu/Fv74y5i3kJ5gmVrPhO9UtFiKn8=
 github.com/cockroachdb/redact v1.1.5 h1:u1PMllDkdFfPWaNGMyLD1+so+aq3uUItthCFqzwPJ30=
 github.com/cockroachdb/redact v1.1.5/go.mod h1:BVNblN9mBWFyMyqK1k3AAiSxhvhfK2oOZZ2lK+dpvRg=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 h1:zuQyyAKVxetITBuuhv3BI9cMrmStnpT18zmgmTxunpo=
@@ -73,6 +76,8 @@ github.com/docker/go-units v0.5.0 h1:69rxXcBk27SvSaaxTtLh/8llcHD8vYHT7WSdRZ/jvr4
 github.com/docker/go-units v0.5.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
 github.com/dop251/goja v0.0.0-20260219130522-0ba9a5494a59 h1:r75egwbnoPNxVa/m+g7HPUfuUKi3O/4mkE0X+5W4oik=
 github.com/dop251/goja v0.0.0-20260219130522-0ba9a5494a59/go.mod h1:MxLav0peU43GgvwVgNbLAj1s/bSGboKkhuULvq/7hx4=
+github.com/dop251/goja v0.0.0-20260226184354-913bd86fb70c h1:hIlkLbQ+tYoUqlG42LnxwGcohL5jaGqD8mGeJWavm8A=
+github.com/dop251/goja v0.0.0-20260226184354-913bd86fb70c/go.mod h1:MxLav0peU43GgvwVgNbLAj1s/bSGboKkhuULvq/7hx4=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
