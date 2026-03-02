@@ -110,6 +110,11 @@ func (ind QuadIndex) Key(vals []uint64) kv.Key {
 		}
 		_, _ = buf.Write(uint64KeyBytes(vals[i]))
 	}
+	// Append delimiter for partial keys so prefix scans don't bleed
+	// across ID boundaries (e.g. "3" matching "32").
+	if len(vals) > 0 && len(vals) < len(ind.Dirs) {
+		_, _ = buf.WriteRune(rune(':'))
+	}
 	return ind.bucket().AppendBytes(buf.Bytes())
 }
 

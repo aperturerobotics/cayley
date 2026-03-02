@@ -1,6 +1,10 @@
 package kv
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/aperturerobotics/cayley/quad"
+)
 
 func TestIntersectSorted(t *testing.T) {
 	tt := []struct {
@@ -31,6 +35,27 @@ func TestIntersectSorted(t *testing.T) {
 			}
 		}
 	}
+}
+
+// TestPartialKeyPrefix verifies that a partial Key includes a trailing
+// delimiter so prefix scans don't match unrelated IDs (e.g. ID 3 matching 32).
+func TestPartialKeyPrefix(t *testing.T) {
+	ind := QuadIndex{Dirs: []quad.Direction{quad.Subject, quad.Predicate}}
+
+	full := ind.Key([]uint64{3, 2})
+	partial := ind.Key([]uint64{3})
+	other := ind.Key([]uint64{32, 2})
+
+	// Partial key for ID 3 must match full key for (3, 2).
+	if !full.HasPrefix(partial) {
+		t.Fatal("full key (3,2) should have partial prefix (3)")
+	}
+
+	// Partial key for ID 3 must NOT match full key for (32, 2).
+	if other.HasPrefix(partial) {
+		t.Fatal("full key (32,2) should not have partial prefix (3)")
+	}
+
 }
 
 func TestIndexlist(t *testing.T) {
