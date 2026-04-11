@@ -3,7 +3,6 @@ package kv
 import (
 	"context"
 	"io"
-	"math/big"
 
 	kvoptions "github.com/aperturerobotics/cayley/kv/options"
 	"github.com/pkg/errors"
@@ -86,12 +85,29 @@ func parseUint64IndexKey(b []byte) (uint64, error) {
 	if len(b) == 0 {
 		return 0, io.ErrUnexpectedEOF
 	}
-	var i big.Int
-	if _, ok := i.SetString(string(b), 62); !ok {
-		return 0, errors.New("kv: invalid base62 index key")
+	var out uint64
+	for _, c := range b {
+		d, ok := decodeBase62Digit(c)
+		if !ok {
+			return 0, errors.New("kv: invalid base62 index key")
+		}
+		if out > (^uint64(0)-uint64(d))/62 {
+			return 0, errors.New("kv: out-of-range index key")
+		}
+		out = out*62 + uint64(d)
 	}
-	if i.Sign() < 0 || i.BitLen() > 64 {
-		return 0, errors.New("kv: out-of-range index key")
+	return out, nil
+}
+
+func decodeBase62Digit(c byte) (uint8, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0', true
+	case c >= 'a' && c <= 'z':
+		return c - 'a' + 10, true
+	case c >= 'A' && c <= 'Z':
+		return c - 'A' + 36, true
+	default:
+		return 0, false
 	}
-	return i.Uint64(), nil
 }
