@@ -233,6 +233,57 @@ func TestApplyDeltas(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestApplyDeltasSkipsZeroRefcountUpdates(t *testing.T) {
+	kdb := btree.New()
+	hook := &kvHook{db: kdb}
+
+	ctx := context.Background()
+	err := kv.Init(ctx, hook, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, hook, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	err = qw.AddQuad(ctx, quad.MakeIRI("obj", "gc/ref", "old", ""))
+	require.NoError(t, err)
+	err = qw.AddQuad(ctx, quad.MakeIRI("unreferenced", "gc/ref", "new", ""))
+	require.NoError(t, err)
+
+	hook.log()
+
+	err = qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: quad.MakeIRI("obj", "gc/ref", "old", ""), Action: graph.Delete},
+		{Quad: quad.MakeIRI("unreferenced", "gc/ref", "new", ""), Action: graph.Delete},
+		{Quad: quad.MakeIRI("obj", "gc/ref", "new", ""), Action: graph.Add},
+		{Quad: quad.MakeIRI("unreferenced", "gc/ref", "old", ""), Action: graph.Add},
+	}, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	ops := hook.log()
+	refKeys := []hkv.Key{
+		key(iric("obj"), irih("obj")),
+		key(iric("gc/ref"), irih("gc/ref")),
+		key(iric("old"), irih("old")),
+		key(iric("new"), irih("new")),
+		key(iric("unreferenced"), irih("unreferenced")),
+	}
+	for _, op := range ops {
+		for _, refKey := range refKeys {
+			if op.key.Compare(refKey) != 0 {
+				continue
+			}
+			t.Fatalf("unexpected zero-refcount node op on %q: %v", refKey, op)
+		}
+	}
+}
+
 func sortByOp(exp, got Ops) {
 	// sort ops of one type
 	li := -1

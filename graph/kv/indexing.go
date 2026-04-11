@@ -355,8 +355,11 @@ func (qs *QuadStore) incNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 			ins = append(ins, nodeUpdate{Ind: i, NodeUpdate: deltas[i]})
 		} else {
 			// exists, should update
-			upd = append(upd, nodeUpdate{Ind: i, ID: id, NodeUpdate: deltas[i]})
 			ids[deltas[i].Hash] = resolvedNode{ID: id}
+			if deltas[i].RefInc == 0 {
+				return
+			}
+			upd = append(upd, nodeUpdate{Ind: i, ID: id, NodeUpdate: deltas[i]})
 		}
 	})
 	resolveTask.End()
