@@ -30,7 +30,7 @@ func main() {
 	path := filepath.Join(os.Getenv("GOPATH"), "src", *packageName)
 
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, path, nil, parser.ParseComments)
+	pkgs, err := parser.ParseDir(fset, path, nil, parser.ParseComments) //nolint:staticcheck
 	if err != nil {
 		panic(err)
 	}

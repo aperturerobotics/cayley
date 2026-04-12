@@ -1,8 +1,9 @@
 package linkedql
 
-import "strings"
-
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func formatMultiError(errors []error) error {
 	var joinedErr strings.Builder

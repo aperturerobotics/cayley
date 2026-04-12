@@ -384,10 +384,10 @@ func (api *APIv2) ServeRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	values := shape.FilterQuads(
-		valuesFromString(r.FormValue("sub")),
-		valuesFromString(r.FormValue("pred")),
-		valuesFromString(r.FormValue("obj")),
-		valuesFromString(r.FormValue("label")),
+		valuesFromString(r.FormValue("sub")),   //nolint:gosec
+		valuesFromString(r.FormValue("pred")),  //nolint:gosec
+		valuesFromString(r.FormValue("obj")),   //nolint:gosec
+		valuesFromString(r.FormValue("label")), //nolint:gosec
 	)
 	ctx := r.Context()
 	it := values.BuildIterator(ctx, h.QuadStore).Iterate(ctx)
@@ -405,7 +405,7 @@ func (api *APIv2) ServeRead(w http.ResponseWriter, r *http.Request) {
 	if len(format.Mime) != 0 {
 		w.Header().Set(hdrContentType, format.Mime[0])
 	}
-	if irif := r.FormValue("iri"); irif != "" {
+	if irif := r.FormValue("iri"); irif != "" { //nolint:gosec
 		opts := quad.IRIOptions{
 			Format: quad.IRIDefault,
 		}

@@ -142,7 +142,7 @@ func (it *results) Result(ctx context.Context) (any, error) {
 			it.err = err
 			return nil, err
 		}
-		out.WriteString(fmt.Sprintf("%s : %s\n", k, knv))
+		fmt.Fprintf(&out, "%s : %s\n", k, knv)
 	}
 	return out.String(), nil
 }

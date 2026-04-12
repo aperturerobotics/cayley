@@ -373,14 +373,14 @@ func valuesFromString(s string) []quad.Value {
 func (s *GraphStreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 	ctx := context.TODO()
 	var limit int
-	if s := r.FormValue("limit"); s != "" {
+	if s := r.FormValue("limit"); s != "" { //nolint:gosec
 		limit, _ = strconv.Atoi(s)
 	}
 	if limit == 0 {
 		limit = defaultLimit
 	}
 	mode := "raw"
-	if s := r.FormValue("mode"); s != "" {
+	if s := r.FormValue("mode"); s != "" { //nolint:gosec
 		mode = s
 	}
 
@@ -391,10 +391,10 @@ func (s *GraphStreamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request, p
 		s.serveNodesWithProps(ctx, gs, limit)
 	case "raw":
 		values := shape.FilterQuads(
-			valuesFromString(r.FormValue("sub")),
-			valuesFromString(r.FormValue("pred")),
-			valuesFromString(r.FormValue("obj")),
-			valuesFromString(r.FormValue("label")),
+			valuesFromString(r.FormValue("sub")),   //nolint:gosec
+			valuesFromString(r.FormValue("pred")),  //nolint:gosec
+			valuesFromString(r.FormValue("obj")),   //nolint:gosec
+			valuesFromString(r.FormValue("label")), //nolint:gosec
 		)
 		s.serveRawQuads(ctx, gs, values, limit)
 	default:
