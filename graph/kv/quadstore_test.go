@@ -159,8 +159,6 @@ func TestApplyDeltas(t *testing.T) {
 		{opGet, key(irib("c"), irih("c")), nil, nil},
 
 		{opGet, key(bMeta, []byte("horizon")), nil, hkv.ErrNotFound},
-		{opPut, key(bMeta, []byte("horizon")), le(3), nil},
-
 		{opPut, key(irib("a"), irih("a")), vAuto, nil},
 		{opPut, key(bLog, ukey(1)), vAuto, nil},
 		{opPut, key(irib("b"), irih("b")), vAuto, nil},
@@ -171,15 +169,14 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("a"), irih("a")), hex("01"), nil},
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opPut, key(iric("c"), irih("c")), hex("01"), nil},
-		{opGet, key(bMeta, []byte("horizon")), le(3), nil},
-		{opPut, key(bMeta, []byte("horizon")), le(4), nil},
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
-		{opPut, key(bMeta, []byte("size")), le(1), nil},
 		{opGet, key("ops", b64Col(3, 2, 1)), nil, nil},
 		{opPut, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
 		{opGet, key("sp", b64Col(1, 2)), nil, nil},
 		{opPut, key("sp", b64Col(1, 2)), hex("04"), nil},
+		{opPut, key(bMeta, []byte("horizon")), le(4), nil},
+		{opPut, key(bMeta, []byte("size")), le(1), nil},
 	})
 
 	err = qw.AddQuad(ctx, quad.MakeIRI("a", "b", "e", ""))
@@ -192,8 +189,6 @@ func TestApplyDeltas(t *testing.T) {
 		//{opGet, irib("a"), irih("a"), vAuto, nil},
 		//{opGet, irib("b"), irih("b"), vAuto, nil},
 		{opGet, key(bMeta, []byte("horizon")), le(4), nil},
-		{opPut, key(bMeta, []byte("horizon")), le(5), nil},
-
 		{opPut, key(irib("e"), irih("e")), vAuto, nil},
 		{opPut, key(bLog, ukey(5)), vAuto, nil},
 
@@ -202,15 +197,14 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("a"), irih("a")), hex("02"), nil},
 		{opPut, key(iric("b"), irih("b")), hex("02"), nil},
 		{opPut, key(iric("e"), irih("e")), hex("01"), nil},
-		{opGet, key(bMeta, []byte("horizon")), le(5), nil},
-		{opPut, key(bMeta, []byte("horizon")), le(6), nil},
 		{opPut, key(bLog, ukey(6)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(1), nil},
-		{opPut, key(bMeta, []byte("size")), le(2), nil},
 		{opGet, key("ops", b64Col(5, 2, 1)), nil, nil},
 		{opPut, key("ops", b64Col(5, 2, 1)), hex("06"), nil},
 		{opGet, key("sp", b64Col(1, 2)), hex("04"), nil},
 		{opPut, key("sp", b64Col(1, 2)), hex("0406"), nil},
+		{opPut, key(bMeta, []byte("horizon")), le(6), nil},
+		{opPut, key(bMeta, []byte("size")), le(2), nil},
 	})
 
 	err = qw.RemoveQuad(ctx, quad.MakeIRI("a", "b", "c", ""))
@@ -219,7 +213,6 @@ func TestApplyDeltas(t *testing.T) {
 		{opGet, key(bLog, ukey(4)), vAuto, nil},
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(2), nil},
-		{opPut, key(bMeta, []byte("size")), le(1), nil},
 		{opGet, key(iric("a"), irih("a")), hex("02"), nil},
 		{opGet, key(iric("b"), irih("b")), hex("02"), nil},
 		{opGet, key(iric("c"), irih("c")), hex("01"), nil},
@@ -228,6 +221,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opDel, key(iric("c"), irih("c")), nil, nil},
 		{opDel, key(irib("c"), irih("c")), nil, nil},
 		{opDel, key(bLog, ukey(3)), nil, nil},
+		{opPut, key(bMeta, []byte("size")), le(1), nil},
 	})
 	require.NoError(t, err)
 }

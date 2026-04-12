@@ -149,9 +149,18 @@ func bucketForValRefs() kv.Key {
 	return kv.Key{[]byte{'n'}}
 }
 
-func (qs *QuadStore) incSize(ctx context.Context, tx kv.Tx, size int64) error {
-	_, err := qs.incMetaInt(ctx, tx, "size", size)
-	return err
+type metaCache struct {
+	vals   map[string]int64
+	loaded map[string]struct{}
+	dirty  map[string]struct{}
+}
+
+func newMetaCache() *metaCache {
+	return &metaCache{
+		vals:   make(map[string]int64),
+		loaded: make(map[string]struct{}),
+		dirty:  make(map[string]struct{}),
+	}
 }
 
 // writeIndexesMeta writes metadata about current indexes to the KV database,
@@ -242,9 +251,31 @@ func (qs *QuadStore) getMetaIntTx(ctx context.Context, tx kv.Tx, key string) (in
 	return int64(binary.LittleEndian.Uint64(val)), nil
 }
 
-func (qs *QuadStore) incMetaInt(ctx context.Context, tx kv.Tx, key string, n int64) (int64, error) {
+func (qs *QuadStore) incMetaInt(
+	ctx context.Context,
+	tx kv.Tx,
+	cache *metaCache,
+	key string,
+	n int64,
+) (int64, error) {
 	if n == 0 {
 		return 0, nil
+	}
+	if cache != nil {
+		if _, ok := cache.loaded[key]; !ok {
+			getCtx, getTask := trace.NewTask(ctx, "cayley/kv/inc-meta-int/get-meta")
+			v, err := qs.getMetaIntTx(getCtx, tx, key)
+			getTask.End()
+			if err != nil && err != kv.ErrNotFound {
+				return 0, fmt.Errorf("cannot get %s: %v", key, err)
+			}
+			cache.vals[key] = v
+			cache.loaded[key] = struct{}{}
+		}
+		start := cache.vals[key]
+		cache.vals[key] = start + n
+		cache.dirty[key] = struct{}{}
+		return start, nil
 	}
 	getCtx, getTask := trace.NewTask(ctx, "cayley/kv/inc-meta-int/get-meta")
 	v, err := qs.getMetaIntTx(getCtx, tx, key)
@@ -254,24 +285,48 @@ func (qs *QuadStore) incMetaInt(ctx context.Context, tx kv.Tx, key string, n int
 	}
 	start := v
 	v += n
-
-	buf := make([]byte, 8) // bolt needs all slices available on Commit
-	binary.LittleEndian.PutUint64(buf, uint64(v))
-
-	putCtx, putTask := trace.NewTask(ctx, "cayley/kv/inc-meta-int/put-meta")
-	err = tx.Put(putCtx, metaBucket.AppendBytes([]byte(key)), buf)
-	putTask.End()
-	if err != nil {
-		return 0, fmt.Errorf("cannot inc %s: %v", key, err)
+	if err := qs.putMetaInt(ctx, tx, key, v); err != nil {
+		return 0, err
 	}
 	return start, nil
 }
 
-func (qs *QuadStore) genIDs(ctx context.Context, tx kv.Tx, n int) (uint64, error) {
+func (qs *QuadStore) putMetaInt(ctx context.Context, tx kv.Tx, key string, v int64) error {
+	buf := make([]byte, 8) // bolt needs all slices available on Commit
+	binary.LittleEndian.PutUint64(buf, uint64(v))
+
+	putCtx, putTask := trace.NewTask(ctx, "cayley/kv/inc-meta-int/put-meta")
+	err := tx.Put(putCtx, metaBucket.AppendBytes([]byte(key)), buf)
+	putTask.End()
+	if err != nil {
+		return fmt.Errorf("cannot inc %s: %v", key, err)
+	}
+	return nil
+}
+
+func (qs *QuadStore) flushMetaCache(ctx context.Context, tx kv.Tx, cache *metaCache) error {
+	if cache == nil || len(cache.dirty) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(cache.dirty))
+	for key := range cache.dirty {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if err := qs.putMetaInt(ctx, tx, key, cache.vals[key]); err != nil {
+			return err
+		}
+	}
+	clear(cache.dirty)
+	return nil
+}
+
+func (qs *QuadStore) genIDs(ctx context.Context, tx kv.Tx, cache *metaCache, n int) (uint64, error) {
 	if n == 0 {
 		return 0, nil
 	}
-	start, err := qs.incMetaInt(ctx, tx, "horizon", int64(n))
+	start, err := qs.incMetaInt(ctx, tx, cache, "horizon", int64(n))
 	if err != nil {
 		return 0, err
 	}
@@ -342,7 +397,12 @@ type resolvedNode struct {
 	New bool
 }
 
-func (qs *QuadStore) incNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.NodeUpdate) (map[refs.ValueHash]resolvedNode, error) {
+func (qs *QuadStore) incNodes(
+	ctx context.Context,
+	tx kv.Tx,
+	cache *metaCache,
+	deltas []graphlog.NodeUpdate,
+) (map[refs.ValueHash]resolvedNode, error) {
 	var (
 		ins []nodeUpdate
 		upd = make([]nodeUpdate, 0, len(deltas))
@@ -369,7 +429,7 @@ func (qs *QuadStore) incNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 	if len(ins) != 0 {
 		// preallocate IDs
 		idCtx, idTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes/gen-node-ids")
-		start, err := qs.genIDs(idCtx, tx, len(ins))
+		start, err := qs.genIDs(idCtx, tx, cache, len(ins))
 		idTask.End()
 		if err != nil {
 			return ids, err
@@ -439,6 +499,7 @@ func (qs *QuadStore) NewQuadWriter(ctx context.Context) (quad.WriteCloser, error
 type quadWriter struct {
 	qs  *QuadStore
 	tx  kv.Tx
+	mc  *metaCache
 	err error
 	n   int
 }
@@ -454,9 +515,14 @@ func (w *quadWriter) flush(ctx context.Context) error {
 		w.err = err
 		return err
 	}
+	if err := w.qs.flushMetaCache(ctx, w.tx, w.mc); err != nil {
+		w.err = err
+		return err
+	}
 	if err := w.tx.Commit(ctx); err != nil {
 		w.qs.writer.Unlock()
 		w.tx = nil
+		w.mc = nil
 		w.err = err
 		return err
 	}
@@ -467,6 +533,7 @@ func (w *quadWriter) flush(ctx context.Context) error {
 		return err
 	}
 	w.tx = tx
+	w.mc = newMetaCache()
 	return nil
 }
 
@@ -480,9 +547,10 @@ func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, erro
 			return 0, err
 		}
 		w.tx = tx
+		w.mc = newMetaCache()
 	}
 	deltas := graphlog.InsertQuads(buf)
-	if _, err := w.qs.applyAddDeltas(w.tx, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
+	if _, err := w.qs.applyAddDeltas(w.tx, w.mc, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
 		w.err = err
 		return 0, err
 	}
@@ -513,15 +581,25 @@ func (w *quadWriter) Close() error {
 	if err != nil {
 		_ = w.tx.Close()
 		w.tx = nil
+		w.mc = nil
+		return err
+	}
+	err = w.qs.flushMetaCache(ctx, w.tx, w.mc)
+	if err != nil {
+		_ = w.tx.Close()
+		w.tx = nil
+		w.mc = nil
 		return err
 	}
 	err = w.tx.Commit(ctx)
 	w.tx = nil
+	w.mc = nil
 	return err
 }
 
 func (qs *QuadStore) applyAddDeltas(
 	tx kv.Tx,
+	cache *metaCache,
 	in []graph.Delta,
 	deltas *graphlog.Deltas,
 	ignoreOpts graph.IgnoreOpts,
@@ -530,7 +608,7 @@ func (qs *QuadStore) applyAddDeltas(
 
 	// first add all new nodes
 	nodeCtx, nodeTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes")
-	nodes, err := qs.incNodes(nodeCtx, tx, deltas.IncNode)
+	nodes, err := qs.incNodes(nodeCtx, tx, cache, deltas.IncNode)
 	nodeTask.End()
 	if err != nil {
 		return nil, err
@@ -584,7 +662,7 @@ func (qs *QuadStore) applyAddDeltas(
 	deltas.QuadAdd = nil
 
 	idCtx, idTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/gen-link-ids")
-	qstart, err := qs.genIDs(idCtx, tx, len(links))
+	qstart, err := qs.genIDs(idCtx, tx, cache, len(links))
 	idTask.End()
 	if err != nil {
 		return nil, err
@@ -593,7 +671,7 @@ func (qs *QuadStore) applyAddDeltas(
 		links[i].ID = qstart + uint64(i)
 	}
 	indexCtx, indexTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/index-links")
-	if err := qs.indexLinks(indexCtx, tx, links); err != nil {
+	if err := qs.indexLinks(indexCtx, tx, cache, links); err != nil {
 		indexTask.End()
 		return nil, err
 	}
@@ -618,12 +696,13 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 	_, splitTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/split-deltas")
 	deltas := graphlog.SplitDeltas(in)
 	splitTask.End()
+	cache := newMetaCache()
 	if len(deltas.QuadDel) != 0 || len(deltas.DecNode) != 0 {
 		qs.mapNodes = nil
 	}
 
 	_, addTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas")
-	nodes, err := qs.applyAddDeltas(tx, in, deltas, ignoreOpts)
+	nodes, err := qs.applyAddDeltas(tx, cache, in, deltas, ignoreOpts)
 	addTask.End()
 	if err != nil {
 		return err
@@ -691,7 +770,7 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 		checkTask.End()
 		deltas.QuadDel = nil
 		markCtx, markTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/mark-links-dead")
-		if err := qs.markLinksDead(markCtx, tx, links); err != nil {
+		if err := qs.markLinksDead(markCtx, tx, cache, links); err != nil {
 			markTask.End()
 			return err
 		}
@@ -721,6 +800,9 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 	err = qs.flushMapBucket(flushCtx, tx)
 	flushTask.End()
 	if err != nil {
+		return err
+	}
+	if err := qs.flushMetaCache(ctx, tx, cache); err != nil {
 		return err
 	}
 	commitCtx, commitTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/commit-tx")
@@ -759,13 +841,14 @@ func (qs *QuadStore) indexNode(ctx context.Context, tx kv.Tx, p *proto.Primitive
 	return err
 }
 
-func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, links []*proto.Primitive) error {
+func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
 	for _, p := range links {
 		if err := qs.indexLink(ctx, tx, p); err != nil {
 			return err
 		}
 	}
-	return qs.incSize(ctx, tx, int64(len(links)))
+	_, err := qs.incMetaInt(ctx, tx, cache, "size", int64(len(links)))
+	return err
 }
 
 func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive) error {
@@ -798,13 +881,14 @@ func (qs *QuadStore) delLog(ctx context.Context, tx kv.Tx, id uint64) error {
 	return tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(id)))
 }
 
-func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, links []*proto.Primitive) error {
+func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
 	for _, p := range links {
 		if err := qs.markAsDead(ctx, tx, p); err != nil {
 			return err
 		}
 	}
-	return qs.incSize(ctx, tx, -int64(len(links)))
+	_, err := qs.incMetaInt(ctx, tx, cache, "size", -int64(len(links)))
+	return err
 }
 
 func (qs *QuadStore) getBucketIndexes(ctx context.Context, tx kv.Tx, keys []kv.Key) ([][]uint64, error) {
