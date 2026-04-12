@@ -943,11 +943,23 @@ func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primit
 	if !qs.testBloom(p) {
 		return nil, nil
 	}
+	dirs := make([]quad.Direction, 0, len(quad.Directions))
+	for _, dir := range quad.Directions {
+		if p.GetDirection(dir) == 0 {
+			continue
+		}
+		dirs = append(dirs, dir)
+	}
 	inds, err := qs.bestUnique()
 	if err != nil {
 		return nil, err
 	}
 	unique := len(inds) != 0 && inds[0].Unique
+	if !unique {
+		if best := qs.bestIndexes(dirs); len(best) != 0 {
+			inds = best
+		}
+	}
 	keys := make([]kv.Key, len(inds))
 	for i, in := range inds {
 		keys[i] = in.KeyFor(p)

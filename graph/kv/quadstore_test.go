@@ -215,7 +215,6 @@ func TestApplyDeltas(t *testing.T) {
 
 	err = qw.RemoveQuad(ctx, quad.MakeIRI("a", "b", "c", ""))
 	expect(Ops{
-		{opGet, key("sp", b64Col(1, 2)), hex("0406"), nil},
 		{opGet, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
 		{opGet, key(bLog, ukey(4)), vAuto, nil},
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
@@ -282,6 +281,38 @@ func TestApplyDeltasSkipsZeroRefcountUpdates(t *testing.T) {
 			t.Fatalf("unexpected zero-refcount node op on %q: %v", refKey, op)
 		}
 	}
+}
+
+func TestApplyDeltasIgnoreDupWithLabeledVariant(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+
+	err := kv.Init(ctx, kdb, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	err = qw.AddQuad(ctx, quad.MakeIRI("a", "b", "c", ""))
+	require.NoError(t, err)
+	err = qw.AddQuad(ctx, quad.MakeIRI("a", "b", "c", "label"))
+	require.NoError(t, err)
+
+	err = qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: quad.MakeIRI("a", "b", "c", ""), Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true})
+	require.NoError(t, err)
+
+	st, err := qs.Stats(ctx, false)
+	require.NoError(t, err)
+	require.EqualValues(t, 2, st.Quads.Value)
 }
 
 func sortByOp(exp, got Ops) {
