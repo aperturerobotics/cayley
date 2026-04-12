@@ -15,6 +15,7 @@ ui/
 packrd/packed-*
 # The build binary
 /cayley
+/.tmp
 .#*
 .tools/
 yarn.lock
