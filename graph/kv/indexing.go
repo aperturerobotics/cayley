@@ -485,7 +485,13 @@ func (qs *QuadStore) decNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 		if iri, ok := d.Val.(quad.IRI); ok {
 			qs.valueLRU.Del(string(iri))
 		}
-		if err := qs.delLog(ctx, tx, d.ID); err != nil {
+		node, err := createNodePrimitive(d.Val)
+		if err != nil {
+			return err
+		}
+		node.ID = d.ID
+		node.Deleted = true
+		if err := qs.addToLog(ctx, tx, node); err != nil {
 			return err
 		}
 	}

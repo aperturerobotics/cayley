@@ -220,7 +220,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opDel, key(iric("c"), irih("c")), nil, nil},
 		{opDel, key(irib("c"), irih("c")), nil, nil},
-		{opDel, key(bLog, ukey(3)), nil, nil},
+		{opPut, key(bLog, ukey(3)), vAuto, nil},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
 	})
 	require.NoError(t, err)
@@ -307,6 +307,61 @@ func TestApplyDeltasIgnoreDupWithLabeledVariant(t *testing.T) {
 	st, err := qs.Stats(ctx, false)
 	require.NoError(t, err)
 	require.EqualValues(t, 2, st.Quads.Value)
+}
+
+func TestRemoveQuadPreservesUnrelatedQuadValuesAfterNodeDeletion(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+
+	err := kv.Init(ctx, kdb, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	rel := quad.MakeIRI("cluster", "cluster-job", "job", "")
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("cluster-wizard", "type", "types/cluster-wizard", "")))
+	require.NoError(t, qw.RemoveQuad(ctx, quad.MakeIRI("cluster-wizard", "type", "types/cluster-wizard", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("job-wizard", "type", "types/job-wizard", "")))
+	require.NoError(t, qw.RemoveQuad(ctx, quad.MakeIRI("job-wizard", "type", "types/job-wizard", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("cluster", "type", "types/cluster", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("job", "type", "types/job", "")))
+	require.NoError(t, qw.AddQuad(ctx, rel))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("task-wizard", "type", "types/task-wizard", "")))
+	require.NoError(t, qw.RemoveQuad(ctx, quad.MakeIRI("task-wizard", "type", "types/task-wizard", "")))
+
+	it := qs.QuadIterator(ctx, quad.Subject, mustValueOf(ctx, t, qs, quad.IRI("cluster"))).Iterate(ctx)
+	defer it.Close()
+
+	var found bool
+	for it.Next(ctx) {
+		ref, err := it.Result(ctx)
+		require.NoError(t, err)
+		q, err := qs.Quad(ctx, ref)
+		require.NoError(t, err)
+		if q.Subject == quad.IRI("cluster") && q.Predicate == quad.IRI("cluster-job") {
+			require.Equal(t, rel, q)
+			found = true
+		}
+	}
+	require.NoError(t, it.Err())
+	require.True(t, found, "expected relationship quad to remain")
+}
+
+func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.Value) graph.Ref {
+	t.Helper()
+
+	ref, err := qs.ValueOf(ctx, v)
+	require.NoError(t, err)
+	require.NotNil(t, ref)
+	return ref
 }
 
 func sortByOp(exp, got Ops) {

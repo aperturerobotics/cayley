@@ -125,7 +125,7 @@ func (c *Config) toIRI(s string) quad.IRI {
 	return c.iri(v)
 }
 
-var reflEmptyStruct = reflect.TypeOf(struct{}{})
+var reflEmptyStruct = reflect.TypeFor[struct{}]()
 
 func (c *Config) fieldRule(fld reflect.StructField) (rule, error) {
 	tag := fld.Tag.Get("quad")
