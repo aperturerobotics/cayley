@@ -1,4 +1,5 @@
 *.swp
+.tmp*
 main
 *.test
 *.peg.go

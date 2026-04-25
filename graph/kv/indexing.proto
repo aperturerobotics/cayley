@@ -1,0 +1,16 @@
+syntax = "proto3";
+package kv;
+
+// QuadIndexList stores the configured quad indexes.
+message QuadIndexList {
+  // Indexes are the quad indexes in priority order.
+  repeated QuadIndexMeta indexes = 1;
+}
+
+// QuadIndexMeta stores a single quad index definition.
+message QuadIndexMeta {
+  // Dirs are quad.Direction numeric values.
+  repeated uint32 dirs = 1;
+  // Unique indicates the index is unique.
+  bool unique = 2;
+}

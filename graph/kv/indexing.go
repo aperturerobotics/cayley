@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -37,7 +36,6 @@ import (
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/pquads"
 	b58 "github.com/mr-tron/base58/base58"
-	"github.com/vmihailenco/msgpack/v5"
 
 	"github.com/aperturerobotics/cayley/kv"
 	boom "github.com/tylertreat/BoomFilters"
@@ -62,8 +60,8 @@ var (
 )
 
 type QuadIndex struct {
-	Dirs   []quad.Direction `json:"dirs" msgpack:"d"`
-	Unique bool             `json:"unique" msgpack:"u"`
+	Dirs   []quad.Direction
+	Unique bool
 }
 
 // CompareQuadDirections compares two slices of quad directions for equality.
@@ -166,7 +164,7 @@ func newMetaCache() *metaCache {
 // writeIndexesMeta writes metadata about current indexes to the KV database,
 // so we can read this information back later.
 func (qs *QuadStore) writeIndexesMeta(ctx context.Context) error {
-	data, err := msgpack.Marshal(qs.indexes.all)
+	data, err := encodeQuadIndexes(qs.indexes.all)
 	if err != nil {
 		return err
 	}
@@ -189,13 +187,53 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	var out []QuadIndex
-	if err := json.Unmarshal(val, &out); err != nil {
+	out, err := decodeQuadIndexes(val)
+	if err != nil {
 		return nil, fmt.Errorf("cannot decode indexes: %v", err)
 	} else if len(out) == 0 {
 		return DefaultQuadIndexes, nil
 	}
 	return out, nil
+}
+
+func encodeQuadIndexes(indexes []QuadIndex) ([]byte, error) {
+	list := &QuadIndexList{
+		Indexes: make([]*QuadIndexMeta, len(indexes)),
+	}
+	for i, index := range indexes {
+		meta := &QuadIndexMeta{
+			Dirs:   make([]uint32, len(index.Dirs)),
+			Unique: index.Unique,
+		}
+		for j, dir := range index.Dirs {
+			if dir == quad.Any || dir.Prefix() == 0 {
+				return nil, errors.New("invalid direction")
+			}
+			meta.Dirs[j] = uint32(dir)
+		}
+		list.Indexes[i] = meta
+	}
+	return list.MarshalVT()
+}
+
+func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
+	list := &QuadIndexList{}
+	if err := list.UnmarshalVT(data); err != nil {
+		return nil, err
+	}
+	indexes := make([]QuadIndex, len(list.GetIndexes()))
+	for i, meta := range list.GetIndexes() {
+		indexes[i].Unique = meta.GetUnique()
+		indexes[i].Dirs = make([]quad.Direction, len(meta.GetDirs()))
+		for j, raw := range meta.GetDirs() {
+			dir := quad.Direction(raw)
+			if dir == quad.Any || dir.Prefix() == 0 {
+				return nil, errors.New("invalid direction")
+			}
+			indexes[i].Dirs[j] = dir
+		}
+	}
+	return indexes, nil
 }
 
 func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []graphlog.NodeUpdate, fnc func(i int, id uint64)) error {
