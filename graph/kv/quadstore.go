@@ -29,7 +29,6 @@ import (
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/pquads"
 	"github.com/aperturerobotics/cayley/query/shape"
-	boom "github.com/tylertreat/BoomFilters"
 )
 
 var (
@@ -102,15 +101,6 @@ type QuadStore struct {
 
 	writer    sync.Mutex
 	mapBucket map[string]map[string][]uint64
-	mapBloom  map[string]*boom.BloomFilter
-	mapNodes  *boom.BloomFilter
-
-	exists struct {
-		disabled bool
-		sync.Mutex
-		buf []byte
-		*boom.DeletableBloomFilter
-	}
 }
 
 func newQuadStore(kv kv.KV) *QuadStore {
@@ -132,7 +122,6 @@ func Init(ctx context.Context, kv kv.KV, opt graph.Options) error {
 
 const (
 	OptAssumeDefaultIdx = "assume_default_idx"
-	OptBloom            = "bloom"
 )
 
 func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
@@ -148,19 +137,6 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 		qs.indexes.all = DefaultQuadIndexes
 	}
 	qs.valueLRU = lru.New(2000)
-	enableBloom, _ := opt.BoolKey(OptBloom, false)
-	qs.exists.disabled = !enableBloom
-	if !qs.exists.disabled {
-		if err := qs.initBloomFilter(ctx); err != nil {
-			return nil, err
-		}
-		if sz, err := qs.getSize(ctx); err != nil {
-			return nil, err
-		} else if sz == 0 {
-			qs.mapBloom = make(map[string]*boom.BloomFilter)
-			qs.mapNodes = boom.NewBloomFilter(100*1000*1000, 0.05)
-		}
-	}
 	return qs, nil
 }
 

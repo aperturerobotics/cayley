@@ -28,23 +28,20 @@ func (c Config) quadStore() *graphtest.Config {
 	}
 }
 
-func newQuadStoreFunc(gen DatabaseFunc, bloom bool) testutil.DatabaseFunc {
+func newQuadStoreFunc(gen DatabaseFunc) testutil.DatabaseFunc {
 	return func(t testing.TB) (graph.QuadStore, graph.Options, func()) {
-		return newQuadStore(t, gen, bloom)
+		return newQuadStore(t, gen)
 	}
 }
 
 func NewQuadStoreFunc(gen DatabaseFunc) testutil.DatabaseFunc {
-	return newQuadStoreFunc(gen, true)
+	return newQuadStoreFunc(gen)
 }
 
-func newQuadStore(t testing.TB, gen DatabaseFunc, bloom bool) (graph.QuadStore, graph.Options, func()) {
+func newQuadStore(t testing.TB, gen DatabaseFunc) (graph.QuadStore, graph.Options, func()) {
 	db, opt, closer := gen(t)
 	if opt == nil {
 		opt = make(graph.Options)
-	}
-	if bloom {
-		opt[kv.OptBloom] = true
 	}
 	ctx := context.Background()
 	err := kv.Init(ctx, db, opt)
@@ -66,20 +63,15 @@ func newQuadStore(t testing.TB, gen DatabaseFunc, bloom bool) (graph.QuadStore, 
 }
 
 func NewQuadStore(t testing.TB, gen DatabaseFunc) (graph.QuadStore, graph.Options, func()) {
-	return newQuadStore(t, gen, true)
+	return newQuadStore(t, gen)
 }
 
 func TestAll(t *testing.T, gen DatabaseFunc, conf *Config) {
 	if conf == nil {
 		conf = &Config{}
 	}
-	qsgen := NewQuadStoreFunc(gen)
 	t.Run("qs", func(t *testing.T) {
-		graphtest.TestAll(t, qsgen, conf.quadStore())
-	})
-	qsgenNoBloom := newQuadStoreFunc(gen, false)
-	t.Run("qs-no-bloom", func(t *testing.T) {
-		graphtest.TestAll(t, qsgenNoBloom, conf.quadStore())
+		graphtest.TestAll(t, NewQuadStoreFunc(gen), conf.quadStore())
 	})
 	t.Run("optimize", func(t *testing.T) {
 		testOptimize(t, gen, conf)
