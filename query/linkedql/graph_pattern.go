@@ -1,3 +1,5 @@
+//go:build !tinygo
+
 package linkedql
 
 // GraphPattern represents a JSON-LD document

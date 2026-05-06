@@ -1,3 +1,5 @@
+//go:build !tinygo
+
 // Package schema contains helpers to map Go objects to quads and vise-versa.
 //
 // This package is not a full schema library. It will not save or force any

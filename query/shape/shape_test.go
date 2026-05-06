@@ -414,3 +414,130 @@ func TestWalk(t *testing.T) {
 		"shape.QuadsAction",
 	}, types)
 }
+
+func TestWalkCompositeChildren(t *testing.T) {
+	fixed1 := Fixed{intVal(1)}
+	fixed2 := Fixed{intVal(2)}
+	fixed3 := Fixed{intVal(3)}
+	fixed4 := Fixed{intVal(4)}
+
+	for _, c := range []struct {
+		name   string
+		shape  Shape
+		expect []string
+	}{
+		{
+			name: "except",
+			shape: Except{
+				Exclude: fixed1,
+				From:    fixed2,
+			},
+			expect: []string{"shape.Except", "shape.Fixed", "shape.Fixed"},
+		},
+		{
+			name:   "filter",
+			shape:  Filter{From: fixed1},
+			expect: []string{"shape.Filter", "shape.Fixed"},
+		},
+		{
+			name:   "count",
+			shape:  Count{Values: fixed1},
+			expect: []string{"shape.Count", "shape.Fixed"},
+		},
+		{
+			name: "quads",
+			shape: Quads{
+				{Dir: quad.Subject, Values: fixed1},
+				{Dir: quad.Predicate, Values: fixed2},
+			},
+			expect: []string{"shape.Quads", "shape.Fixed", "shape.Fixed"},
+		},
+		{
+			name:   "nodes from",
+			shape:  NodesFrom{Dir: quad.Subject, Quads: fixed1},
+			expect: []string{"shape.NodesFrom", "shape.Fixed"},
+		},
+		{
+			name: "fixed tags",
+			shape: FixedTags{
+				Tags: map[string]refs.Ref{"tag": intVal(5)},
+				On:   fixed1,
+			},
+			expect: []string{"shape.FixedTags", "shape.Fixed"},
+		},
+		{
+			name:   "materialize",
+			shape:  Materialize{Values: fixed1},
+			expect: []string{"shape.Materialize", "shape.Fixed"},
+		},
+		{
+			name:   "intersect",
+			shape:  Intersect{fixed1, fixed2},
+			expect: []string{"shape.Intersect", "shape.Fixed", "shape.Fixed"},
+		},
+		{
+			name: "intersect opt",
+			shape: IntersectOpt{
+				Sub: Intersect{fixed1, fixed2},
+				Opt: []Shape{fixed3, fixed4},
+			},
+			expect: []string{
+				"shape.IntersectOpt",
+				"shape.Fixed",
+				"shape.Fixed",
+				"shape.Fixed",
+				"shape.Fixed",
+			},
+		},
+		{
+			name:   "union",
+			shape:  Union{fixed1, fixed2},
+			expect: []string{"shape.Union", "shape.Fixed", "shape.Fixed"},
+		},
+		{
+			name:   "page",
+			shape:  Page{From: fixed1, Limit: 1},
+			expect: []string{"shape.Page", "shape.Fixed"},
+		},
+		{
+			name:   "unique",
+			shape:  Unique{From: fixed1},
+			expect: []string{"shape.Unique", "shape.Fixed"},
+		},
+		{
+			name:   "save",
+			shape:  Save{From: fixed1, Tags: []string{"tag"}},
+			expect: []string{"shape.Save", "shape.Fixed"},
+		},
+		{
+			name:   "sort",
+			shape:  Sort{From: fixed1},
+			expect: []string{"shape.Sort", "shape.Fixed"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			require.Equal(t, c.expect, walkTypes(c.shape))
+		})
+	}
+}
+
+func TestWalkStopsAtFalse(t *testing.T) {
+	s := Union{Fixed{intVal(1)}, Fixed{intVal(2)}}
+
+	var types []string
+	Walk(s, func(s Shape) bool {
+		types = append(types, reflect.TypeOf(s).String())
+		return false
+	})
+
+	require.Equal(t, []string{"shape.Union"}, types)
+}
+
+func walkTypes(s Shape) []string {
+	var types []string
+	Walk(s, func(s Shape) bool {
+		types = append(types, reflect.TypeOf(s).String())
+		return true
+	})
+	return types
+}

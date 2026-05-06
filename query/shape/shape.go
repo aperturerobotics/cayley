@@ -4,7 +4,6 @@ import (
 	"context"
 	"maps"
 	"os"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -113,8 +112,6 @@ func Optimize(ctx context.Context, s Shape, qs graph.QuadStore) (Shape, bool, er
 	return s, opt, nil
 }
 
-var rtShape = reflect.TypeFor[Shape]()
-
 // Walk calls provided function for each shape in the tree.
 func Walk(s Shape, fnc WalkFunc) {
 	if s == nil {
@@ -123,7 +120,52 @@ func Walk(s Shape, fnc WalkFunc) {
 	if !fnc(s) {
 		return
 	}
-	walkReflect(reflect.ValueOf(s), fnc)
+	walkChildren(s, fnc)
+}
+
+func walkChildren(s Shape, fnc WalkFunc) {
+	switch s := s.(type) {
+	case Except:
+		Walk(s.Exclude, fnc)
+		Walk(s.From, fnc)
+	case Filter:
+		Walk(s.From, fnc)
+	case Count:
+		Walk(s.Values, fnc)
+	case Quads:
+		for _, q := range s {
+			Walk(q.Values, fnc)
+		}
+	case NodesFrom:
+		Walk(s.Quads, fnc)
+	case FixedTags:
+		Walk(s.On, fnc)
+	case Materialize:
+		Walk(s.Values, fnc)
+	case Intersect:
+		for _, sub := range s {
+			Walk(sub, fnc)
+		}
+	case IntersectOpt:
+		for _, sub := range s.Sub {
+			Walk(sub, fnc)
+		}
+		for _, opt := range s.Opt {
+			Walk(opt, fnc)
+		}
+	case Union:
+		for _, sub := range s {
+			Walk(sub, fnc)
+		}
+	case Page:
+		Walk(s.From, fnc)
+	case Unique:
+		Walk(s.From, fnc)
+	case Save:
+		Walk(s.From, fnc)
+	case Sort:
+		Walk(s.From, fnc)
+	}
 }
 
 // InternalQuad is an internal representation of quad index in QuadStore.

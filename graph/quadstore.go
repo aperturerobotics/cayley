@@ -25,7 +25,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/aperturerobotics/cayley/graph/iterator"
 	"github.com/aperturerobotics/cayley/graph/refs"
@@ -111,18 +110,59 @@ type QuadStore interface {
 
 type Options map[string]any
 
-var typeInt = reflect.TypeFor[int]()
+var (
+	maxInt = int(^uint(0) >> 1)
+	minInt = -maxInt - 1
+)
 
 func (d Options) IntKey(key string, def int) (int, error) {
 	if val, ok := d[key]; ok {
-		if reflect.TypeOf(val).ConvertibleTo(typeInt) {
-			i := reflect.ValueOf(val).Convert(typeInt).Int()
-			return int(i), nil
+		if i, ok := optionInt(val); ok {
+			return i, nil
 		}
 
 		return def, fmt.Errorf("invalid %s parameter type from config: %T", key, val)
 	}
 	return def, nil
+}
+
+func optionInt(val any) (int, bool) {
+	switch val := val.(type) {
+	case int:
+		return val, true
+	case int8:
+		return int(val), true
+	case int16:
+		return int(val), true
+	case int32:
+		return int(val), true
+	case int64:
+		if val < int64(minInt) || val > int64(maxInt) {
+			return 0, false
+		}
+		return int(val), true
+	case uint:
+		if uint64(val) > uint64(maxInt) {
+			return 0, false
+		}
+		return int(val), true
+	case uint8:
+		return int(val), true
+	case uint16:
+		return int(val), true
+	case uint32:
+		if uint64(val) > uint64(maxInt) {
+			return 0, false
+		}
+		return int(val), true
+	case uint64:
+		if val > uint64(maxInt) {
+			return 0, false
+		}
+		return int(val), true
+	default:
+		return 0, false
+	}
 }
 
 func (d Options) StringKey(key string, def string) (string, error) {

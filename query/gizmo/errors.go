@@ -1,3 +1,5 @@
+//go:build !tinygo
+
 // Copyright 2017 The Cayley Authors. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
