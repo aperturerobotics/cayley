@@ -202,18 +202,29 @@ func (qs *QuadStore) collectQuadFilterScanGroup(
 			if err != nil {
 				return err
 			}
+			var matches []quadBatchPrimitiveMatch
 			for _, prim := range prims {
 				if prim == nil || prim.Deleted {
 					continue
 				}
+				match := quadBatchPrimitiveMatch{prim: prim}
 				for _, filterIdx := range group.filterIndexes {
 					if filled[filterIdx] || !primitiveMatchesQuadFilter(prim, filters[filterIdx]) {
 						continue
 					}
-					q, err := qs.primitiveToQuadBatch(ctx, tx, prim)
-					if err != nil {
-						return err
-					}
+					match.filterIndexes = append(match.filterIndexes, filterIdx)
+				}
+				if len(match.filterIndexes) != 0 {
+					matches = append(matches, match)
+				}
+			}
+			quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, matches)
+			if err != nil {
+				return err
+			}
+			for matchIdx, match := range matches {
+				q := quads[matchIdx]
+				for _, filterIdx := range match.filterIndexes {
 					results[filterIdx] = append(results[filterIdx], q)
 					if limit != 0 && uint32(len(results[filterIdx])) >= limit {
 						filled[filterIdx] = true
@@ -251,14 +262,18 @@ func (qs *QuadStore) collectAllQuadsForBatchFilter(ctx context.Context, tx kv.Tx
 		if err != nil {
 			return err
 		}
+		var matches []quadBatchPrimitiveMatch
 		for _, prim := range prims {
 			if prim == nil || prim.Deleted || prim.IsNode() || !primitiveMatchesQuadFilter(prim, filter) {
 				continue
 			}
-			q, err := qs.primitiveToQuadBatch(ctx, tx, prim)
-			if err != nil {
-				return err
-			}
+			matches = append(matches, quadBatchPrimitiveMatch{prim: prim})
+		}
+		quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, matches)
+		if err != nil {
+			return err
+		}
+		for _, q := range quads {
 			*results = append(*results, q)
 			if limit != 0 && uint32(len(*results)) >= limit {
 				return nil
@@ -277,22 +292,35 @@ func primitiveMatchesQuadFilter(prim *proto.Primitive, filter resolvedQuadBatchF
 	return true
 }
 
-func (qs *QuadStore) primitiveToQuadBatch(ctx context.Context, tx kv.Tx, prim *proto.Primitive) (quad.Quad, error) {
+type quadBatchPrimitiveMatch struct {
+	prim          *proto.Primitive
+	filterIndexes []int
+}
+
+func (qs *QuadStore) quadBatchPrimitiveMatchesToQuads(ctx context.Context, tx kv.Tx, matches []quadBatchPrimitiveMatch) ([]quad.Quad, error) {
+	if len(matches) == 0 {
+		return nil, nil
+	}
 	var ids []uint64
-	var dirs []quad.Direction
-	for _, dir := range quad.Directions {
-		id := prim.GetDirection(dir)
-		if id == 0 {
-			continue
+	var refs []quadBatchPrimitiveValueRef
+	for matchIdx, match := range matches {
+		for _, dir := range quad.Directions {
+			id := match.prim.GetDirection(dir)
+			if id == 0 {
+				continue
+			}
+			refs = append(refs, quadBatchPrimitiveValueRef{
+				match: matchIdx,
+				dir:   dir,
+			})
+			ids = append(ids, id)
 		}
-		ids = append(ids, id)
-		dirs = append(dirs, dir)
 	}
 	prims, err := qs.getPrimitivesFromLog(ctx, tx, ids)
 	if err != nil {
-		return quad.Quad{}, err
+		return nil, err
 	}
-	var out quad.Quad
+	out := make([]quad.Quad, len(matches))
 	for i, p := range prims {
 		if p == nil {
 			continue
@@ -301,9 +329,26 @@ func (qs *QuadStore) primitiveToQuadBatch(ctx context.Context, tx kv.Tx, prim *p
 		if err != nil {
 			return out, err
 		}
-		out.Set(dirs[i], value)
+		ref := refs[i]
+		out[ref.match].Set(ref.dir, value)
 	}
 	return out, nil
+}
+
+type quadBatchPrimitiveValueRef struct {
+	match int
+	dir   quad.Direction
+}
+
+func (qs *QuadStore) primitiveToQuadBatch(ctx context.Context, tx kv.Tx, prim *proto.Primitive) (quad.Quad, error) {
+	quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, []quadBatchPrimitiveMatch{{prim: prim}})
+	if err != nil {
+		return quad.Quad{}, err
+	}
+	if len(quads) == 0 {
+		return quad.Quad{}, nil
+	}
+	return quads[0], nil
 }
 
 var (
