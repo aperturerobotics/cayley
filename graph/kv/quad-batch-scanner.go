@@ -143,10 +143,7 @@ func (qs *QuadStore) resolveQuadBatchFilters(ctx context.Context, tx kv.Tx, filt
 		if !out[filterIdx].valid || len(out[filterIdx].all) == 0 {
 			continue
 		}
-		dirs := make([]quad.Direction, 0, len(out[filterIdx].all))
-		for dir := range out[filterIdx].all {
-			dirs = append(dirs, dir)
-		}
+		dirs := quadBatchScanDirs(out[filterIdx].all)
 		indexes := qs.bestIndexes(dirs)
 		if len(indexes) == 0 {
 			continue
@@ -162,6 +159,20 @@ func (qs *QuadStore) resolveQuadBatchFilters(ctx context.Context, tx kv.Tx, filt
 		}
 	}
 	return out, nil
+}
+
+func quadBatchScanDirs(values map[quad.Direction]uint64) []quad.Direction {
+	if _, ok := values[quad.Subject]; ok {
+		return []quad.Direction{quad.Subject}
+	}
+	if _, ok := values[quad.Object]; ok {
+		return []quad.Direction{quad.Object}
+	}
+	dirs := make([]quad.Direction, 0, len(values))
+	for dir := range values {
+		dirs = append(dirs, dir)
+	}
+	return dirs
 }
 
 func (qs *QuadStore) resolveQuadValuesForBatch(ctx context.Context, tx kv.Tx, refs []quadBatchValueRef) ([]uint64, error) {
