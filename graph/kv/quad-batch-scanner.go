@@ -312,20 +312,32 @@ func (qs *QuadStore) quadBatchPrimitiveMatchesToQuads(ctx context.Context, tx kv
 	if len(matches) == 0 {
 		return nil, nil
 	}
-	var ids []uint64
-	var refs []quadBatchPrimitiveValueRef
+	idsByValue := make(map[uint64]int)
+	var values []quadBatchPrimitiveValue
 	for matchIdx, match := range matches {
 		for _, dir := range quad.Directions {
 			id := match.prim.GetDirection(dir)
 			if id == 0 {
 				continue
 			}
-			refs = append(refs, quadBatchPrimitiveValueRef{
+			ref := quadBatchPrimitiveValueRef{
 				match: matchIdx,
 				dir:   dir,
+			}
+			if valueIdx, ok := idsByValue[id]; ok {
+				values[valueIdx].refs = append(values[valueIdx].refs, ref)
+				continue
+			}
+			idsByValue[id] = len(values)
+			values = append(values, quadBatchPrimitiveValue{
+				id:   id,
+				refs: []quadBatchPrimitiveValueRef{ref},
 			})
-			ids = append(ids, id)
 		}
+	}
+	ids := make([]uint64, len(values))
+	for i, value := range values {
+		ids[i] = value.id
 	}
 	prims, err := qs.getPrimitivesFromLog(ctx, tx, ids)
 	if err != nil {
@@ -340,10 +352,16 @@ func (qs *QuadStore) quadBatchPrimitiveMatchesToQuads(ctx context.Context, tx kv
 		if err != nil {
 			return out, err
 		}
-		ref := refs[i]
-		out[ref.match].Set(ref.dir, value)
+		for _, ref := range values[i].refs {
+			out[ref.match].Set(ref.dir, value)
+		}
 	}
 	return out, nil
+}
+
+type quadBatchPrimitiveValue struct {
+	id   uint64
+	refs []quadBatchPrimitiveValueRef
 }
 
 type quadBatchPrimitiveValueRef struct {
