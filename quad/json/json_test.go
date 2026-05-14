@@ -36,7 +36,7 @@ var readTests = []struct {
 		message: "parse correct JSON",
 		input: `[
 			{"subject": "foo", "predicate": "bar", "object": "baz"},
-			{"subject":"_:foo","predicate":"\u003cbar\u003e","object":"\"baz\"@en"},
+			{"subject":"_:foo","predicate":"<bar>","object":"\"baz\"@en"},
 			{"subject": "foo", "predicate": "bar", "object": "baz", "label": "graph"}
 		]`,
 		expect: []quad.Quad{

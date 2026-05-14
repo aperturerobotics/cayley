@@ -30,7 +30,10 @@ require (
 	github.com/stretchr/testify v1.11.1
 )
 
-require github.com/pkg/errors v0.9.1
+require (
+	github.com/aperturerobotics/fastjson v0.1.1
+	github.com/pkg/errors v0.9.1
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

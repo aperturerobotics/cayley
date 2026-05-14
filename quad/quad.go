@@ -37,7 +37,6 @@ package quad
 // the consequences are not to be taken lightly. But do suggest cool features!
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -101,46 +100,12 @@ func MakeIRI(subject, predicate, object, label string) (q Quad) {
 	return
 }
 
-var (
-	_ json.Marshaler   = Quad{}
-	_ json.Unmarshaler = (*Quad)(nil)
-)
-
 // Our quad struct, used throughout.
 type Quad struct {
 	Subject   Value `json:"subject"`
 	Predicate Value `json:"predicate"`
 	Object    Value `json:"object"`
 	Label     Value `json:"label,omitempty"`
-}
-
-type rawQuad struct {
-	Subject   string `json:"subject"`
-	Predicate string `json:"predicate"`
-	Object    string `json:"object"`
-	Label     string `json:"label,omitempty"`
-}
-
-func (q Quad) MarshalJSON() ([]byte, error) {
-	rq := rawQuad{
-		Subject:   ToString(q.Subject),
-		Predicate: ToString(q.Predicate),
-		Object:    ToString(q.Object),
-	}
-	if q.Label != nil {
-		rq.Label = ToString(q.Label)
-	}
-	return json.Marshal(rq)
-}
-
-func (q *Quad) UnmarshalJSON(data []byte) error {
-	var rq rawQuad
-	if err := json.Unmarshal(data, &rq); err != nil {
-		return err
-	}
-	// TODO(dennwc): parse nquads? or use StringToValue hack?
-	*q = MakeRaw(rq.Subject, rq.Predicate, rq.Object, rq.Label)
-	return nil
 }
 
 // Direction specifies an edge's type.

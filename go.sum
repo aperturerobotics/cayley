@@ -14,6 +14,8 @@ github.com/aperturerobotics/bbolt v0.0.0-20260406055906-b891d4d9bf33 h1:G9ziqzF7
 github.com/aperturerobotics/bbolt v0.0.0-20260406055906-b891d4d9bf33/go.mod h1:yNkDjLE7/LRdVzkoGo2dTCXtIHW2mkvE8W0Pzbkj83M=
 github.com/aperturerobotics/common v0.32.3 h1:MfbebfvIZ+kdmKfIWob1GuIg0bWB+HWDxHjdp9IZGM0=
 github.com/aperturerobotics/common v0.32.3/go.mod h1:4UEUFoWR6wQD76dpfJtI/D+q/dbCkOh5yWx1bZHvMZk=
+github.com/aperturerobotics/fastjson v0.1.1 h1:3ErKDjTNW8jFD6lLLnx1kyU+55TSq0ocFWaYTJBo4Ns=
+github.com/aperturerobotics/fastjson v0.1.1/go.mod h1:ArP9Q7MVDi8jMPR3ljopH5drxs/qen12Hv2L7qRcPb4=
 github.com/aperturerobotics/fsnotify v1.9.1-0.20260329111252-827e5e9feeab h1:QFauzuS4QNsVPYh/PRbfGzaIoW18eBlUsLdYf9jPjOg=
 github.com/aperturerobotics/fsnotify v1.9.1-0.20260329111252-827e5e9feeab/go.mod h1:+DWSr6dA/jMpVPJVw5uQ7MXAli8s0hch7cuMZV5fyWk=
 github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 h1:4B1F0DzuqPzb6WqgCjWaqDD7JU9RDsevQG5OP0DFBgs=
