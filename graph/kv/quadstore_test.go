@@ -355,6 +355,86 @@ func TestRemoveQuadPreservesUnrelatedQuadValuesAfterNodeDeletion(t *testing.T) {
 	require.True(t, found, "expected relationship quad to remain")
 }
 
+func TestCollectFilteredQuadsBatch(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+
+	err := kv.Init(ctx, kdb, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "b", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "c", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "other", "d", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("x", "p", "b", "")))
+	require.NoError(t, qw.RemoveQuad(ctx, quad.MakeIRI("a", "other", "d", "")))
+
+	results, err := qs.CollectFilteredQuadsBatch(ctx, []quad.Quad{
+		quad.MakeIRI("a", "p", "", ""),
+		quad.MakeIRI("a", "p", "b", ""),
+		quad.MakeIRI("missing", "p", "", ""),
+		quad.MakeIRI("", "p", "b", ""),
+		{},
+	}, 0)
+	require.NoError(t, err)
+	require.Len(t, results, 5)
+	require.ElementsMatch(t, []string{
+		quad.MakeIRI("a", "p", "b", "").String(),
+		quad.MakeIRI("a", "p", "c", "").String(),
+	}, quadStrings(results[0]))
+	require.Equal(t, []string{quad.MakeIRI("a", "p", "b", "").String()}, quadStrings(results[1]))
+	require.Empty(t, results[2])
+	require.ElementsMatch(t, []string{
+		quad.MakeIRI("a", "p", "b", "").String(),
+		quad.MakeIRI("x", "p", "b", "").String(),
+	}, quadStrings(results[3]))
+	require.ElementsMatch(t, []string{
+		quad.MakeIRI("a", "p", "b", "").String(),
+		quad.MakeIRI("a", "p", "c", "").String(),
+		quad.MakeIRI("x", "p", "b", "").String(),
+	}, quadStrings(results[4]))
+}
+
+func TestCollectFilteredQuadsBatchLimitPerFilter(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+
+	err := kv.Init(ctx, kdb, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "b", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "c", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("x", "p", "b", "")))
+
+	results, err := qs.CollectFilteredQuadsBatch(ctx, []quad.Quad{
+		quad.MakeIRI("a", "p", "", ""),
+		quad.MakeIRI("", "p", "b", ""),
+	}, 1)
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	require.Len(t, results[0], 1)
+	require.Len(t, results[1], 1)
+}
+
 func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.Value) graph.Ref {
 	t.Helper()
 
@@ -362,6 +442,14 @@ func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.V
 	require.NoError(t, err)
 	require.NotNil(t, ref)
 	return ref
+}
+
+func quadStrings(quads []quad.Quad) []string {
+	out := make([]string, len(quads))
+	for i, q := range quads {
+		out[i] = q.String()
+	}
+	return out
 }
 
 func sortByOp(exp, got Ops) {
