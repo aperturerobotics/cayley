@@ -435,6 +435,37 @@ func TestCollectFilteredQuadsBatchLimitPerFilter(t *testing.T) {
 	require.Len(t, results[1], 1)
 }
 
+func TestCollectFilteredQuadsBatchLimitPerFilterSkipsFilledFilters(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+
+	err := kv.Init(ctx, kdb, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	defer gqs.Close()
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "b", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "p", "c", "")))
+	require.NoError(t, qw.AddQuad(ctx, quad.MakeIRI("a", "q", "d", "")))
+
+	results, err := qs.CollectFilteredQuadsBatch(ctx, []quad.Quad{
+		quad.MakeIRI("a", "p", "", ""),
+		quad.MakeIRI("a", "q", "", ""),
+	}, 1)
+	require.NoError(t, err)
+	require.Len(t, results, 2)
+	require.Len(t, results[0], 1)
+	require.Equal(t, []string{quad.MakeIRI("a", "q", "d", "").String()}, quadStrings(results[1]))
+}
+
 func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.Value) graph.Ref {
 	t.Helper()
 

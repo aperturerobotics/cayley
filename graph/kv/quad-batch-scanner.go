@@ -236,6 +236,9 @@ func (qs *QuadStore) collectQuadFilterScanGroup(
 			for matchIdx, match := range matches {
 				q := quads[matchIdx]
 				for _, filterIdx := range match.filterIndexes {
+					if filled[filterIdx] {
+						continue
+					}
 					results[filterIdx] = append(results[filterIdx], q)
 					if limit != 0 && uint32(len(results[filterIdx])) >= limit {
 						filled[filterIdx] = true
