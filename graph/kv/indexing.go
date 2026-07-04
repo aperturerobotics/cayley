@@ -434,29 +434,44 @@ func (qs *QuadStore) incNodes(
 	tx kv.Tx,
 	cache *metaCache,
 	deltas []graphlog.NodeUpdate,
+	resolved map[refs.ValueHash]uint64,
 ) (map[refs.ValueHash]resolvedNode, error) {
 	var (
-		ins []nodeUpdate
-		upd = make([]nodeUpdate, 0, len(deltas))
-		ids = make(map[refs.ValueHash]resolvedNode, len(deltas))
+		ins            []nodeUpdate
+		unresolved     = make([]graphlog.NodeUpdate, 0, len(deltas))
+		unresolvedInds = make([]int, 0, len(deltas))
+		upd            = make([]nodeUpdate, 0, len(deltas))
+		ids            = make(map[refs.ValueHash]resolvedNode, len(deltas))
 	)
-	resolveCtx, resolveTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes/resolve-values")
-	err := qs.resolveValDeltas(resolveCtx, tx, deltas, func(i int, id uint64) {
+	handleResolved := func(i int, id uint64) {
 		if id == 0 {
-			// not exists, should create
 			ins = append(ins, nodeUpdate{Ind: i, NodeUpdate: deltas[i]})
-		} else {
-			// exists, should update
-			ids[deltas[i].Hash] = resolvedNode{ID: id}
-			if deltas[i].RefInc == 0 {
-				return
-			}
+			return
+		}
+		ids[deltas[i].Hash] = resolvedNode{ID: id}
+		if deltas[i].RefInc != 0 {
 			upd = append(upd, nodeUpdate{Ind: i, ID: id, NodeUpdate: deltas[i]})
 		}
-	})
-	resolveTask.End()
-	if err != nil {
-		return ids, err
+	}
+	for i, d := range deltas {
+		if resolved != nil {
+			if id, ok := resolved[d.Hash]; ok {
+				handleResolved(i, id)
+				continue
+			}
+		}
+		unresolved = append(unresolved, d)
+		unresolvedInds = append(unresolvedInds, i)
+	}
+	if len(unresolved) != 0 {
+		resolveCtx, resolveTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes/resolve-values")
+		err := qs.resolveValDeltas(resolveCtx, tx, unresolved, func(i int, id uint64) {
+			handleResolved(unresolvedInds[i], id)
+		})
+		resolveTask.End()
+		if err != nil {
+			return ids, err
+		}
 	}
 	if len(ins) != 0 {
 		// preallocate IDs
@@ -490,7 +505,7 @@ func (qs *QuadStore) incNodes(
 		indexTask.End()
 	}
 	countCtx, countTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes/update-refcounts")
-	_, err = qs.incNodesCnt(countCtx, tx, upd, ins)
+	_, err := qs.incNodesCnt(countCtx, tx, upd, ins)
 	countTask.End()
 	return ids, err
 }
@@ -588,7 +603,7 @@ func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, erro
 		w.mc = newMetaCache()
 	}
 	deltas := graphlog.InsertQuads(buf)
-	if _, err := w.qs.applyAddDeltas(w.tx, w.mc, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
+	if _, err := w.qs.applyAddDeltas(w.tx, w.mc, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}, nil); err != nil {
 		w.err = err
 		return 0, err
 	}
@@ -635,37 +650,243 @@ func (w *quadWriter) Close() error {
 	return err
 }
 
+func (qs *QuadStore) precheckAddDeltas(
+	ctx context.Context,
+	tx kv.Tx,
+	in []graph.Delta,
+	ignoreOpts graph.IgnoreOpts,
+) ([]graph.Delta, map[refs.ValueHash]uint64, error) {
+	if len(in) == 0 {
+		return in, nil, nil
+	}
+	var (
+		qhashes     []refs.QuadHash
+		check       []bool
+		nodesByHash map[refs.ValueHash]graphlog.NodeUpdate
+	)
+	for i, d := range in {
+		if d.Action != graph.Add {
+			continue
+		}
+		qh := quadHashOf(d.Quad)
+		if ignoreOpts.IgnoreDup {
+			if _, ok := qs.quadExists[qh]; !ok {
+				continue
+			}
+		}
+		if qhashes == nil {
+			qhashes = make([]refs.QuadHash, len(in))
+			check = make([]bool, len(in))
+			nodesByHash = make(map[refs.ValueHash]graphlog.NodeUpdate)
+		}
+		qhashes[i] = qh
+		check[i] = true
+		for _, dir := range quad.Directions {
+			v := d.Quad.Get(dir)
+			if v == nil {
+				continue
+			}
+			h := qh.Get(dir)
+			if _, ok := nodesByHash[h]; !ok {
+				nodesByHash[h] = graphlog.NodeUpdate{Hash: h, Val: v}
+			}
+		}
+	}
+	if len(nodesByHash) == 0 {
+		return in, nil, nil
+	}
+
+	nodesToResolve := make([]graphlog.NodeUpdate, 0, len(nodesByHash))
+	for _, n := range nodesByHash {
+		nodesToResolve = append(nodesToResolve, n)
+	}
+	slices.SortFunc(nodesToResolve, func(a, b graphlog.NodeUpdate) int {
+		return bytes.Compare(a.Hash[:], b.Hash[:])
+	})
+
+	nodes := make(map[refs.ValueHash]uint64, len(nodesToResolve))
+	resolveCtx, resolveTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/precheck-adds/resolve-nodes")
+	err := qs.resolveValDeltas(resolveCtx, tx, nodesToResolve, func(i int, id uint64) {
+		nodes[nodesToResolve[i].Hash] = id
+	})
+	resolveTask.End()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	kept := make([]graph.Delta, 0, len(in))
+	seen := make(map[refs.QuadHash]struct{}, len(in))
+	for i, d := range in {
+		if d.Action != graph.Add {
+			kept = append(kept, d)
+			continue
+		}
+		if !check[i] {
+			kept = append(kept, d)
+			continue
+		}
+		qh := qhashes[i]
+		if _, ok := seen[qh]; ok {
+			continue
+		}
+		seen[qh] = struct{}{}
+
+		link := &proto.Primitive{}
+		canExist := true
+		for _, dir := range quad.Directions {
+			h := qh.Get(dir)
+			if !h.Valid() {
+				continue
+			}
+			id := nodes[h]
+			if id == 0 {
+				canExist = false
+				break
+			}
+			link.SetDirection(dir, id)
+		}
+		if canExist {
+			checkCtx, checkTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/precheck-adds/check-link-exists")
+			p, err := qs.hasPrimitive(checkCtx, tx, link, false)
+			checkTask.End()
+			if err != nil {
+				return nil, nil, err
+			}
+			if p != nil {
+				if ignoreOpts.IgnoreDup {
+					continue
+				}
+				return nil, nil, &graph.DeltaError{Delta: d, Err: graph.ErrQuadExists}
+			}
+		}
+		kept = append(kept, d)
+	}
+	return kept, nodes, nil
+}
+
+func (qs *QuadStore) filterDuplicateAddDeltas(
+	ctx context.Context,
+	tx kv.Tx,
+	in []graph.Delta,
+	deltas *graphlog.Deltas,
+	ignoreOpts graph.IgnoreOpts,
+) (map[refs.ValueHash]uint64, error) {
+	if len(deltas.QuadAdd) == 0 {
+		return nil, nil
+	}
+
+	nodes := make(map[refs.ValueHash]uint64, len(deltas.IncNode))
+	resolveCtx, resolveTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/resolve-duplicate-check-nodes")
+	err := qs.resolveValDeltas(resolveCtx, tx, deltas.IncNode, func(i int, id uint64) {
+		nodes[deltas.IncNode[i].Hash] = id
+	})
+	resolveTask.End()
+	if err != nil {
+		return nil, err
+	}
+
+	incIndexes := make(map[refs.ValueHash]int, len(deltas.IncNode))
+	for i, d := range deltas.IncNode {
+		incIndexes[d.Hash] = i
+	}
+	decrementRefs := func(q refs.QuadHash) {
+		for _, h := range q.Dirs() {
+			if !h.Valid() {
+				continue
+			}
+			deltas.IncNode[incIndexes[h]].RefInc--
+		}
+	}
+
+	kept := deltas.QuadAdd[:0]
+	seen := make(map[refs.QuadHash]struct{}, len(deltas.QuadAdd))
+	for _, q := range deltas.QuadAdd {
+		if _, ok := seen[q.Quad]; ok {
+			decrementRefs(q.Quad)
+			continue
+		}
+		seen[q.Quad] = struct{}{}
+
+		link := &proto.Primitive{}
+		canExist := true
+		for _, dir := range quad.Directions {
+			h := q.Quad.Get(dir)
+			if !h.Valid() {
+				continue
+			}
+			id := nodes[h]
+			if id == 0 {
+				canExist = false
+				break
+			}
+			link.SetDirection(dir, id)
+		}
+		if canExist {
+			checkCtx, checkTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/check-link-exists")
+			p, err := qs.hasPrimitive(checkCtx, tx, link, false)
+			checkTask.End()
+			if err != nil {
+				return nil, err
+			}
+			if p != nil {
+				if ignoreOpts.IgnoreDup {
+					decrementRefs(q.Quad)
+					continue
+				}
+				err = graph.ErrQuadExists
+				if len(in) != 0 {
+					return nil, &graph.DeltaError{Delta: in[q.Ind], Err: err}
+				}
+				return nil, err
+			}
+		}
+		kept = append(kept, q)
+	}
+	deltas.QuadAdd = kept
+
+	return nodes, nil
+}
+
 func (qs *QuadStore) applyAddDeltas(
 	tx kv.Tx,
 	cache *metaCache,
 	in []graph.Delta,
 	deltas *graphlog.Deltas,
 	ignoreOpts graph.IgnoreOpts,
+	resolved map[refs.ValueHash]uint64,
 ) (map[refs.ValueHash]resolvedNode, error) {
 	ctx := context.TODO()
 
-	// first add all new nodes
+	if resolved == nil {
+		filterCtx, filterTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/filter-duplicate-adds")
+		var err error
+		resolved, err = qs.filterDuplicateAddDeltas(filterCtx, tx, in, deltas, ignoreOpts)
+		filterTask.End()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	nodeCtx, nodeTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/inc-nodes")
-	nodes, err := qs.incNodes(nodeCtx, tx, cache, deltas.IncNode)
+	nodes, err := qs.incNodes(nodeCtx, tx, cache, deltas.IncNode, resolved)
 	nodeTask.End()
 	if err != nil {
 		return nil, err
 	}
 	deltas.IncNode = nil
-	// resolve and insert all new quads
+
 	links := make([]*proto.Primitive, 0, len(deltas.QuadAdd))
+	linkHashes := make([]refs.QuadHash, 0, len(deltas.QuadAdd))
 	qadd := make(map[[4]uint64]struct{}, len(deltas.QuadAdd))
 	_, buildTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/build-links")
 	for _, q := range deltas.QuadAdd {
 		link := &proto.Primitive{}
-		mustBeNew := false
 		var qkey [4]uint64
 		for i, dir := range quad.Directions {
 			n, ok := nodes[q.Quad.Get(dir)]
 			if !ok {
 				continue
 			}
-			mustBeNew = mustBeNew || n.New
 			link.SetDirection(dir, n.ID)
 			qkey[i] = n.ID
 		}
@@ -673,28 +894,8 @@ func (qs *QuadStore) applyAddDeltas(
 			continue
 		}
 		qadd[qkey] = struct{}{}
-		if !mustBeNew {
-			checkCtx, checkTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/check-link-exists")
-			p, err := qs.hasPrimitive(checkCtx, tx, link, false)
-			checkTask.End()
-			if err != nil {
-				buildTask.End()
-				return nil, err
-			}
-			if p != nil {
-				if ignoreOpts.IgnoreDup {
-					continue // already exists, no need to insert
-				}
-				err = graph.ErrQuadExists
-				if len(in) != 0 {
-					buildTask.End()
-					return nil, &graph.DeltaError{Delta: in[q.Ind], Err: err}
-				}
-				buildTask.End()
-				return nil, err
-			}
-		}
 		links = append(links, link)
+		linkHashes = append(linkHashes, q.Quad)
 	}
 	buildTask.End()
 	deltas.QuadAdd = nil
@@ -714,6 +915,9 @@ func (qs *QuadStore) applyAddDeltas(
 		return nil, err
 	}
 	indexTask.End()
+	for _, qh := range linkHashes {
+		qs.rememberQuadExists(qh)
+	}
 	return nodes, nil
 }
 
@@ -731,12 +935,20 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 	}
 	defer tx.Close()
 
+	precheckCtx, precheckTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/precheck-adds")
+	var resolved map[refs.ValueHash]uint64
+	in, resolved, err = qs.precheckAddDeltas(precheckCtx, tx, in, ignoreOpts)
+	precheckTask.End()
+	if err != nil {
+		return err
+	}
+
 	_, splitTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/split-deltas")
 	deltas := graphlog.SplitDeltas(in)
 	splitTask.End()
 	cache := newMetaCache()
 	_, addTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas")
-	nodes, err := qs.applyAddDeltas(tx, cache, in, deltas, ignoreOpts)
+	nodes, err := qs.applyAddDeltas(tx, cache, in, deltas, ignoreOpts, resolved)
 	addTask.End()
 	if err != nil {
 		return err
@@ -1236,6 +1448,23 @@ func bucketKeyForHash(h []byte) kv.Key {
 func bucketKeyForHashRefs(h refs.ValueHash) kv.Key {
 	hashB58 := b58.Encode(h[:])
 	return bucketForValRefs().AppendBytes([]byte(hashB58))
+}
+
+func quadHashOf(q quad.Quad) refs.QuadHash {
+	var qh refs.QuadHash
+	for _, dir := range quad.Directions {
+		if v := q.Get(dir); v != nil {
+			qh.Set(dir, refs.HashOf(v))
+		}
+	}
+	return qh
+}
+
+func (qs *QuadStore) rememberQuadExists(qh refs.QuadHash) {
+	if len(qs.quadExists) >= 2000 {
+		clear(qs.quadExists)
+	}
+	qs.quadExists[qh] = struct{}{}
 }
 
 func (qs *QuadStore) resolveQuadValues(ctx context.Context, tx kv.Tx, vals []quad.Value) ([]uint64, error) {

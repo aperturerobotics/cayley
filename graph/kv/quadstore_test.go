@@ -309,6 +309,121 @@ func TestApplyDeltasIgnoreDupWithLabeledVariant(t *testing.T) {
 	require.EqualValues(t, 2, st.Quads.Value)
 }
 
+func TestApplyDeltasWriteCostSingleAddAndDuplicate(t *testing.T) {
+	ctx, qs, hook, closeStore := newHookedQuadStore(t)
+	defer closeStore()
+
+	q := quad.MakeIRI("cost/s", "cost/p", "cost/o", "")
+	require.NoError(t, qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: q, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true}))
+
+	addOps := hook.log()
+	require.LessOrEqual(t, len(addOps), 21, "first add-new quad should stay within the known current write-cost envelope")
+	require.Equal(t, 14, countOpsOfType(addOps, opPut), "add-new should write value/log/refcount records, quad indexes, and meta keys")
+
+	refCountsBefore := readRefCounts(ctx, t, hook.db, q.Subject, q.Predicate, q.Object)
+	require.NoError(t, qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: q, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true}))
+
+	dupOps := hook.log()
+	require.Equal(t, refCountsBefore, readRefCounts(ctx, t, hook.db, q.Subject, q.Predicate, q.Object), "ignored duplicate add must not increment node refcounts")
+	requireNoIndexLogOrRefcountWrites(t, dupOps)
+	require.LessOrEqual(t, len(dupOps), 2, "warm ignored duplicate add should only check whether the quad exists")
+}
+
+func TestApplyDeltasWriteCostDuplicateError(t *testing.T) {
+	ctx, qs, hook, closeStore := newHookedQuadStore(t)
+	defer closeStore()
+
+	q := quad.MakeIRI("cost/error-s", "cost/error-p", "cost/error-o", "")
+	require.NoError(t, qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: q, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true}))
+	hook.log()
+
+	refCountsBefore := readRefCounts(ctx, t, hook.db, q.Subject, q.Predicate, q.Object)
+	err := qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: q, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: false})
+
+	dupOps := hook.log()
+	require.Error(t, err)
+	require.True(t, graph.IsQuadExist(err), "expected ErrQuadExists/DeltaError, got %v", err)
+	deltaErr, ok := err.(*graph.DeltaError)
+	require.True(t, ok, "expected DeltaError, got %T", err)
+	require.Equal(t, graph.ErrQuadExists, deltaErr.Err)
+	require.Equal(t, q, deltaErr.Delta.Quad)
+	require.Equal(t, graph.Add, deltaErr.Delta.Action)
+	require.Equal(t, refCountsBefore, readRefCounts(ctx, t, hook.db, q.Subject, q.Predicate, q.Object), "failed duplicate add must leave node refcounts unchanged")
+	requireNoIndexLogOrRefcountWrites(t, dupOps)
+	require.LessOrEqual(t, len(dupOps), 2, "warm duplicate add error should only check whether the quad exists")
+}
+
+func TestApplyDeltasIgnoredDuplicateWithMissingDeletePreservesRefcounts(t *testing.T) {
+	ctx, qs, hook, closeStore := newHookedQuadStore(t)
+	defer closeStore()
+
+	existing := quad.MakeIRI("mixed/s", "mixed/p", "mixed/o1", "")
+	missing := quad.MakeIRI("mixed/s", "mixed/p", "mixed/o2", "")
+	require.NoError(t, qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: existing, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true}))
+	hook.log()
+
+	refCountsBefore := readRefCounts(ctx, t, hook.db, existing.Subject, existing.Predicate, existing.Object)
+	require.NoError(t, qs.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: existing, Action: graph.Add},
+		{Quad: missing, Action: graph.Delete},
+	}, graph.IgnoreOpts{IgnoreDup: true, IgnoreMissing: true}))
+
+	require.Equal(t, refCountsBefore, readRefCounts(ctx, t, hook.db, existing.Subject, existing.Predicate, existing.Object), "ignored duplicate add plus ignored missing delete must leave live quad node refcounts unchanged")
+	st, err := qs.Stats(ctx, false)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, st.Quads.Value)
+}
+
+func TestApplyTransactionWriteCostBatchAdds(t *testing.T) {
+	ctx, qs, hook, closeStore := newHookedQuadStore(t)
+	defer closeStore()
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{IgnoreDup: true})
+	require.NoError(t, err)
+
+	tx := graph.NewTransactionN(4)
+	quads := []quad.Quad{
+		quad.MakeIRI("batch/s", "batch/p", "batch/o1", ""),
+		quad.MakeIRI("batch/s", "batch/p", "batch/o2", ""),
+		quad.MakeIRI("batch/s", "batch/p", "batch/o3", ""),
+		quad.MakeIRI("batch/s", "batch/p", "batch/o4", ""),
+	}
+	for _, q := range quads {
+		tx.AddQuad(q)
+	}
+
+	require.NoError(t, qw.ApplyTransaction(ctx, tx))
+
+	ops := hook.log()
+	require.LessOrEqual(t, len(ops), 42, "four-quad ApplyTransaction should batch shared node and index work")
+	require.Equal(t, 29, countOpsOfType(ops, opPut), "batch add should write six values, six node logs, six refcounts, four quad logs, five index buckets, and two meta keys")
+
+	requireRefCount(t, ctx, hook.db, quad.IRI("batch/s"), 4)
+	requireRefCount(t, ctx, hook.db, quad.IRI("batch/p"), 4)
+	for _, obj := range []quad.Value{
+		quad.IRI("batch/o1"),
+		quad.IRI("batch/o2"),
+		quad.IRI("batch/o3"),
+		quad.IRI("batch/o4"),
+	} {
+		requireRefCount(t, ctx, hook.db, obj, 1)
+	}
+
+	st, err := qs.Stats(ctx, false)
+	require.NoError(t, err)
+	require.EqualValues(t, len(quads), st.Quads.Value)
+}
+
 func TestRemoveQuadPreservesUnrelatedQuadValuesAfterNodeDeletion(t *testing.T) {
 	kdb := btree.New()
 	ctx := context.Background()
@@ -464,6 +579,155 @@ func TestCollectFilteredQuadsBatchLimitPerFilterSkipsFilledFilters(t *testing.T)
 	require.Len(t, results, 2)
 	require.Len(t, results[0], 1)
 	require.Equal(t, []string{quad.MakeIRI("a", "q", "d", "").String()}, quadStrings(results[1]))
+}
+
+func newHookedQuadStore(t testing.TB) (context.Context, *kv.QuadStore, *kvHook, func()) {
+	t.Helper()
+
+	kdb := btree.New()
+	hook := &kvHook{db: kdb}
+	ctx := context.Background()
+
+	err := kv.Init(ctx, hook, nil)
+	require.NoError(t, err)
+
+	gqs, err := kv.New(ctx, hook, nil)
+	require.NoError(t, err)
+
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+	hook.log()
+
+	return ctx, qs, hook, func() {
+		require.NoError(t, qs.Close())
+	}
+}
+
+func countOpsOfType(ops Ops, typ int) int {
+	var n int
+	for _, op := range ops {
+		if op.typ == typ {
+			n++
+		}
+	}
+	return n
+}
+
+func requireNoIndexLogOrRefcountWrites(t testing.TB, ops Ops) {
+	t.Helper()
+
+	for _, op := range ops {
+		if op.typ != opPut && op.typ != opDel {
+			continue
+		}
+		require.Falsef(t, isIndexLogOrRefcountKey(op.key), "unexpected write to refcount/log/index key: %v", op)
+	}
+}
+
+func isIndexLogOrRefcountKey(k hkv.Key) bool {
+	if len(k) == 0 {
+		return false
+	}
+	switch string(k[0]) {
+	case bLog, "n", "sp", "ops":
+		return true
+	default:
+		return false
+	}
+}
+
+func readRefCounts(ctx context.Context, t testing.TB, db hkv.KV, vals ...quad.Value) []uint64 {
+	t.Helper()
+
+	out := make([]uint64, len(vals))
+	err := hkv.View(ctx, db, func(tx hkv.Tx) error {
+		for i, val := range vals {
+			h := refs.HashOf(val)
+			raw, err := tx.Get(ctx, key(iric(""), irihFromHash(h)))
+			if err == hkv.ErrNotFound {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			out[i], _ = binary.Uvarint(raw)
+		}
+		return nil
+	})
+	require.NoError(t, err)
+	return out
+}
+
+func requireRefCount(t testing.TB, ctx context.Context, db hkv.KV, val quad.Value, expected uint64) {
+	t.Helper()
+
+	require.Equal(t, []uint64{expected}, readRefCounts(ctx, t, db, val))
+}
+
+func irihFromHash(h refs.ValueHash) []byte {
+	hashB58 := b58.Encode(h[:])
+	return []byte(hashB58)
+}
+
+func BenchmarkApplyDeltasWriteCostCounts(b *testing.B) {
+	var addOps, addReads, duplicateOps, duplicateReads, duplicateErrOps, duplicateErrReads, batchOps, batchReads, loops int
+	for b.Loop() {
+		ctx, qs, hook, closeStore := newHookedQuadStore(b)
+		q := quad.MakeIRI("bench/s", "bench/p", "bench/o", "")
+		if err := qs.ApplyDeltas(ctx, []graph.Delta{
+			{Quad: q, Action: graph.Add},
+		}, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
+			b.Fatal(err.Error())
+		}
+		addLog := hook.log()
+		addOps += len(addLog)
+		addReads += countOpsOfType(addLog, opGet)
+		if err := qs.ApplyDeltas(ctx, []graph.Delta{
+			{Quad: q, Action: graph.Add},
+		}, graph.IgnoreOpts{IgnoreDup: true}); err != nil {
+			b.Fatal(err.Error())
+		}
+		duplicateLog := hook.log()
+		duplicateOps += len(duplicateLog)
+		duplicateReads += countOpsOfType(duplicateLog, opGet)
+		err := qs.ApplyDeltas(ctx, []graph.Delta{
+			{Quad: q, Action: graph.Add},
+		}, graph.IgnoreOpts{IgnoreDup: false})
+		if !graph.IsQuadExist(err) {
+			b.Fatalf("expected duplicate error, got %v", err)
+		}
+		duplicateErrLog := hook.log()
+		duplicateErrOps += len(duplicateErrLog)
+		duplicateErrReads += countOpsOfType(duplicateErrLog, opGet)
+		closeStore()
+
+		ctx, qs, hook, closeStore = newHookedQuadStore(b)
+		qw, err := writer.NewSingle(qs, graph.IgnoreOpts{IgnoreDup: true})
+		if err != nil {
+			b.Fatal(err.Error())
+		}
+		tx := graph.NewTransactionN(4)
+		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o1", ""))
+		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o2", ""))
+		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o3", ""))
+		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o4", ""))
+		if err := qw.ApplyTransaction(ctx, tx); err != nil {
+			b.Fatal(err.Error())
+		}
+		batchLog := hook.log()
+		batchOps += len(batchLog)
+		batchReads += countOpsOfType(batchLog, opGet)
+		closeStore()
+		loops++
+	}
+	b.ReportMetric(float64(addOps)/float64(loops), "add_new_kv_ops/op")
+	b.ReportMetric(float64(addReads)/float64(loops), "add_new_kv_reads/op")
+	b.ReportMetric(float64(duplicateOps)/float64(loops), "duplicate_ignore_kv_ops/op")
+	b.ReportMetric(float64(duplicateReads)/float64(loops), "duplicate_ignore_kv_reads/op")
+	b.ReportMetric(float64(duplicateErrOps)/float64(loops), "duplicate_error_kv_ops/op")
+	b.ReportMetric(float64(duplicateErrReads)/float64(loops), "duplicate_error_kv_reads/op")
+	b.ReportMetric(float64(batchOps)/float64(loops), "batch4_kv_ops/op")
+	b.ReportMetric(float64(batchReads)/float64(loops), "batch4_kv_reads/op")
 }
 
 func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.Value) graph.Ref {

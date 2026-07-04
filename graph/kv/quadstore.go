@@ -97,7 +97,8 @@ type QuadStore struct {
 		exists []QuadIndex
 	}
 
-	valueLRU *lru.Cache
+	valueLRU   *lru.Cache
+	quadExists map[refs.QuadHash]struct{}
 
 	writer    sync.Mutex
 	mapBucket map[string]map[string][]uint64
@@ -137,6 +138,7 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 		qs.indexes.all = DefaultQuadIndexes
 	}
 	qs.valueLRU = lru.New(2000)
+	qs.quadExists = make(map[refs.QuadHash]struct{})
 	return qs, nil
 }
 
