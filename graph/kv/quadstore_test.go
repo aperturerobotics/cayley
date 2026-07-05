@@ -171,9 +171,8 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("c"), irih("c")), hex("01"), nil},
 		{opPut, key(bLog, ukey(4)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
-		{opGet, key("ops", b64Col(3, 2, 1)), nil, nil},
+		// New-node index keys blind-write: the posting list cannot pre-exist.
 		{opPut, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
-		{opGet, key("sp", b64Col(1, 2)), nil, nil},
 		{opPut, key("sp", b64Col(1, 2)), hex("04"), nil},
 		{opPut, key(bMeta, []byte("horizon")), le(4), nil},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
@@ -199,7 +198,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("e"), irih("e")), hex("01"), nil},
 		{opPut, key(bLog, ukey(6)), vAuto, nil},
 		{opGet, key(bMeta, []byte("size")), le(1), nil},
-		{opGet, key("ops", b64Col(5, 2, 1)), nil, nil},
+		// New object node: ops posting list blind-writes; sp exists, so it merges.
 		{opPut, key("ops", b64Col(5, 2, 1)), hex("06"), nil},
 		{opGet, key("sp", b64Col(1, 2)), hex("04"), nil},
 		{opPut, key("sp", b64Col(1, 2)), hex("0406"), nil},
@@ -670,7 +669,8 @@ func irihFromHash(h refs.ValueHash) []byte {
 }
 
 func BenchmarkApplyDeltasWriteCostCounts(b *testing.B) {
-	var addOps, addReads, duplicateOps, duplicateReads, duplicateErrOps, duplicateErrReads, batchOps, batchReads, loops int
+	var addOps, addReads, duplicateOps, duplicateReads, duplicateErrOps, duplicateErrReads int
+	var batch4Ops, batch4Reads, batch16Ops, batch16Reads, batch64Ops, batch64Reads, loops int
 	for b.Loop() {
 		ctx, qs, hook, closeStore := newHookedQuadStore(b)
 		q := quad.MakeIRI("bench/s", "bench/p", "bench/o", "")
@@ -701,23 +701,15 @@ func BenchmarkApplyDeltasWriteCostCounts(b *testing.B) {
 		duplicateErrReads += countOpsOfType(duplicateErrLog, opGet)
 		closeStore()
 
-		ctx, qs, hook, closeStore = newHookedQuadStore(b)
-		qw, err := writer.NewSingle(qs, graph.IgnoreOpts{IgnoreDup: true})
-		if err != nil {
-			b.Fatal(err.Error())
-		}
-		tx := graph.NewTransactionN(4)
-		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o1", ""))
-		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o2", ""))
-		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o3", ""))
-		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o4", ""))
-		if err := qw.ApplyTransaction(ctx, tx); err != nil {
-			b.Fatal(err.Error())
-		}
-		batchLog := hook.log()
-		batchOps += len(batchLog)
-		batchReads += countOpsOfType(batchLog, opGet)
-		closeStore()
+		ops4, reads4 := applyBatchAddOps(b, 4)
+		batch4Ops += ops4
+		batch4Reads += reads4
+		ops16, reads16 := applyBatchAddOps(b, 16)
+		batch16Ops += ops16
+		batch16Reads += reads16
+		ops64, reads64 := applyBatchAddOps(b, 64)
+		batch64Ops += ops64
+		batch64Reads += reads64
 		loops++
 	}
 	b.ReportMetric(float64(addOps)/float64(loops), "add_new_kv_ops/op")
@@ -726,8 +718,33 @@ func BenchmarkApplyDeltasWriteCostCounts(b *testing.B) {
 	b.ReportMetric(float64(duplicateReads)/float64(loops), "duplicate_ignore_kv_reads/op")
 	b.ReportMetric(float64(duplicateErrOps)/float64(loops), "duplicate_error_kv_ops/op")
 	b.ReportMetric(float64(duplicateErrReads)/float64(loops), "duplicate_error_kv_reads/op")
-	b.ReportMetric(float64(batchOps)/float64(loops), "batch4_kv_ops/op")
-	b.ReportMetric(float64(batchReads)/float64(loops), "batch4_kv_reads/op")
+	b.ReportMetric(float64(batch4Ops)/float64(loops), "batch4_kv_ops/op")
+	b.ReportMetric(float64(batch4Reads)/float64(loops), "batch4_kv_reads/op")
+	b.ReportMetric(float64(batch16Ops)/float64(loops), "batch16_kv_ops/op")
+	b.ReportMetric(float64(batch16Reads)/float64(loops), "batch16_kv_reads/op")
+	b.ReportMetric(float64(batch64Ops)/float64(loops), "batch64_kv_ops/op")
+	b.ReportMetric(float64(batch64Reads)/float64(loops), "batch64_kv_reads/op")
+}
+
+// applyBatchAddOps applies one n-quad add-new batch sharing a subject and
+// predicate to a fresh store and returns the logical KV op and read counts.
+func applyBatchAddOps(b *testing.B, n int) (ops, reads int) {
+	b.Helper()
+	ctx, qs, hook, closeStore := newHookedQuadStore(b)
+	defer closeStore()
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{IgnoreDup: true})
+	if err != nil {
+		b.Fatal(err.Error())
+	}
+	tx := graph.NewTransactionN(n)
+	for i := range n {
+		tx.AddQuad(quad.MakeIRI("bench/batch-s", "bench/batch-p", "bench/batch-o"+strconv.Itoa(i), ""))
+	}
+	if err := qw.ApplyTransaction(ctx, tx); err != nil {
+		b.Fatal(err.Error())
+	}
+	log := hook.log()
+	return len(log), countOpsOfType(log, opGet)
 }
 
 func mustValueOf(ctx context.Context, t testing.TB, qs graph.QuadStore, v quad.Value) graph.Ref {
@@ -745,6 +762,75 @@ func quadStrings(quads []quad.Quad) []string {
 		out[i] = q.String()
 	}
 	return out
+}
+
+func allQuads(ctx context.Context, t testing.TB, qs *kv.QuadStore) []quad.Quad {
+	t.Helper()
+
+	var out []quad.Quad
+	it := qs.QuadsAllIterator(ctx).Iterate(ctx)
+	defer it.Close()
+	for it.Next(ctx) {
+		ref, err := it.Result(ctx)
+		require.NoError(t, err)
+		q, err := qs.Quad(ctx, ref)
+		require.NoError(t, err)
+		out = append(out, q)
+	}
+	require.NoError(t, it.Err())
+	return out
+}
+
+// TestBulkAddFreshIndexFormatRoundTrips proves the fresh-index blind-write path
+// persists byte-identical on-disk state to the read-modify-write path: a cold
+// QuadStore reopened over the same store reads every quad and both indexes back,
+// including a posting list that the second batch merged into a fresh-written one.
+func TestBulkAddFreshIndexFormatRoundTrips(t *testing.T) {
+	kdb := btree.New()
+	ctx := context.Background()
+	require.NoError(t, kv.Init(ctx, kdb, nil))
+
+	gqs, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	qs, ok := gqs.(*kv.QuadStore)
+	require.True(t, ok)
+
+	qw, err := writer.NewSingle(qs, graph.IgnoreOpts{IgnoreDup: true})
+	require.NoError(t, err)
+
+	// First batch: all-new nodes exercise the fresh blind-write path on both
+	// indexes (the sp key and every ops key hold a node minted this transaction).
+	var want []quad.Quad
+	tx := graph.NewTransactionN(6)
+	for i := range 6 {
+		q := quad.MakeIRI("bulk/s", "bulk/p", "bulk/o"+strconv.Itoa(i), "")
+		tx.AddQuad(q)
+		want = append(want, q)
+	}
+	require.NoError(t, qw.ApplyTransaction(ctx, tx))
+
+	// Second batch: the shared subject/predicate forces the sp posting list to
+	// merge onto the fresh-written list persisted by the first batch.
+	tx2 := graph.NewTransactionN(3)
+	for i := 6; i < 9; i++ {
+		q := quad.MakeIRI("bulk/s", "bulk/p", "bulk/o"+strconv.Itoa(i), "")
+		tx2.AddQuad(q)
+		want = append(want, q)
+	}
+	require.NoError(t, qw.ApplyTransaction(ctx, tx2))
+
+	// Reopen a cold QuadStore over the same persisted store (empty caches).
+	gqs2, err := kv.New(ctx, kdb, nil)
+	require.NoError(t, err)
+	qs2, ok := gqs2.(*kv.QuadStore)
+	require.True(t, ok)
+	defer qs2.Close()
+
+	sz, err := qs2.Size(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, len(want), sz)
+
+	require.ElementsMatch(t, quadStrings(want), quadStrings(allQuads(ctx, t, qs2)))
 }
 
 func sortByOp(exp, got Ops) {

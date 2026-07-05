@@ -101,7 +101,7 @@ type QuadStore struct {
 	quadExists map[refs.QuadHash]struct{}
 
 	writer    sync.Mutex
-	mapBucket map[string]map[string][]uint64
+	mapBucket map[string]map[string]*indexPosting
 }
 
 func newQuadStore(kv kv.KV) *QuadStore {

@@ -909,8 +909,14 @@ func (qs *QuadStore) applyAddDeltas(
 	for i := range links {
 		links[i].ID = qstart + uint64(i)
 	}
+	newIDs := make(map[uint64]struct{}, len(nodes))
+	for _, n := range nodes {
+		if n.New {
+			newIDs[n.ID] = struct{}{}
+		}
+	}
 	indexCtx, indexTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/index-links")
-	if err := qs.indexLinks(indexCtx, tx, cache, links); err != nil {
+	if err := qs.indexLinks(indexCtx, tx, cache, links, newIDs); err != nil {
 		indexTask.End()
 		return nil, err
 	}
@@ -1084,9 +1090,9 @@ func (qs *QuadStore) indexNode(ctx context.Context, tx kv.Tx, p *proto.Primitive
 	return err
 }
 
-func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
+func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive, newIDs map[uint64]struct{}) error {
 	for _, p := range links {
-		if err := qs.indexLink(ctx, tx, p); err != nil {
+		if err := qs.indexLink(ctx, tx, p, newIDs); err != nil {
 			return err
 		}
 	}
@@ -1094,13 +1100,23 @@ func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, cache *metaCache,
 	return err
 }
 
-func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive) error {
+func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive, newIDs map[uint64]struct{}) error {
 	var err error
 	qs.indexes.RLock()
 	all := qs.indexes.all
 	qs.indexes.RUnlock()
 	for _, ind := range all {
-		err = qs.addToMapBucket(tx, ind.KeyFor(p), p.ID)
+		// A posting list is empty on disk when any of its index-key directions
+		// resolves to a node minted in this transaction: no prior quad could
+		// reference that node, so the flush can blind-write without a read.
+		fresh := false
+		for _, d := range ind.Dirs {
+			if _, ok := newIDs[p.GetDirection(d)]; ok {
+				fresh = true
+				break
+			}
+		}
+		err = qs.addToMapBucket(tx, ind.KeyFor(p), p.ID, fresh)
 		if err != nil {
 			return err
 		}
@@ -1342,7 +1358,16 @@ outer:
 	return c
 }
 
-func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64) error {
+// indexPosting is a pending index posting list buffered for one flush. fresh is
+// true only when every buffered add proved the on-disk list empty (an index key
+// direction resolved to a node minted in this transaction), so the flush can
+// blind-write it and skip the read-modify-write read.
+type indexPosting struct {
+	ids   []uint64
+	fresh bool
+}
+
+func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64, fresh bool) error {
 	if len(key) != 2 {
 		return fmt.Errorf("trying to add to map bucket with invalid key: %v", key)
 	}
@@ -1351,15 +1376,23 @@ func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64) error {
 		return fmt.Errorf("trying to add to map bucket %s with key 0", b)
 	}
 	if qs.mapBucket == nil {
-		qs.mapBucket = make(map[string]map[string][]uint64)
+		qs.mapBucket = make(map[string]map[string]*indexPosting)
 	}
 	bucket := string(b)
 	m, ok := qs.mapBucket[bucket]
 	if !ok {
-		m = make(map[string][]uint64)
+		m = make(map[string]*indexPosting)
 		qs.mapBucket[bucket] = m
 	}
-	m[string(k)] = append(m[string(k)], value)
+	e, ok := m[string(k)]
+	if !ok {
+		e = &indexPosting{fresh: fresh}
+		m[string(k)] = e
+	} else {
+		// Only skip the read when every add agrees the list is empty.
+		e.fresh = e.fresh && fresh
+	}
+	e.ids = append(e.ids, value)
 	return nil
 }
 
@@ -1375,21 +1408,35 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 			continue
 		}
 		b := kv.Key{[]byte(bucket)}
-		keys := make([]kv.Key, 0, len(m))
-		for k := range m {
-			bk := []byte(k)
-			keys = append(keys, b.AppendBytes(bk))
+		// Fresh postings blind-write; the rest read-modify-write in one batch.
+		freshKeys := make([]kv.Key, 0, len(m))
+		mergeKeys := make([]kv.Key, 0, len(m))
+		for k, e := range m {
+			key := b.AppendBytes([]byte(k))
+			if e.fresh {
+				freshKeys = append(freshKeys, key)
+			} else {
+				mergeKeys = append(mergeKeys, key)
+			}
 		}
-		sort.Sort(kv.ByKey(keys))
-		vals, err := tx.GetBatch(ctx, keys)
+		sort.Sort(kv.ByKey(freshKeys))
+		for _, k := range freshKeys {
+			buf := appendIndex(nil, m[string(k[1])].ids)
+			if err := tx.Put(ctx, k, buf); err != nil {
+				return err
+			}
+		}
+		if len(mergeKeys) == 0 {
+			continue
+		}
+		sort.Sort(kv.ByKey(mergeKeys))
+		vals, err := tx.GetBatch(ctx, mergeKeys)
 		if err != nil {
 			return err
 		}
-		for i, k := range keys {
-			l := m[string(k[1])]
-			buf := appendIndex(vals[i], l)
-			err = tx.Put(ctx, k, buf)
-			if err != nil {
+		for i, k := range mergeKeys {
+			buf := appendIndex(vals[i], m[string(k[1])].ids)
+			if err := tx.Put(ctx, k, buf); err != nil {
 				return err
 			}
 		}
