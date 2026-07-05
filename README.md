@@ -137,6 +137,84 @@ Serve HTTP on the local interface:
 cayley http --db bolt --dbpath ./graph.db --host 127.0.0.1:64210
 ```
 
+## Path API
+
+The Go path API in `github.com/aperturerobotics/cayley/query/path` (re-exported
+as `cayley.Path`) is the main way to walk an application graph directly from Go.
+A path starts at one or more nodes and chains traversal steps; nothing runs
+until you build an iterator, so a path can be composed, passed around, and
+extended by callers before it executes.
+
+Build a path with `cayley.StartPath`, then chain steps and iterate:
+
+```go
+store, _ := cayley.NewMemoryGraph(ctx)
+store.AddQuad(ctx, cayley.Quad("alice", "knows", "bob", nil))
+store.AddQuad(ctx, cayley.Quad("bob", "knows", "carol", nil))
+
+// Who does alice know?
+p := cayley.StartPath(store, quad.String("alice")).Out(quad.String("knows"))
+p.Iterate(ctx).EachValue(ctx, nil, func(v quad.Value) error {
+	fmt.Println(quad.NativeOf(v)) // bob
+	return nil
+})
+```
+
+`Out` follows a predicate forward (subject to object); `In` follows it backward
+(object to subject). Reverse a lookup by swapping the direction:
+
+```go
+// Who knows bob? Traverse the "knows" edge backward.
+p := cayley.StartPath(store, quad.String("bob")).In(quad.String("knows"))
+// yields: alice
+```
+
+`Has` keeps only nodes that have a matching outbound edge, which is how you
+filter a set down to nodes of a given type or property. This is the shape
+Spacewave uses to list graph objects of a known type reachable from a keypair:
+walk the inbound links, then keep the nodes tagged with a recognized type
+predicate.
+
+```go
+// Keep only nodes that link to one of the wanted type values.
+p := cayley.StartPath(store, quad.String("keypair-1")).
+	In(quad.String("object-to-keypair")).
+	Has(quad.String("type"), quad.String("cluster"), quad.String("task"))
+```
+
+`Tag` records the node at a step under a name so a single iteration can return
+several bound values at once; read them from the result map instead of
+`EachValue`:
+
+```go
+p := cayley.StartPath(store, quad.String("alice")).
+	Tag("person").
+	Out(quad.String("knows")).
+	Tag("friend")
+p.Iterate(ctx).TagValues(ctx, nil, func(tags map[string]quad.Value) error {
+	fmt.Println(quad.NativeOf(tags["person"]), "knows", quad.NativeOf(tags["friend"]))
+	return nil
+})
+```
+
+`FollowRecursive` walks one predicate transitively to reach every node
+reachable through a chain of edges, with an optional depth tag reporting how
+many hops each result took:
+
+```go
+store.AddQuad(ctx, cayley.Quad("a", "ref", "b", nil))
+store.AddQuad(ctx, cayley.Quad("b", "ref", "c", nil))
+
+// All nodes reachable from "a" through "ref" edges: b, c
+p := cayley.StartPath(store, quad.String("a")).
+	FollowRecursive(quad.String("ref"), -1, []string{"depth"})
+```
+
+`LabelContext` scopes the following steps to quads carrying a given label, so
+the same predicate can mean different things in different subgraphs. For direct
+control over iteration, call `p.BuildIterator(ctx)` and drive the scanner
+yourself, resolving each result ref back to a value with `store.NameOf`.
+
 ## Development
 
 Build and development commands are available through `make`, which wraps the
