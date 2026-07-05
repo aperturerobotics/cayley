@@ -34,10 +34,8 @@ provides a small handle API for opening stores, adding quads, and walking paths.
 The lower-level packages expose storage interfaces, iterators, query sessions,
 quad formats, import/export flows, and HTTP handlers.
 
-This repository is Aperture's maintained fork of the
-[upstream Cayley project](https://github.com/cayleygraph/cayley). It preserves
-the Apache-2.0 Cayley codebase while keeping the module, dependencies, generated
-code, and build tooling aligned with Aperture's Go stack.
+This is Aperture's Apache-2.0 fork of the
+[upstream Cayley project](https://github.com/cayleygraph/cayley).
 
 ## Current Surface
 
