@@ -11,9 +11,6 @@
     <a href="https://godoc.org/github.com/aperturerobotics/cayley">
       <img src="https://godoc.org/github.com/aperturerobotics/cayley?status.svg" alt="GoDoc" />
     </a>
-    <a href="https://goreportcard.com/report/github.com/aperturerobotics/cayley">
-      <img src="https://goreportcard.com/badge/github.com/aperturerobotics/cayley" alt="Go Report Card" />
-    </a>
     <a href="https://deepwiki.com/aperturerobotics/cayley">
       <img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" />
     </a>
