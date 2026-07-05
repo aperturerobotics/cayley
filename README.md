@@ -145,6 +145,24 @@ A path starts at one or more nodes and chains traversal steps; nothing runs
 until you build an iterator, so a path can be composed, passed around, and
 extended by callers before it executes.
 
+### Concepts
+
+- **Path** is the builder you chain steps onto. Each step (`Out`, `Has`, `Tag`,
+  ...) returns a new `*Path`, so paths are immutable values you can branch and
+  reuse. A path bound to a `QuadStore` (via `StartPath`) can execute; a path
+  with no store is a **morphism**, a reusable step sequence you bind to a store
+  later with `Follow`, `Has`, or `BuildIteratorOn`. `StartMorphism` builds one
+  directly, which is how you factor a shared traversal out for many callers.
+- **Shape** is the declarative query tree a path compiles to (`p.Shape()`). It
+  describes *what* to match, independent of any backend, and carries an
+  `Optimize` pass the store uses to push work into indexes before execution.
+  Most code never touches shapes directly; the path builder produces them.
+- **Iterator** is the executable scanner a shape builds against a store
+  (`p.BuildIterator(ctx)`). Iteration yields `graph.Ref` handles; resolve a ref
+  back to its `quad.Value` with `store.NameOf`. The `p.Iterate(ctx)` chain
+  wraps this with helpers (`EachValue`, `TagValues`, `AllValues`, `Count`) so
+  most code never drives the scanner by hand.
+
 Build a path with `cayley.StartPath`, then chain steps and iterate:
 
 ```go
@@ -214,6 +232,67 @@ p := cayley.StartPath(store, quad.String("a")).
 the same predicate can mean different things in different subgraphs. For direct
 control over iteration, call `p.BuildIterator(ctx)` and drive the scanner
 yourself, resolving each result ref back to a value with `store.NameOf`.
+
+### More operations
+
+Traversal directions:
+
+- `Both(pred)` follows `pred` inbound and outbound at once, yielding neighbors
+  in either direction.
+- `Reverse()` returns the mirror of a whole path, turning a forward walk into
+  the backward one without rewriting each step.
+- `InPredicates()` / `OutPredicates()` yield the predicates on a node instead
+  of its neighbors, so you can discover which edges exist before following them.
+
+Set combinators take another path and act as graph joins:
+
+- `And(other)` (intersection) keeps only nodes that both paths reach; `Or(other)`
+  (union) keeps nodes either reaches; `Except(other)` subtracts one path's nodes
+  from another.
+- `Has(pred, nodes...)` keeps nodes with an outbound `pred` edge to a known
+  node; `HasReverse(pred, nodes...)` keeps nodes a known node links to inbound;
+  `HasPath(sub)` keeps nodes for which an entire subpath exists. These are
+  existence filters: they prune the current set without moving to the linked
+  node.
+- `Follow(morphism)` splices a morphism onto the current nodes, the way you
+  reuse a named traversal defined once with `StartMorphism`.
+
+Binding named values along the walk:
+
+- `Save(pred, tag)` records the node one hop across `pred` under `tag` without
+  moving the path there, so one iteration returns several related fields;
+  `SaveReverse`, `SaveOptional`, and `SaveOptionalReverse` cover the inbound and
+  may-be-absent variants.
+- `Tag(name)` marks the current node (as shown above); `Back(name)` returns
+  traversal to an earlier tagged point while keeping the constraints gathered
+  after it, which is how you filter a node by a downstream property yet still
+  return the node itself.
+
+Filtering and shaping results:
+
+- `Is(nodes...)` restricts the current set to specific nodes; `Filter`/`Filters`
+  compare values (`iterator.Operator` like `<`, `>=`); `Regex` matches string
+  values against a pattern.
+- `Unique()` removes duplicate nodes; `Skip(n)` / `Limit(n)` page results;
+  `Count()` turns the result set into its own size.
+
+A composed example, using several of these together:
+
+```go
+// Ancestors of "alice" through "parent" who are tagged as "person",
+// returning the ancestor node plus its saved "name".
+p := cayley.StartPath(store, quad.String("alice")).
+	FollowRecursive(quad.String("parent"), -1, nil).
+	Has(quad.String("type"), quad.String("person")).
+	Save(quad.String("name"), "name").
+	Unique()
+```
+
+### Reference
+
+The full method set, with per-step semantics, lives in the package
+documentation:
+[pkg.go.dev/github.com/aperturerobotics/cayley/query/path](https://pkg.go.dev/github.com/aperturerobotics/cayley/query/path).
 
 ## Development
 
