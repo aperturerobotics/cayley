@@ -372,17 +372,6 @@ type quadBatchPrimitiveValueRef struct {
 	dir   quad.Direction
 }
 
-func (qs *QuadStore) primitiveToQuadBatch(ctx context.Context, tx kv.Tx, prim *proto.Primitive) (quad.Quad, error) {
-	quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, []quadBatchPrimitiveMatch{{prim: prim}})
-	if err != nil {
-		return quad.Quad{}, err
-	}
-	if len(quads) == 0 {
-		return quad.Quad{}, nil
-	}
-	return quads[0], nil
-}
-
 var (
 	_ QuadFilterBatchCollector = (*QuadStore)(nil)
 	_ graph.QuadStore          = (*QuadStore)(nil)

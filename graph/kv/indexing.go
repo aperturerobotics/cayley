@@ -1118,10 +1118,6 @@ func (qs *QuadStore) markAsDead(ctx context.Context, tx kv.Tx, p *proto.Primitiv
 	return qs.addToLog(ctx, tx, p)
 }
 
-func (qs *QuadStore) delLog(ctx context.Context, tx kv.Tx, id uint64) error {
-	return tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(id)))
-}
-
 func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
 	for _, p := range links {
 		if err := qs.markAsDead(ctx, tx, p); err != nil {
@@ -1571,14 +1567,6 @@ func (qs *QuadStore) getPrimitiveFromLog(ctx context.Context, tx kv.Tx, k uint64
 		return nil, kv.ErrNotFound
 	}
 	return out[0], nil
-}
-
-var quadExistsEnc = binary.LittleEndian
-
-func writePrimToBuf(p *proto.Primitive, buf []byte) {
-	quadExistsEnc.PutUint64(buf[0:8], p.Subject)
-	quadExistsEnc.PutUint64(buf[8:16], p.Predicate)
-	quadExistsEnc.PutUint64(buf[16:24], p.Object)
 }
 
 type Int64Set []uint64

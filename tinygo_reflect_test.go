@@ -67,7 +67,13 @@ func TestDynamicPackagesExcludedFromTinyGo(t *testing.T) {
 		"schema",
 	} {
 		t.Run(dir, func(t *testing.T) {
-			err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+			root, err := os.OpenRoot(dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer root.Close()
+
+			err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -78,7 +84,11 @@ func TestDynamicPackagesExcludedFromTinyGo(t *testing.T) {
 					return nil
 				}
 
-				b, err := os.ReadFile(path)
+				rel, err := filepath.Rel(dir, path)
+				if err != nil {
+					return err
+				}
+				b, err := root.ReadFile(rel)
 				if err != nil {
 					return err
 				}
