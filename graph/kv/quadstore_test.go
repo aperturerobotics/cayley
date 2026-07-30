@@ -210,7 +210,11 @@ func TestApplyDeltas(t *testing.T) {
 	expect(Ops{
 		{opGet, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
 		{opGet, key(bLog, ukey(4)), vAuto, nil},
-		{opPut, key(bLog, ukey(4)), vAuto, nil},
+		{opGet, key("sp", b64Col(1, 2)), hex("0406"), nil},
+		{opPut, key("sp", b64Col(1, 2)), hex("06"), nil},
+		{opGet, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
+		{opDel, key("ops", b64Col(3, 2, 1)), nil, nil},
+		{opDel, key(bLog, ukey(4)), nil, nil},
 		{opGet, key(bMeta, []byte("size")), le(2), nil},
 		{opGet, key(iric("a"), irih("a")), hex("02"), nil},
 		{opGet, key(iric("b"), irih("b")), hex("02"), nil},
@@ -219,7 +223,7 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opDel, key(iric("c"), irih("c")), nil, nil},
 		{opDel, key(irib("c"), irih("c")), nil, nil},
-		{opPut, key(bLog, ukey(3)), vAuto, nil},
+		{opDel, key(bLog, ukey(3)), nil, nil},
 		{opPut, key(bMeta, []byte("size")), le(1), nil},
 	})
 	require.NoError(t, err)

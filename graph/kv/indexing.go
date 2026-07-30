@@ -532,13 +532,7 @@ func (qs *QuadStore) decNodes(ctx context.Context, tx kv.Tx, deltas []graphlog.N
 		if iri, ok := d.Val.(quad.IRI); ok {
 			qs.valueLRU.Del(string(iri))
 		}
-		node, err := createNodePrimitive(d.Val)
-		if err != nil {
-			return err
-		}
-		node.ID = d.ID
-		node.Deleted = true
-		if err := qs.addToLog(ctx, tx, node); err != nil {
+		if err := tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(d.ID))); err != nil {
 			return err
 		}
 	}
@@ -1129,9 +1123,15 @@ func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive
 }
 
 func (qs *QuadStore) markAsDead(ctx context.Context, tx kv.Tx, p *proto.Primitive) error {
-	p.Deleted = true
-	// TODO(barakmich): Add tombstone?
-	return qs.addToLog(ctx, tx, p)
+	qs.indexes.RLock()
+	all := qs.indexes.all
+	qs.indexes.RUnlock()
+	for _, ind := range all {
+		if err := qs.removeFromMapBucket(ctx, tx, ind.KeyFor(p), p.ID); err != nil {
+			return err
+		}
+	}
+	return tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(p.ID)))
 }
 
 func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
@@ -1319,7 +1319,9 @@ func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primit
 	for i := len(options) - 1; i >= 0; i-- {
 		// TODO: batch
 		prim, err := qs.getPrimitiveFromLog(ctx, tx, options[i])
-		if err != nil {
+		if err == kv.ErrNotFound {
+			continue
+		} else if err != nil {
 			return nil, err
 		}
 		if prim.Deleted {
@@ -1394,6 +1396,31 @@ func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64, fresh bo
 	}
 	e.ids = append(e.ids, value)
 	return nil
+}
+
+func (qs *QuadStore) removeFromMapBucket(ctx context.Context, tx kv.Tx, key kv.Key, value uint64) error {
+	buf, err := tx.Get(ctx, key)
+	if err == kv.ErrNotFound {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	ids, err := decodeIndex(buf)
+	if err != nil {
+		return err
+	}
+	out := ids[:0]
+	for _, id := range ids {
+		if id != value {
+			out = append(out, id)
+		}
+	}
+	if len(out) == len(ids) {
+		return nil
+	} else if len(out) == 0 {
+		return tx.Del(ctx, key)
+	}
+	return tx.Put(ctx, key, appendIndex(nil, out))
 }
 
 func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
