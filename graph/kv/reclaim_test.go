@@ -86,6 +86,38 @@ func TestRemoveHalfLargeStoreDropsKeyCountProportionally(t *testing.T) {
 	require.EqualValues(t, total/2, stats.Quads.Value)
 }
 
+// TestRemoveQuadDropsLogKeysAndPostingEntries counts the two things a delete
+// is supposed to reclaim, rather than probing individual keys: entries in the
+// log bucket, and ids listed across every index posting list.
+func TestRemoveQuadDropsLogKeysAndPostingEntries(t *testing.T) {
+	ctx, qs, db := newReclaimTestStore(t)
+	const total = 20
+	adds := make([]graph.Delta, total)
+	for i := range adds {
+		adds[i] = graph.Delta{
+			Quad:   quad.MakeIRI(fmt.Sprintf("subject-%d", i), "shared-predicate", fmt.Sprintf("object-%d", i), ""),
+			Action: graph.Add,
+		}
+	}
+	applyReclaimTestDeltas(t, ctx, qs, adds...)
+	logBefore, postingsBefore := countLogAndPostingEntries(t, ctx, db)
+
+	deletes := make([]graph.Delta, total/2)
+	for i := range deletes {
+		deletes[i] = graph.Delta{Quad: adds[i].Quad, Action: graph.Delete}
+	}
+	applyReclaimTestDeltas(t, ctx, qs, deletes...)
+	logAfter, postingsAfter := countLogAndPostingEntries(t, ctx, db)
+
+	// Each removed quad drops its own log entry plus the subject and object
+	// nodes it was the sole reference for. The shared predicate stays live.
+	require.Equal(t, logBefore-3*len(deletes), logAfter,
+		"log entries: before=%d after=%d", logBefore, logAfter)
+	// Each removed quad is listed once per index.
+	require.Equal(t, postingsBefore-len(qs.indexes.all)*len(deletes), postingsAfter,
+		"posting entries: before=%d after=%d", postingsBefore, postingsAfter)
+}
+
 func TestLegacyTombstonesRemainAbsent(t *testing.T) {
 	ctx, qs, db := newReclaimTestStore(t)
 	q := quad.MakeIRI("legacy-subject", "legacy-predicate", "legacy-object", "")
@@ -322,6 +354,43 @@ func countKVKeys(t testing.TB, ctx context.Context, db hkv.KV) int {
 	})
 	require.NoError(t, err)
 	return count
+}
+
+// countLogAndPostingEntries returns the number of keys in the log bucket and
+// the total number of ids listed across every quad index posting list.
+func countLogAndPostingEntries(t testing.TB, ctx context.Context, db hkv.KV) (int, int) {
+	t.Helper()
+	buckets := make(map[string]struct{})
+	for _, ind := range DefaultQuadIndexes {
+		buckets[string(ind.bucket()[0])] = struct{}{}
+	}
+	var logKeys, postings int
+	err := hkv.View(ctx, db, func(tx hkv.Tx) error {
+		it := tx.Scan(ctx)
+		defer it.Close()
+		for it.Next(ctx) {
+			key := it.Key()
+			if len(key) != 2 {
+				continue
+			}
+			switch bucket := string(key[0]); {
+			case bucket == string(logIndex[0]):
+				logKeys++
+			default:
+				if _, ok := buckets[bucket]; !ok {
+					continue
+				}
+				ids, err := decodeIndex(it.Val())
+				if err != nil {
+					return err
+				}
+				postings += len(ids)
+			}
+		}
+		return it.Err()
+	})
+	require.NoError(t, err)
+	return logKeys, postings
 }
 
 func readMetaInt(t testing.TB, ctx context.Context, db hkv.KV, name string) uint64 {
