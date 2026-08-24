@@ -332,8 +332,12 @@ func (qs *QuadStore) getValFromLog(ctx context.Context, tx kv.Tx, k uint64) (qua
 		return nil, nil
 	}
 	p, err := qs.getPrimitiveFromLog(ctx, tx, k)
-	if err != nil {
+	if err == kv.ErrNotFound {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
+	} else if p.Deleted {
+		return nil, nil
 	}
 	return pquads.UnmarshalValue(ctx, p.Value)
 }

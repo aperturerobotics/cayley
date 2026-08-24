@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/aperturerobotics/cayley/kv"
 	kvoptions "github.com/aperturerobotics/cayley/kv/options"
 	"github.com/pkg/errors"
 )
@@ -58,7 +59,9 @@ func (qs *QuadStore) IterateIndexPrefixNextRefs(
 			liveChecked = true
 			for _, id := range ids {
 				p, err := qs.getPrimitiveFromLog(ctx, tx, id)
-				if err != nil {
+				if err == kv.ErrNotFound {
+					continue
+				} else if err != nil {
 					return false, err
 				}
 				if p != nil && !p.Deleted {
