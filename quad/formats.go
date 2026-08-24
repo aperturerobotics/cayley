@@ -3,8 +3,9 @@ package quad
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 // Format is a description for quad-file formats.

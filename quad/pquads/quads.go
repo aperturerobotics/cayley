@@ -3,8 +3,9 @@ package pquads
 import (
 	"context"
 
-	"github.com/pkg/errors"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/quad"
 )

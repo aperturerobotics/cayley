@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pkg/errors"
 	"io"
 	"slices"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/voc"

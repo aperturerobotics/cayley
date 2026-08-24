@@ -6,8 +6,9 @@ import (
 	"context"
 	"encoding/binary"
 
-	"github.com/pkg/errors"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/pquads/pio"

@@ -30,9 +30,10 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/pkg/errors"
 	"io"
 	"strconv"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/quad"
 )

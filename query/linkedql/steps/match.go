@@ -4,8 +4,9 @@ package steps
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"maps"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/quad"
