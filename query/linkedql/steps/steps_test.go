@@ -103,3 +103,29 @@ func TestLinkedQL(t *testing.T) {
 		})
 	}
 }
+
+func TestRegExpExcludesIRIsByDefault(t *testing.T) {
+	ctx := context.Background()
+	iri := quad.IRI("http://example.com/match")
+	literal := quad.String("match")
+	store := memstore.New(
+		quad.Quad{Subject: iri, Predicate: quad.IRI("http://example.com/p"), Object: literal},
+	)
+	step := &RegExp{
+		From:        &Vertex{Values: []quad.Value{iri, literal}},
+		Expression:  "match",
+		IncludeIRIs: false,
+	}
+	iterator, err := linkedql.BuildIterator(ctx, step, store, &voc.Namespaces{})
+	require.NoError(t, err)
+	defer iterator.Close()
+
+	var got []any
+	for iterator.Next(ctx) {
+		value, err := iterator.Result(ctx)
+		require.NoError(t, err)
+		got = append(got, value)
+	}
+	require.NoError(t, iterator.Err())
+	require.Equal(t, []any{"match"}, got)
+}

@@ -18,7 +18,7 @@ func init() {
 
 var _ linkedql.PathStep = (*Collect)(nil)
 
-// Collect corresponds to .view().
+// Collect resolves RDF list values.
 type Collect struct {
 	From linkedql.PathStep `json:"from"`
 	Name quad.IRI          `json:"name"`

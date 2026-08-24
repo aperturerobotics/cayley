@@ -122,3 +122,7 @@ func TestKeyAppend(t *testing.T) {
 	k = k.AppendBytes([]byte("d"))
 	require.Equal(t, SKey("a", "b", "c", "d"), k)
 }
+
+func TestErrConflictMessage(t *testing.T) {
+	require.Equal(t, "kv: conflict", ErrConflict.Error())
+}

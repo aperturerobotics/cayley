@@ -4,7 +4,8 @@ package jsonld
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+
+	"github.com/pkg/errors"
 	"io"
 	"slices"
 
@@ -237,7 +238,7 @@ func ToNode(value quad.Value) (ld.Node, error) {
 	case quad.LangString:
 		return ld.NewLiteral(string(v.Value), "", v.Lang), nil
 	default:
-		return nil, fmt.Errorf("can not convert %v to ld.Node", value)
+		return nil, errors.Errorf("can not convert %v to ld.Node", value)
 	}
 }
 
@@ -306,6 +307,6 @@ func toValue(t ld.Node) quad.Value {
 		}
 		return quad.String(t.Value)
 	default:
-		panic(fmt.Errorf("unexpected term type: %T", t))
+		panic(errors.Errorf("unexpected term type: %T", t))
 	}
 }

@@ -2,7 +2,8 @@ package quad
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/pkg/errors"
 	"io"
 )
 
@@ -35,18 +36,18 @@ var (
 // RegisterFormat registers a new quad-file format.
 func RegisterFormat(f Format) {
 	if _, ok := formatsByName[f.Name]; ok {
-		panic(fmt.Errorf("format %s is already registered", f.Name))
+		panic(errors.Errorf("format %s is already registered", f.Name))
 	}
 	formatsByName[f.Name] = &f
 	for _, m := range f.Ext {
 		if sf, ok := formatsByExt[m]; ok {
-			panic(fmt.Errorf("format %s is already registered with MIME %s", sf.Name, m))
+			panic(errors.Errorf("format %s is already registered with MIME %s", sf.Name, m))
 		}
 		formatsByExt[m] = &f
 	}
 	for _, m := range f.Mime {
 		if sf, ok := formatsByMime[m]; ok {
-			panic(fmt.Errorf("format %s is already registered with MIME %s", sf.Name, m))
+			panic(errors.Errorf("format %s is already registered with MIME %s", sf.Name, m))
 		}
 		formatsByMime[m] = &f
 	}

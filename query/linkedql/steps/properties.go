@@ -4,7 +4,7 @@ package steps
 
 import (
 	"context"
-	"fmt"
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/quad"
@@ -32,11 +32,11 @@ func (s *Properties) Description() string {
 
 func resolveNames(names *linkedql.PropertyPath) (linkedql.PropertyIRIs, error) {
 	if names == nil {
-		return nil, fmt.Errorf("not implemented: should tag all properties")
+		return nil, errors.Errorf("not implemented: should tag all properties")
 	}
 	switch n := names.PropertyPathI.(type) {
 	case linkedql.PropertyStep:
-		return nil, fmt.Errorf("not implemented: should use step to resolve to properties")
+		return nil, errors.Errorf("not implemented: should use step to resolve to properties")
 	case linkedql.PropertyIRIs:
 		return n, nil
 	case linkedql.PropertyIRIStrings:
@@ -46,7 +46,7 @@ func resolveNames(names *linkedql.PropertyPath) (linkedql.PropertyIRIs, error) {
 	case linkedql.PropertyIRIString:
 		return linkedql.PropertyIRIs{linkedql.PropertyIRI(n)}, nil
 	default:
-		return nil, fmt.Errorf("unexpected type")
+		return nil, errors.Errorf("unexpected type")
 	}
 }
 

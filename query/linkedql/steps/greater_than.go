@@ -27,7 +27,7 @@ type GreaterThan struct {
 
 // Description implements Step.
 func (s *GreaterThan) Description() string {
-	return "Greater than equals filters out values that are not greater than given value"
+	return "Greater than or equal filters out values that are not greater than the given value"
 }
 
 // BuildPath implements linkedql.PathStep.

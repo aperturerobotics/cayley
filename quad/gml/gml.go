@@ -3,6 +3,7 @@ package gml
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -26,6 +27,7 @@ type Writer struct {
 	w       io.Writer
 	written bool
 	err     error
+	closed  bool
 
 	nodes map[string]int
 	cur   int
@@ -62,6 +64,9 @@ func escape(s string) string {
 }
 
 func (w *Writer) WriteQuad(ctx context.Context, q quad.Quad) error {
+	if w.closed {
+		return errors.New("closed")
+	}
 	if w.err != nil {
 		return w.err
 	} else if !q.IsValid() {
@@ -105,7 +110,7 @@ func (w *Writer) Close() error {
 	if _, w.err = w.w.Write([]byte(footer)); w.err != nil {
 		return w.err
 	}
-	w.err = fmt.Errorf("closed")
+	w.closed = true
 	return nil
 }
 

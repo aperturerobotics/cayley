@@ -36,5 +36,5 @@ func (s *LessThan) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Na
 	if err != nil {
 		return nil, err
 	}
-	return fromPath.Filter(iterator.CompareLT, s.Value), nil
+	return fromPath.Filter(iterator.CompareLT, linkedql.AbsoluteValue(s.Value, ns)), nil
 }

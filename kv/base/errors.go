@@ -1,9 +1,9 @@
 package base
 
-import "fmt"
+import "github.com/pkg/errors"
 
 // ErrVolatile is returned when trying to pass a path for opening an in-memory database.
-var ErrVolatile = fmt.Errorf("database is in-memory")
+var ErrVolatile = errors.New("database is in-memory")
 
 var _ error = ErrRegistered{}
 

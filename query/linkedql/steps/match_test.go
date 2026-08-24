@@ -6,6 +6,7 @@ import (
 
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/voc"
+	"github.com/aperturerobotics/cayley/query/linkedql"
 	"github.com/aperturerobotics/cayley/query/path"
 	"github.com/stretchr/testify/require"
 )
@@ -101,4 +102,12 @@ func TestBuildPath(t *testing.T) {
 			require.Equal(t, expectedShape, shape)
 		})
 	}
+}
+
+func TestContextualizePatternPreservesContext(t *testing.T) {
+	ns := voc.Namespaces{}
+	ns.Register(voc.Namespace{Prefix: "ex", Full: "http://example.com/"})
+	pattern := linkedql.GraphPattern{"@id": "ex:thing"}
+	contextualized := contextualizePattern(pattern, &ns)
+	require.Equal(t, "http://example.com/", contextualized["@context"].(map[string]any)["ex"])
 }

@@ -241,26 +241,26 @@ type valueWriter struct {
 }
 
 func (w *valueWriter) apply(q *Quad) error {
-	if v, err := w.fnc(Subject, q.Subject); err != nil {
+	v, err := w.fnc(Subject, q.Subject)
+	if err != nil {
 		return err
-	} else {
-		q.Subject = v
 	}
-	if v, err := w.fnc(Predicate, q.Predicate); err != nil {
+	q.Subject = v
+	v, err = w.fnc(Predicate, q.Predicate)
+	if err != nil {
 		return err
-	} else {
-		q.Predicate = v
 	}
-	if v, err := w.fnc(Object, q.Object); err != nil {
+	q.Predicate = v
+	v, err = w.fnc(Object, q.Object)
+	if err != nil {
 		return err
-	} else {
-		q.Object = v
 	}
-	if v, err := w.fnc(Label, q.Label); err != nil {
+	q.Object = v
+	v, err = w.fnc(Label, q.Label)
+	if err != nil {
 		return err
-	} else {
-		q.Label = v
 	}
+	q.Label = v
 	return nil
 }
 

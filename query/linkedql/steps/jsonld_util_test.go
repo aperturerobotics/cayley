@@ -130,7 +130,12 @@ var testCases = []struct {
 func TestIsomorphic(t *testing.T) {
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			require.Equal(t, c.expected, isomorphic(c.source, c.target))
+			err := isomorphic(c.source, c.target)
+			if c.expected == nil {
+				require.NoError(t, err)
+				return
+			}
+			require.EqualError(t, err, c.expected.Error())
 		})
 	}
 }

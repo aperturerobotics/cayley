@@ -5,7 +5,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
+
+	"github.com/pkg/errors"
 	"io"
 
 	"github.com/aperturerobotics/cayley/quad"
@@ -164,12 +165,12 @@ func NewReader(r io.Reader, maxSize int) *Reader {
 		qr.err = err
 		return qr
 	} else if !bytes.Equal(magic[:], buf[:4]) {
-		qr.err = fmt.Errorf("not a pquads file")
+		qr.err = errors.Errorf("not a pquads file")
 		return qr
 	}
 	vers := binary.LittleEndian.Uint32(buf[4:])
 	if vers != currentVersion {
-		qr.err = fmt.Errorf("unsupported pquads version: %d", vers)
+		qr.err = errors.Errorf("unsupported pquads version: %d", vers)
 		return qr
 	}
 

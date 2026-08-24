@@ -4,9 +4,10 @@ package json
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
+	stdErrors "errors"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/quad"
 )
@@ -64,7 +65,7 @@ func (r *Reader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 	q := r.quads[r.n]
 	r.n++
 	if !q.IsValid() {
-		return quad.Quad{}, fmt.Errorf("invalid quad at index %d. %s", r.n-1, q)
+		return quad.Quad{}, errors.Errorf("invalid quad at index %d. %s", r.n-1, q)
 	}
 	return q, nil
 }
@@ -101,7 +102,7 @@ type Writer struct {
 
 func (w *Writer) WriteQuad(ctx context.Context, q quad.Quad) error {
 	if w.closed {
-		return errors.New("closed")
+		return stdErrors.New("closed")
 	} else if !q.IsValid() {
 		return quad.ErrInvalid
 	}

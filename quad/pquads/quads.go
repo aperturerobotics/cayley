@@ -2,7 +2,8 @@ package pquads
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/pkg/errors"
 	"time"
 
 	"github.com/aperturerobotics/cayley/quad"
@@ -47,7 +48,7 @@ func MakeValue(qv quad.Value) *Value {
 			Nanos:   nanos,
 		}}}
 	default:
-		panic(fmt.Errorf("unsupported type: %T", qv))
+		panic(errors.Errorf("unsupported type: %T", qv))
 	}
 }
 
@@ -110,7 +111,7 @@ func (m *Value) ToNative() (qv quad.Value) {
 		}
 		return quad.Time(t)
 	default:
-		panic(fmt.Errorf("unsupported type: %T", m.Value))
+		panic(errors.Errorf("unsupported type: %T", m.Value))
 	}
 }
 
@@ -125,7 +126,7 @@ func (m *StrictQuad_Ref) ToNative() (qv quad.Value) {
 	case *StrictQuad_Ref_BnodeLabel:
 		return quad.BNode(v.BnodeLabel)
 	default:
-		panic(fmt.Errorf("unsupported type: %T", m.Value))
+		panic(errors.Errorf("unsupported type: %T", m.Value))
 	}
 }
 
@@ -150,7 +151,7 @@ func makeRef(v quad.Value) (*StrictQuad_Ref, error) {
 	case quad.IRI:
 		sv = &StrictQuad_Ref_Iri{Iri: string(v)}
 	default:
-		return nil, fmt.Errorf("unexpected type for ref: %T", v)
+		return nil, errors.Errorf("unexpected type for ref: %T", v)
 	}
 	return &StrictQuad_Ref{Value: sv}, nil
 }

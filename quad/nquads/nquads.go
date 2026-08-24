@@ -29,7 +29,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
+
+	"github.com/pkg/errors"
 	"io"
 	"strconv"
 
@@ -124,7 +125,7 @@ func (dec *Reader) ReadQuad(ctx context.Context) (quad.Quad, error) {
 		q, err = Parse(string(line))
 	}
 	if err != nil {
-		return quad.Quad{}, fmt.Errorf("failed to parse %q: %v", dec.line, err)
+		return quad.Quad{}, errors.Errorf("failed to parse %q: %v", dec.line, err)
 	}
 	if !q.IsValid() {
 		return dec.ReadQuad(ctx)
@@ -179,7 +180,7 @@ func unEscape(r []rune, spec int, isQuoted, isEscaped bool) quad.Value {
 				case 'u':
 					rc, err := strconv.ParseInt(string(r[i+1:i+5]), 16, 32)
 					if err != nil {
-						panic(fmt.Errorf("internal parser error: %v", err))
+						panic(errors.Errorf("internal parser error: %v", err))
 					}
 					buf.WriteRune(rune(rc))
 					i += 5
@@ -187,7 +188,7 @@ func unEscape(r []rune, spec int, isQuoted, isEscaped bool) quad.Value {
 				case 'U':
 					rc, err := strconv.ParseInt(string(r[i+1:i+9]), 16, 32)
 					if err != nil {
-						panic(fmt.Errorf("internal parser error: %v", err))
+						panic(errors.Errorf("internal parser error: %v", err))
 					}
 					buf.WriteRune(rune(rc))
 					i += 9
@@ -262,7 +263,7 @@ func unEscapeRaw(r []rune, isEscaped bool) quad.Value {
 			case 'u':
 				rc, err := strconv.ParseInt(string(r[i+1:i+5]), 16, 32)
 				if err != nil {
-					panic(fmt.Errorf("internal parser error: %v", err))
+					panic(errors.Errorf("internal parser error: %v", err))
 				}
 				buf.WriteRune(rune(rc))
 				i += 5
@@ -270,7 +271,7 @@ func unEscapeRaw(r []rune, isEscaped bool) quad.Value {
 			case 'U':
 				rc, err := strconv.ParseInt(string(r[i+1:i+9]), 16, 32)
 				if err != nil {
-					panic(fmt.Errorf("internal parser error: %v", err))
+					panic(errors.Errorf("internal parser error: %v", err))
 				}
 				buf.WriteRune(rune(rc))
 				i += 9

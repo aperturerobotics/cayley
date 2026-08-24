@@ -4,7 +4,7 @@ package steps
 
 import (
 	"context"
-	"fmt"
+	"github.com/pkg/errors"
 	"maps"
 
 	"github.com/aperturerobotics/cayley/graph"
@@ -128,7 +128,7 @@ func contextualizePattern(pattern linkedql.GraphPattern, ns *voc.Namespaces) lin
 		"@context": context,
 	}
 	maps.Copy(patternClone, pattern)
-	return pattern
+	return patternClone
 }
 
 func quadsFromMap(ctx context.Context, o any) ([]quad.Quad, error) {
@@ -140,7 +140,7 @@ func normalizeQuads(quads []quad.Quad, pattern linkedql.GraphPattern) ([]quad.Qu
 	if id, ok := pattern["@id"]; ok && len(quads) == 0 {
 		idString, ok := id.(string)
 		if !ok {
-			return nil, fmt.Errorf("unexpected type for @id %T", idString)
+			return nil, errors.Errorf("unexpected type for @id %T", idString)
 		}
 		quads = append(quads, makeSingleEntityQuad(quad.IRI(idString)))
 	}
@@ -158,7 +158,7 @@ func parsePattern(ctx context.Context, pattern linkedql.GraphPattern, ns *voc.Na
 		return nil, err
 	}
 	if len(quads) == 0 && len(pattern) != 0 {
-		return nil, fmt.Errorf("pattern does not parse to any quad. `{}` is the only pattern allowed to not parse to any quad")
+		return nil, errors.Errorf("pattern does not parse to any quad. `{}` is the only pattern allowed to not parse to any quad")
 	}
 	return quads, nil
 }

@@ -14,9 +14,6 @@ func Tag(it Shape, tag string) Shape {
 	if s, ok := it.(TaggerShape); ok {
 		s.AddTags(tag)
 		return s
-	} else if s, ok := it.(TaggerShape); ok {
-		s.AddTags(tag)
-		return s
 	}
 	return NewSave(it, tag)
 }

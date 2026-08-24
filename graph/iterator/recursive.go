@@ -17,7 +17,7 @@ type seenAt struct {
 	val   refs.Ref
 }
 
-var DefaultMaxRecursiveSteps = 50
+const DefaultMaxRecursiveSteps = 50
 
 // Recursive iterator takes a base iterator and a morphism to be applied recursively, for each result.
 type Recursive struct {
@@ -71,8 +71,11 @@ func (it *Recursive) Stats(ctx context.Context) (Costs, error) {
 	fanoutit := it.morphism(ctx, base)
 	fanoutStats, err := fanoutit.Stats(ctx)
 	subitStats, err2 := it.subIt.Stats(ctx)
-	if err == nil {
-		err = err2
+	if err != nil {
+		return Costs{}, err
+	}
+	if err2 != nil {
+		return Costs{}, err2
 	}
 	size := int64(math.Pow(float64(subitStats.Size.Value*fanoutStats.Size.Value), 5))
 	return Costs{
@@ -329,7 +332,7 @@ func (it *recursiveContains) Contains(ctx context.Context, val refs.Ref) (bool, 
 	for it.next.Next(ctx) {
 		res, err := it.next.Result(ctx)
 		if err != nil {
-			return false, nil
+			return false, err
 		}
 		if refs.ToKey(res) == key {
 			return true, nil

@@ -4,16 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync/atomic"
 
 	"github.com/aperturerobotics/cayley/kv"
+	"github.com/sirupsen/logrus"
 )
 
 var _ kv.KV = (*KV)(nil)
 
-func New(kv kv.KV) *KV {
-	return &KV{KV: kv}
+func New(kv kv.KV, le ...*logrus.Entry) *KV {
+	var logger *logrus.Entry
+	if len(le) != 0 {
+		logger = le[0]
+	}
+	return &KV{KV: kv, le: logger}
 }
 
 type Stats struct {
@@ -48,12 +52,13 @@ type KV struct {
 		iter int64
 	}
 	log bool
+	le  *logrus.Entry
 
 	KV kv.KV
 }
 
 func (d *KV) logging() bool {
-	return d.log
+	return d.log && d.le != nil
 }
 
 func (d *KV) Log(v bool) {
@@ -155,7 +160,7 @@ func (tx *kvTX) Get(ctx context.Context, k kv.Key) (kv.Value, error) {
 		atomic.AddInt64(&d.stats.Errs, 1)
 	}
 	if d.logging() {
-		log.Printf("get: %q = %q (%v)", k, v, err)
+		d.le.Printf("get: %q = %q (%v)", k, v, err)
 	}
 	return v, err
 }
@@ -173,9 +178,9 @@ func (tx *kvTX) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error)
 		}
 	}
 	if d.logging() {
-		log.Printf("get batch: %d (%v)", len(keys), err)
+		d.le.Printf("get batch: %d (%v)", len(keys), err)
 		for i := range vals {
-			log.Printf("get: %q = %q", keys[i], vals[i])
+			d.le.Printf("get: %q = %q", keys[i], vals[i])
 		}
 	}
 	return vals, err
@@ -192,7 +197,7 @@ func (tx *kvTX) Put(ctx context.Context, k kv.Key, v kv.Value) error {
 		atomic.AddInt64(&d.stats.Errs, 1)
 	}
 	if d.logging() {
-		log.Printf("put: %q = %q (%v)", k, v, err)
+		d.le.Printf("put: %q = %q (%v)", k, v, err)
 	}
 	return err
 }
@@ -208,7 +213,7 @@ func (tx *kvTX) Del(ctx context.Context, k kv.Key) error {
 		atomic.AddInt64(&d.stats.Errs, 1)
 	}
 	if d.logging() {
-		log.Printf("del: %q (%v)", k, err)
+		d.le.Printf("del: %q (%v)", k, err)
 	}
 	return err
 }
@@ -218,7 +223,7 @@ func (tx *kvTX) Scan(ctx context.Context, opts ...kv.IteratorOption) kv.Iterator
 	atomic.AddInt64(&d.running.iter, 1)
 	atomic.AddInt64(&d.stats.Iter.N, 1)
 	if d.logging() {
-		log.Printf("scan: %+v", opts)
+		d.le.Printf("scan: %+v", opts)
 	}
 	return &kvIter{kv: tx.kv, it: tx.tx.Scan(ctx, opts...)}
 }
@@ -234,7 +239,7 @@ func (it *kvIter) Reset() {
 	it.it.Reset()
 	it.err = nil
 	if d.logging() {
-		log.Printf("reset")
+		d.le.Printf("reset")
 	}
 }
 
@@ -242,13 +247,13 @@ func (it *kvIter) Next(ctx context.Context) bool {
 	d := it.kv
 	if !it.it.Next(ctx) {
 		if d.logging() {
-			log.Printf("scan: %v", false)
+			d.le.Printf("scan: %v", false)
 		}
 		return false
 	}
 	atomic.AddInt64(&d.stats.Iter.Next, 1)
 	if d.logging() {
-		log.Printf("scan: %q = %q", it.it.Key(), it.it.Val())
+		d.le.Printf("scan: %q = %q", it.it.Key(), it.it.Val())
 	}
 	return true
 }

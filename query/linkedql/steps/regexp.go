@@ -43,5 +43,5 @@ func (s *RegExp) BuildPath(ctx context.Context, qs graph.QuadStore, ns *voc.Name
 	if s.IncludeIRIs {
 		return fromPath.RegexWithRefs(pattern), nil
 	}
-	return fromPath.RegexWithRefs(pattern), nil
+	return fromPath.Regex(pattern), nil
 }

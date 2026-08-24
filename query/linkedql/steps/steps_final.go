@@ -58,9 +58,6 @@ func (s *Documents) BuildIterator(ctx context.Context, qs graph.QuadStore, ns *v
 	if err != nil {
 		return nil, err
 	}
-	it, err := linkedql.NewValueIterator(p, qs), nil
-	if err != nil {
-		return nil, err
-	}
+	it := linkedql.NewValueIterator(p, qs)
 	return linkedql.NewDocumentIterator(it), nil
 }

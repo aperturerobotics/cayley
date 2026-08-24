@@ -2,7 +2,7 @@ package iterator
 
 import (
 	"context"
-	"fmt"
+	"github.com/pkg/errors"
 
 	"github.com/aperturerobotics/cayley/graph/refs"
 	"github.com/aperturerobotics/cayley/quad"
@@ -275,7 +275,7 @@ func (c *Chain) TagEach(ctx context.Context, fnc func(map[string]refs.Ref) error
 	return c.it.Err()
 }
 
-var errNoQuadStore = fmt.Errorf("no quad store in Iterate")
+var errNoQuadStore = errors.Errorf("no quad store in Iterate")
 
 // EachValue is an analog of Each, but it will additionally call NameOf
 // for each graph.Ref before passing it to a callback.
@@ -358,12 +358,8 @@ func (c *Chain) SendValues(ctx context.Context, qs refs.Namer, out chan<- quad.V
 		if err != nil {
 			return err
 		}
-		nv, err := c.qs.NameOf(ctx, res)
-		if err != nil || nv == nil {
-			return err
-		}
 		nvResult, err := c.qs.NameOf(ctx, res)
-		if err != nil {
+		if err != nil || nvResult == nil {
 			return err
 		}
 		select {
@@ -414,7 +410,6 @@ func (c *Chain) TagValues(ctx context.Context, qs refs.Namer, fnc func(map[strin
 				return err
 			}
 		}
-		fnc(vm)
-		return nil
+		return fnc(vm)
 	})
 }

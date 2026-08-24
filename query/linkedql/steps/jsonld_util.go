@@ -3,7 +3,7 @@
 package steps
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -41,19 +41,19 @@ func isomorphic(source any, target any) error {
 	case string:
 		t, ok := target.(string)
 		if !ok {
-			return fmt.Errorf("expected %v to be a string but instead received %T", target, target)
+			return errors.Errorf("expected %v to be a string but instead received %T", target, target)
 		}
 		if s != t {
-			return fmt.Errorf("expected \"%v\" but instead received \"%v\"", s, t)
+			return errors.Errorf("expected \"%v\" but instead received \"%v\"", s, t)
 		}
 		return nil
 	case ldArray:
 		t, ok := target.(ldArray)
 		if !ok {
-			return fmt.Errorf("expected multiple values but instead received the single value: %#v", target)
+			return errors.Errorf("expected multiple values but instead received the single value: %#v", target)
 		}
 		if len(s) != len(t) {
-			return fmt.Errorf("expected %#v and %#v to have the same length", s, t)
+			return errors.Errorf("expected %#v and %#v to have the same length", s, t)
 		}
 	items:
 		for _, i := range s {
@@ -62,13 +62,13 @@ func isomorphic(source any, target any) error {
 					continue items
 				}
 			}
-			return fmt.Errorf("no matching values for the item %#v in %#v", i, t)
+			return errors.Errorf("no matching values for the item %#v in %#v", i, t)
 		}
 		return nil
 	case ldMap:
 		t, ok := target.(ldMap)
 		if !ok {
-			return fmt.Errorf("expected %#v to be a map or a slice with a single map but instead received %T", target, target)
+			return errors.Errorf("expected %#v to be a map or a slice with a single map but instead received %T", target, target)
 		}
 		for k, v := range s {
 			tV := t[k]
