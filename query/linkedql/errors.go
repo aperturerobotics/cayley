@@ -9,8 +9,11 @@ import (
 
 func formatMultiError(errors []error) error {
 	var joinedErr strings.Builder
-	for _, err := range errors {
-		joinedErr.WriteString("; " + err.Error())
+	for i, err := range errors {
+		if i > 0 {
+			joinedErr.WriteString("; ")
+		}
+		joinedErr.WriteString(err.Error())
 	}
 	return fmt.Errorf("could not parse PropertyPath: %v", joinedErr.String())
 }
