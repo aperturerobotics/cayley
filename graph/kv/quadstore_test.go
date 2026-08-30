@@ -280,6 +280,68 @@ func TestApplyDeltasSkipsZeroRefcountUpdates(t *testing.T) {
 	}
 }
 
+func TestApplyDeltasResolvesAddedQuadNodesWithNetDecrement(t *testing.T) {
+	ctx := context.Background()
+	store := btree.New()
+	require.NoError(t, kv.Init(ctx, store, nil))
+
+	graphStore, err := kv.New(ctx, store, nil)
+	require.NoError(t, err)
+	defer graphStore.Close()
+
+	quadStore, ok := graphStore.(*kv.QuadStore)
+	require.True(t, ok)
+	quadWriter, err := writer.NewSingle(quadStore, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	firstOwner := quad.MakeIRI("owner-a", "gc/ref", "shared", "")
+	secondOwner := quad.MakeIRI("owner-b", "gc/ref", "shared", "")
+	unreferenced := quad.MakeIRI("unreferenced", "gc/ref", "shared", "")
+	require.NoError(t, quadWriter.AddQuad(ctx, firstOwner))
+	require.NoError(t, quadWriter.AddQuad(ctx, secondOwner))
+
+	require.NoError(t, quadStore.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: unreferenced, Action: graph.Add},
+		{Quad: firstOwner, Action: graph.Delete},
+		{Quad: secondOwner, Action: graph.Delete},
+	}, graph.IgnoreOpts{IgnoreDup: true, IgnoreMissing: true}))
+
+	stats, err := quadStore.Stats(ctx, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, stats.Quads.Value)
+	require.NoError(t, quadWriter.RemoveQuad(ctx, unreferenced))
+}
+
+func TestApplyDeltasIgnoreDupAfterReopen(t *testing.T) {
+	ctx := context.Background()
+	store := btree.New()
+	require.NoError(t, kv.Init(ctx, store, nil))
+
+	graphStore, err := kv.New(ctx, store, nil)
+	require.NoError(t, err)
+	quadStore, ok := graphStore.(*kv.QuadStore)
+	require.True(t, ok)
+	quadWriter, err := writer.NewSingle(quadStore, graph.IgnoreOpts{})
+	require.NoError(t, err)
+
+	q := quad.MakeIRI("subject", "predicate", "object", "")
+	require.NoError(t, quadWriter.AddQuad(ctx, q))
+	require.NoError(t, graphStore.Close())
+
+	reopened, err := kv.New(ctx, store, nil)
+	require.NoError(t, err)
+	defer reopened.Close()
+	reopenedStore, ok := reopened.(*kv.QuadStore)
+	require.True(t, ok)
+	require.NoError(t, reopenedStore.ApplyDeltas(ctx, []graph.Delta{
+		{Quad: q, Action: graph.Add},
+	}, graph.IgnoreOpts{IgnoreDup: true}))
+
+	stats, err := reopenedStore.Stats(ctx, true)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, stats.Quads.Value)
+}
+
 func TestApplyDeltasIgnoreDupWithLabeledVariant(t *testing.T) {
 	kdb := btree.New()
 	ctx := context.Background()
