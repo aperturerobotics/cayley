@@ -663,11 +663,6 @@ func (qs *QuadStore) precheckAddDeltas(
 			continue
 		}
 		qh := quadHashOf(d.Quad)
-		if ignoreOpts.IgnoreDup {
-			if _, ok := qs.quadExists[qh]; !ok {
-				continue
-			}
-		}
 		if qhashes == nil {
 			qhashes = make([]refs.QuadHash, len(in))
 			check = make([]bool, len(in))
@@ -868,6 +863,18 @@ func (qs *QuadStore) applyAddDeltas(
 		return nil, err
 	}
 	deltas.IncNode = nil
+
+	// Added quads can reference an existing node whose net reference count
+	// decreases in the same transaction. Keep those resolved IDs available to
+	// the link builder even though their count update belongs to DecNode.
+	for hash, id := range resolved {
+		if id == 0 {
+			continue
+		}
+		if _, ok := nodes[hash]; !ok {
+			nodes[hash] = resolvedNode{ID: id}
+		}
+	}
 
 	links := make([]*proto.Primitive, 0, len(deltas.QuadAdd))
 	linkHashes := make([]refs.QuadHash, 0, len(deltas.QuadAdd))
