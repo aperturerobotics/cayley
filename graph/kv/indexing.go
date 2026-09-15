@@ -1122,21 +1122,32 @@ func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive
 	return qs.addToLog(ctx, tx, p)
 }
 
-func (qs *QuadStore) markAsDead(ctx context.Context, tx kv.Tx, p *proto.Primitive) error {
+func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
 	qs.indexes.RLock()
 	all := qs.indexes.all
 	qs.indexes.RUnlock()
+	// Reclaim each posting once. Temporary owners can hold millions of links;
+	// rewriting their shared posting for every deleted link is quadratic.
 	for _, ind := range all {
-		if err := qs.removeFromMapBucket(ctx, tx, ind.KeyFor(p), p.ID); err != nil {
-			return err
+		postings := make(map[string][]uint64)
+		for _, p := range links {
+			key := string(ind.KeyFor(p)[1])
+			postings[key] = append(postings[key], p.ID)
+		}
+		keys := make([]string, 0, len(postings))
+		for key := range postings {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if err := qs.removeFromMapBucket(ctx, tx, ind.bucket().AppendBytes([]byte(key)), postings[key]...); err != nil {
+				return err
+			}
 		}
 	}
-	return tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(p.ID)))
-}
 
-func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
 	for _, p := range links {
-		if err := qs.markAsDead(ctx, tx, p); err != nil {
+		if err := tx.Del(ctx, logIndex.AppendBytes(uint64KeyBytesBase10(p.ID))); err != nil {
 			return err
 		}
 	}
@@ -1398,7 +1409,7 @@ func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64, fresh bo
 	return nil
 }
 
-func (qs *QuadStore) removeFromMapBucket(ctx context.Context, tx kv.Tx, key kv.Key, value uint64) error {
+func (qs *QuadStore) removeFromMapBucket(ctx context.Context, tx kv.Tx, key kv.Key, values ...uint64) error {
 	buf, err := tx.Get(ctx, key)
 	if err == kv.ErrNotFound {
 		return nil
@@ -1409,9 +1420,13 @@ func (qs *QuadStore) removeFromMapBucket(ctx context.Context, tx kv.Tx, key kv.K
 	if err != nil {
 		return err
 	}
+	removed := make(map[uint64]struct{}, len(values))
+	for _, value := range values {
+		removed[value] = struct{}{}
+	}
 	out := ids[:0]
 	for _, id := range ids {
-		if id != value {
+		if _, remove := removed[id]; !remove {
 			out = append(out, id)
 		}
 	}
