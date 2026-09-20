@@ -2,7 +2,7 @@ package graphlog
 
 import (
 	"bytes"
-	"sort"
+	"slices"
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/graph/refs"
@@ -66,27 +66,30 @@ func InsertQuads(in []quad.Quad) *Deltas {
 	for _, n := range hnodes {
 		incNodes = append(incNodes, *n)
 	}
-	sort.Slice(incNodes, func(i, j int) bool {
-		return bytes.Compare(incNodes[i].Hash[:], incNodes[j].Hash[:]) < 0
-	})
+	slices.SortFunc(incNodes, compareNodeUpdates)
 	return &Deltas{
 		IncNode: incNodes,
 		QuadAdd: quadAdd,
 	}
 }
 
+// SplitDeltas keeps addition and removal counts separate until duplicate and
+// missing quads have been resolved by the store. A node can occur in both sets.
 func SplitDeltas(in []graph.Delta) *Deltas {
-	hnodes := make(map[refs.ValueHash]*NodeUpdate, len(in)*2)
+	added := make(map[refs.ValueHash]*NodeUpdate, len(in))
+	removed := make(map[refs.ValueHash]*NodeUpdate, len(in))
 	quadAdd := make([]QuadUpdate, 0, len(in))
 	quadDel := make([]QuadUpdate, 0, len(in)/2)
 	var nadd, ndel int
 	for i, d := range in {
 		dn := 0
+		hnodes := added
 		switch d.Action {
 		case graph.Add:
 			dn = +1
 			nadd++
 		case graph.Delete:
+			hnodes = removed
 			dn = -1
 			ndel++
 		default:
@@ -116,21 +119,21 @@ func SplitDeltas(in []graph.Delta) *Deltas {
 	}
 	incNodes := make([]NodeUpdate, 0, nadd)
 	decNodes := make([]NodeUpdate, 0, ndel)
-	for _, n := range hnodes {
-		if n.RefInc >= 0 {
-			incNodes = append(incNodes, *n)
-		} else {
-			decNodes = append(decNodes, *n)
-		}
+	for _, n := range added {
+		incNodes = append(incNodes, *n)
 	}
-	sort.Slice(incNodes, func(i, j int) bool {
-		return bytes.Compare(incNodes[i].Hash[:], incNodes[j].Hash[:]) < 0
-	})
-	sort.Slice(decNodes, func(i, j int) bool {
-		return bytes.Compare(decNodes[i].Hash[:], decNodes[j].Hash[:]) < 0
-	})
+	for _, n := range removed {
+		decNodes = append(decNodes, *n)
+	}
+
+	slices.SortFunc(incNodes, compareNodeUpdates)
+	slices.SortFunc(decNodes, compareNodeUpdates)
 	return &Deltas{
 		IncNode: incNodes, DecNode: decNodes,
 		QuadAdd: quadAdd, QuadDel: quadDel,
 	}
+}
+
+func compareNodeUpdates(a, b NodeUpdate) int {
+	return bytes.Compare(a.Hash[:], b.Hash[:])
 }
