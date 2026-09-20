@@ -166,11 +166,11 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(irib("c"), irih("c")), vAuto, nil},
 		{opPut, key(bLog, ukey(3)), vAuto, nil},
 
+		{opPut, key(bLog, ukey(4)), vAuto, nil},
+		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 		{opPut, key(iric("a"), irih("a")), hex("01"), nil},
 		{opPut, key(iric("b"), irih("b")), hex("01"), nil},
 		{opPut, key(iric("c"), irih("c")), hex("01"), nil},
-		{opPut, key(bLog, ukey(4)), vAuto, nil},
-		{opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 		// New-node index keys blind-write: the posting list cannot pre-exist.
 		{opPut, key("ops", b64Col(3, 2, 1)), hex("04"), nil},
 		{opPut, key("sp", b64Col(1, 2)), hex("04"), nil},
@@ -191,13 +191,13 @@ func TestApplyDeltas(t *testing.T) {
 		{opPut, key(irib("e"), irih("e")), vAuto, nil},
 		{opPut, key(bLog, ukey(5)), vAuto, nil},
 
+		{opPut, key(bLog, ukey(6)), vAuto, nil},
+		{opGet, key(bMeta, []byte("size")), le(1), nil},
 		{opGet, key(iric("a"), irih("a")), hex("01"), nil},
 		{opGet, key(iric("b"), irih("b")), hex("01"), nil},
 		{opPut, key(iric("a"), irih("a")), hex("02"), nil},
 		{opPut, key(iric("b"), irih("b")), hex("02"), nil},
 		{opPut, key(iric("e"), irih("e")), hex("01"), nil},
-		{opPut, key(bLog, ukey(6)), vAuto, nil},
-		{opGet, key(bMeta, []byte("size")), le(1), nil},
 		// New object node: ops posting list blind-writes; sp exists, so it merges.
 		{opPut, key("ops", b64Col(5, 2, 1)), hex("06"), nil},
 		{opGet, key("sp", b64Col(1, 2)), hex("04"), nil},
