@@ -18,13 +18,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"io"
 	"math/big"
 	"runtime/trace"
 	"slices"
-	"sort"
 	"strconv"
 
 	"github.com/aperturerobotics/cayley/clog"
@@ -37,6 +34,7 @@ import (
 	b58 "github.com/mr-tron/base58/base58"
 
 	"github.com/aperturerobotics/cayley/kv"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -187,7 +185,7 @@ func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
 	}
 	out, err := decodeQuadIndexes(val)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode indexes: %v", err)
+		return nil, errors.Errorf("cannot decode indexes: %v", err)
 	} else if len(out) == 0 {
 		return DefaultQuadIndexes, nil
 	}
@@ -278,7 +276,7 @@ func (qs *QuadStore) getMetaIntTx(ctx context.Context, tx kv.Tx, key string) (in
 	if err == kv.ErrNotFound {
 		return 0, err
 	} else if err != nil {
-		return 0, fmt.Errorf("cannot get horizon value: %v", err)
+		return 0, errors.Errorf("cannot get horizon value: %v", err)
 	}
 	return int64(binary.LittleEndian.Uint64(val)), nil
 }
@@ -299,7 +297,7 @@ func (qs *QuadStore) incMetaInt(
 			v, err := qs.getMetaIntTx(getCtx, tx, key)
 			getTask.End()
 			if err != nil && err != kv.ErrNotFound {
-				return 0, fmt.Errorf("cannot get %s: %v", key, err)
+				return 0, errors.Errorf("cannot get %s: %v", key, err)
 			}
 			cache.vals[key] = v
 			cache.loaded[key] = struct{}{}
@@ -313,7 +311,7 @@ func (qs *QuadStore) incMetaInt(
 	v, err := qs.getMetaIntTx(getCtx, tx, key)
 	getTask.End()
 	if err != nil && err != kv.ErrNotFound {
-		return 0, fmt.Errorf("cannot get %s: %v", key, err)
+		return 0, errors.Errorf("cannot get %s: %v", key, err)
 	}
 	start := v
 	v += n
@@ -331,7 +329,7 @@ func (qs *QuadStore) putMetaInt(ctx context.Context, tx kv.Tx, key string, v int
 	err := tx.Put(putCtx, metaBucket.AppendBytes([]byte(key)), buf)
 	putTask.End()
 	if err != nil {
-		return fmt.Errorf("cannot inc %s: %v", key, err)
+		return errors.Errorf("cannot inc %s: %v", key, err)
 	}
 	return nil
 }
@@ -344,7 +342,7 @@ func (qs *QuadStore) flushMetaCache(ctx context.Context, tx kv.Tx, cache *metaCa
 	for key := range cache.dirty {
 		keys = append(keys, key)
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	for _, key := range keys {
 		if err := qs.putMetaInt(ctx, tx, key, cache.vals[key]); err != nil {
 			return err
@@ -674,6 +672,7 @@ func (qs *QuadStore) precheckAddDeltas(
 		qhashes     []refs.QuadHash
 		check       []bool
 		nodesByHash map[refs.ValueHash]graphlog.NodeUpdate
+		allChecked  = true
 	)
 	for i, d := range in {
 		if d.Action != graph.Add {
@@ -682,6 +681,7 @@ func (qs *QuadStore) precheckAddDeltas(
 		qh := quadHashOf(d.Quad)
 		if ignoreOpts.IgnoreDup {
 			if _, ok := qs.quadExists[qh]; !ok {
+				allChecked = false
 				continue
 			}
 		}
@@ -771,6 +771,11 @@ func (qs *QuadStore) precheckAddDeltas(
 			}
 		}
 		kept = append(kept, d)
+	}
+	// A partial cache hit cannot certify the remaining additions. Returning no
+	// resolved map sends them through the complete durable duplicate check.
+	if !allChecked {
+		return kept, nil, nil
 	}
 	return kept, nodes, nil
 }
@@ -991,6 +996,7 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 		_, checkTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/check-delete-quads")
 		for _, q := range deltas.QuadDel {
 			link := &proto.Primitive{}
+			var matches []*proto.Primitive
 			exists := !deletedQuads[q.Quad]
 			// resolve values of all quad directions
 			// if any of the direction does not exists, the quad does not exists as well
@@ -1004,14 +1010,12 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 				link.SetDirection(dir, n.ID)
 			}
 			if exists {
-				p, err := qs.hasPrimitive(ctx, tx, link, true)
+				var err error
+				matches, err = qs.matchingPrimitives(ctx, tx, link, false, true)
 				if err != nil {
 					return err
-				} else if p == nil || p.Deleted {
-					exists = false
-				} else {
-					link = p.CloneVT()
 				}
+				exists = len(matches) != 0
 			}
 			if !exists {
 				if !ignoreOpts.IgnoreMissing {
@@ -1026,7 +1030,14 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 				continue
 			}
 			deletedQuads[q.Quad] = true
-			links = append(links, link)
+			links = append(links, matches...)
+			// Older stores can contain several physical copies of one quad.
+			// A logical deletion removes every copy and its node references.
+			for _, dir := range quad.Directions {
+				if h := q.Quad.Get(dir); h.Valid() {
+					fixNodes[h] -= len(matches) - 1
+				}
+			}
 		}
 		checkTask.End()
 		deltas.QuadDel = nil
@@ -1037,7 +1048,7 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 		}
 		markTask.End()
 
-		// we decremented some nodes that has non-existent quads - let's fix this
+		// Account for ignored missing quads and extra physical copies.
 		if len(fixNodes) != 0 {
 			for i, n := range deltas.DecNode {
 				if dn := fixNodes[n.Hash]; dn != 0 {
@@ -1151,7 +1162,7 @@ func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCac
 		for key := range postings {
 			keys = append(keys, key)
 		}
-		sort.Strings(keys)
+		slices.Sort(keys)
 		for _, key := range keys {
 			if err := qs.removeFromMapBucket(ctx, tx, ind.bucket().AppendBytes([]byte(key)), postings[key]...); err != nil {
 				return err
@@ -1175,9 +1186,6 @@ func (qs *QuadStore) getBucketIndexes(ctx context.Context, tx kv.Tx, keys []kv.K
 	}
 	out := make([][]uint64, len(keys))
 	for i, v := range vals {
-		if len(v) == 0 {
-			continue
-		}
 		ind, err := decodeIndex(v)
 		if err != nil {
 			return out, err
@@ -1252,7 +1260,7 @@ func (qs *QuadStore) bestUnique() ([]QuadIndex, error) {
 	// TODO: find best combination of indexes
 	inds := qs.indexes.all
 	if len(inds) == 0 {
-		return nil, fmt.Errorf("no indexes defined")
+		return nil, errors.Errorf("no indexes defined")
 	}
 	if clog.V(2) {
 		clog.Infof("using index intersection: %v", inds)
@@ -1301,6 +1309,16 @@ func (qs *QuadStore) bestIndexes(dirs []quad.Direction) []QuadIndex {
 }
 
 func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primitive, get bool) (*proto.Primitive, error) {
+	prims, err := qs.matchingPrimitives(ctx, tx, p, !get, false)
+	if err != nil || len(prims) == 0 {
+		return nil, err
+	}
+	return prims[0], nil
+}
+
+// matchingPrimitives returns live exact matches, including historical copies.
+// Existence checks may use a unique index without loading its primitive.
+func (qs *QuadStore) matchingPrimitives(ctx context.Context, tx kv.Tx, p *proto.Primitive, existenceOnly, all bool) ([]*proto.Primitive, error) {
 	dirs := make([]quad.Direction, 0, len(quad.Directions))
 	for _, dir := range quad.Directions {
 		if p.GetDirection(dir) == 0 {
@@ -1326,6 +1344,16 @@ func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primit
 	if err != nil {
 		return nil, err
 	}
+	// Additions must also see postings buffered by earlier streamed batches.
+	// Removal selects persisted postings, preserving the existing contract that
+	// an unpublished add cannot be removed within the same ApplyDeltas call.
+	if existenceOnly {
+		for i, key := range keys {
+			if pending := qs.mapBucket[string(key[0])][string(key[1])]; pending != nil {
+				lists[i] = append(lists[i], pending.ids...)
+			}
+		}
+	}
 	var options []uint64
 	for len(lists) > 0 {
 		if len(lists) == 1 {
@@ -1337,9 +1365,10 @@ func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primit
 		a = intersectSortedUint64(a, b)
 		lists[0] = a
 	}
-	if !get && unique {
-		return p, nil
+	if existenceOnly && unique && len(options) != 0 {
+		return []*proto.Primitive{p}, nil
 	}
+	var matches []*proto.Primitive
 	for i := len(options) - 1; i >= 0; i-- {
 		// TODO: batch
 		prim, err := qs.getPrimitiveFromLog(ctx, tx, options[i])
@@ -1352,10 +1381,13 @@ func (qs *QuadStore) hasPrimitive(ctx context.Context, tx kv.Tx, p *proto.Primit
 			continue
 		}
 		if prim.IsSameLink(p) {
-			return prim, nil
+			matches = append(matches, prim)
+			if !all {
+				break
+			}
 		}
 	}
-	return nil, nil
+	return matches, nil
 }
 
 func intersectSortedUint64(a, b []uint64) []uint64 {
@@ -1395,11 +1427,11 @@ type indexPosting struct {
 
 func (qs *QuadStore) addToMapBucket(tx kv.Tx, key kv.Key, value uint64, fresh bool) error {
 	if len(key) != 2 {
-		return fmt.Errorf("trying to add to map bucket with invalid key: %v", key)
+		return errors.Errorf("trying to add to map bucket with invalid key: %v", key)
 	}
 	b, k := key[0], key[1]
 	if len(k) == 0 {
-		return fmt.Errorf("trying to add to map bucket %s with key 0", b)
+		return errors.Errorf("trying to add to map bucket %s with key 0", b)
 	}
 	if qs.mapBucket == nil {
 		qs.mapBucket = make(map[string]map[string]*indexPosting)
@@ -1456,7 +1488,7 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 	for k := range qs.mapBucket {
 		bs = append(bs, k)
 	}
-	sort.Strings(bs)
+	slices.Sort(bs)
 	for _, bucket := range bs {
 		m := qs.mapBucket[bucket]
 		if len(m) == 0 {
@@ -1474,7 +1506,7 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 				mergeKeys = append(mergeKeys, key)
 			}
 		}
-		sort.Sort(kv.ByKey(freshKeys))
+		slices.SortFunc(freshKeys, kv.Key.Compare)
 		for _, k := range freshKeys {
 			buf := appendIndex(nil, m[string(k[1])].ids)
 			if err := tx.Put(ctx, k, buf); err != nil {
@@ -1484,7 +1516,7 @@ func (qs *QuadStore) flushMapBucket(ctx context.Context, tx kv.Tx) error {
 		if len(mergeKeys) == 0 {
 			continue
 		}
-		sort.Sort(kv.ByKey(mergeKeys))
+		slices.SortFunc(mergeKeys, kv.Key.Compare)
 		vals, err := tx.GetBatch(ctx, mergeKeys)
 		if err != nil {
 			return err
