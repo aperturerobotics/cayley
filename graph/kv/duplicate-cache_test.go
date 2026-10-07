@@ -40,7 +40,8 @@ func TestQuadWriterDeduplicatesPendingQuads(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, w.Close()) })
 	for range 3 {
-		require.NoError(t, w.WriteQuad(ctx, q))
+		_, err := w.WriteQuads(ctx, []quad.Quad{q})
+		require.NoError(t, err)
 	}
 	require.NoError(t, w.Close())
 	require.Len(t, quadPrimitives(t, ctx, db), 1)
