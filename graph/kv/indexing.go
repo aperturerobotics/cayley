@@ -608,7 +608,7 @@ func (w *quadWriter) WriteQuads(ctx context.Context, buf []quad.Quad) (int, erro
 		w.mc = newMetaCache()
 	}
 	deltas := graphlog.InsertQuads(buf)
-	nodes, err := w.qs.applyAddDeltas(w.tx, w.mc, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}, nil)
+	nodes, _, err := w.qs.applyAddDeltas(w.tx, w.mc, nil, deltas, graph.IgnoreOpts{IgnoreDup: true}, nil)
 	if err == nil {
 		err = w.qs.applyNodeDeltas(ctx, w.tx, deltas, nodes)
 	}
@@ -863,6 +863,8 @@ func (qs *QuadStore) filterDuplicateAddDeltas(
 	return nodes, nil
 }
 
+// applyAddDeltas writes the added quads the store does not already hold. It
+// returns the resolved nodes and the number of quads written.
 func (qs *QuadStore) applyAddDeltas(
 	tx kv.Tx,
 	cache *metaCache,
@@ -870,7 +872,7 @@ func (qs *QuadStore) applyAddDeltas(
 	deltas *graphlog.Deltas,
 	ignoreOpts graph.IgnoreOpts,
 	resolved map[refs.ValueHash]uint64,
-) (map[refs.ValueHash]resolvedNode, error) {
+) (map[refs.ValueHash]resolvedNode, int, error) {
 	ctx := context.TODO()
 
 	if resolved == nil {
@@ -879,7 +881,7 @@ func (qs *QuadStore) applyAddDeltas(
 		resolved, err = qs.filterDuplicateAddDeltas(filterCtx, tx, in, deltas, ignoreOpts)
 		filterTask.End()
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 
@@ -887,7 +889,7 @@ func (qs *QuadStore) applyAddDeltas(
 	nodes, err := qs.resolveAddNodes(nodeCtx, tx, cache, deltas.IncNode, resolved)
 	nodeTask.End()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	links := make([]*proto.Primitive, 0, len(deltas.QuadAdd))
@@ -919,7 +921,7 @@ func (qs *QuadStore) applyAddDeltas(
 	qstart, err := qs.genIDs(idCtx, tx, cache, len(links))
 	idTask.End()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	for i := range links {
 		links[i].ID = qstart + uint64(i)
@@ -933,13 +935,13 @@ func (qs *QuadStore) applyAddDeltas(
 	indexCtx, indexTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas/index-links")
 	if err := qs.indexLinks(indexCtx, tx, cache, links, newIDs); err != nil {
 		indexTask.End()
-		return nil, err
+		return nil, 0, err
 	}
 	indexTask.End()
 	for _, qh := range linkHashes {
 		qs.rememberQuadExists(qh)
 	}
-	return nodes, nil
+	return nodes, len(links), nil
 }
 
 func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOpts graph.IgnoreOpts) error {
@@ -969,14 +971,15 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 	splitTask.End()
 	cache := newMetaCache()
 	_, addTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-add-deltas")
-	nodes, err := qs.applyAddDeltas(tx, cache, in, deltas, ignoreOpts, resolved)
+	nodes, added, err := qs.applyAddDeltas(tx, cache, in, deltas, ignoreOpts, resolved)
 	addTask.End()
 	if err != nil {
 		return err
 	}
 
+	var links []*proto.Primitive
 	if len(deltas.QuadDel) != 0 || len(deltas.DecNode) != 0 {
-		links := make([]*proto.Primitive, 0, len(deltas.QuadDel))
+		links = make([]*proto.Primitive, 0, len(deltas.QuadDel))
 		// resolve all nodes that will be removed
 		resolveCtx, resolveTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/resolve-dec-nodes")
 		if err := qs.resolveValDeltas(resolveCtx, tx, deltas.DecNode, func(i int, id uint64) {
@@ -1056,8 +1059,14 @@ func (qs *QuadStore) ApplyDeltas(ctx context.Context, in []graph.Delta, ignoreOp
 				}
 			}
 		}
-
 	}
+
+	// Ignored duplicates and missing quads leave the graph unchanged, so the
+	// transaction is discarded rather than committed.
+	if added == 0 && len(links) == 0 {
+		return nil
+	}
+
 	countCtx, countTask := trace.NewTask(ctx, "cayley/kv/apply-deltas/apply-node-counts")
 	err = qs.applyNodeDeltas(countCtx, tx, deltas, nodes)
 	countTask.End()
