@@ -368,3 +368,103 @@ func indexRebuildProtectedValues(t *testing.T, db kv.KV) map[string][]byte {
 	}
 	return values
 }
+
+// TestIndexRebuilderResume reruns an interrupted rebuild from its last
+// committed batch and merges into postings written before the interruption.
+func TestIndexRebuilderResume(t *testing.T) {
+	// Populate more than one batch under one shared predicate posting.
+	ctx := t.Context()
+	db := btree.New()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g, err := New(ctx, db, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	qs := g.(*QuadStore)
+
+	// Add enough quads, with their object nodes, to fill several batches.
+	deltas := make([]graph.Delta, indexRebuildBatchSize)
+	for i := range deltas {
+		deltas[i] = graph.Delta{
+			Quad:   quad.MakeIRI("subject", "predicate", "object/"+strconv.Itoa(i), ""),
+			Action: graph.Add,
+		}
+	}
+	if err := qs.ApplyDeltas(ctx, deltas, graph.IgnoreOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	horizon := uint64(qs.horizon(ctx))
+
+	// Fail the batch holding the last primitive after earlier batches commit.
+	key := logIndex.AppendBytes(uint64KeyBytesBase10(horizon))
+	var saved []byte
+	if err := kv.Update(ctx, db, func(tx kv.Tx) error {
+		val, err := tx.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		saved = bytes.Clone(val)
+		return tx.Put(ctx, key, []byte{0xff})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	indexes := []QuadIndex{
+		{Dirs: []quad.Direction{quad.Subject, quad.Predicate, quad.Object}},
+		{Dirs: []quad.Direction{quad.Predicate}},
+	}
+	r, err := NewIndexRebuilder(db, indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := r.Rebuild(ctx)
+	if err == nil || first == 0 {
+		t.Fatalf("interrupted rebuild = %d, %v", first, err)
+	}
+
+	// Resume with a new rebuilder and require only the remaining quads.
+	if err := kv.Update(ctx, db, func(tx kv.Tx) error {
+		return tx.Put(ctx, key, saved)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	r, err = NewIndexRebuilder(db, indexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rest, err := r.Rebuild(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first+rest != uint64(len(deltas)) {
+		t.Fatalf("indexed %d then %d quads, want %d in total", first, rest, len(deltas))
+	}
+
+	// Require the shared posting to hold every quad once, in order.
+	var ids []uint64
+	err = kv.View(ctx, db, func(tx kv.Tx) error {
+		it := tx.Scan(ctx)
+		for it.Next(ctx) {
+			if string(it.Key()[0]) != "p" {
+				continue
+			}
+			if ids != nil {
+				return errors.New("more than one predicate posting")
+			}
+			var err error
+			if ids, err = decodeIndex(it.Val()); err != nil {
+				return err
+			}
+		}
+		return it.Close()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ids) != len(deltas) || !slices.IsSorted(ids) || len(slices.Compact(slices.Clone(ids))) != len(ids) {
+		t.Fatalf("predicate posting has %d ids, want %d unique in order", len(ids), len(deltas))
+	}
+}

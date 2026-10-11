@@ -1,7 +1,9 @@
 package kv
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"maps"
 	"slices"
 
@@ -15,13 +17,21 @@ const indexRebuildBatchSize = 4096
 
 // IndexRebuilder regenerates quad postings from the durable primitive log.
 // The database must remain closed to graph readers and writers until Rebuild
-// succeeds. A failed or interrupted rebuild can be rerun from the beginning.
-// Node values, reference counts, graph size, and primitive IDs are preserved.
+// succeeds. A failed or interrupted rebuild is rerun with the same layout and
+// resumes after its last committed batch. Node values, reference counts, graph
+// size, and primitive IDs are preserved.
 type IndexRebuilder struct {
 	// db holds the graph's primitive log and postings.
 	db kv.KV
 	// indexes is the complete posting layout to regenerate.
 	indexes []QuadIndex
+	// layout is the encoded layout, recorded in the rebuild marker.
+	layout []byte
+	// written holds the posting keys written by the rebuild, so a key it
+	// does not hold is absent and is written without reading it first.
+	written *keyFilter
+	// progress, when set, receives the next primitive ID after each batch.
+	progress func(next, horizon uint64)
 }
 
 // NewIndexRebuilder validates and copies the desired posting layout.
@@ -31,12 +41,25 @@ func NewIndexRebuilder(db kv.KV, indexes []QuadIndex) (*IndexRebuilder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &IndexRebuilder{db: db, indexes: indexes}, nil
+	layout, err := encodeQuadIndexes(indexes)
+	if err != nil {
+		return nil, err
+	}
+	return &IndexRebuilder{db: db, indexes: indexes, layout: layout}, nil
+}
+
+// SetProgress sets a function called after each committed batch with the next
+// primitive ID to index and the primitive horizon.
+func (r *IndexRebuilder) SetProgress(fn func(next, horizon uint64)) {
+	r.progress = fn
 }
 
 // Rebuild clears old and current postings, reconstructs live quad indexes in
-// bounded transactions, and records the resulting layout. It returns the
-// number of live quads indexed by committed transactions, including on error.
+// bounded transactions, and records the resulting layout. Each batch records
+// its successor in the rebuild marker, so rerunning an interrupted rebuild of
+// the same layout skips the clear and the committed batches. It returns the
+// number of live quads indexed by this call's committed transactions,
+// including on error.
 func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 	// Honor cancellation before removing any posting.
 	if err := ctx.Err(); err != nil {
@@ -77,24 +100,26 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 		return 0, errors.New("invalid negative primitive horizon")
 	}
 
-	// Mark postings unavailable before committing any destructive batch.
-	if err := kv.Update(ctx, r.db, func(tx kv.Tx) error {
-		return tx.Put(ctx, keyIndexRebuild, []byte{1})
-	}); err != nil {
+	// Resume after the last committed batch of an interrupted rebuild.
+	start, err := r.readResume(ctx)
+	if err != nil {
 		return 0, err
 	}
-
-	// Clear postings without changing the authoritative primitive log.
-	for _, name := range slices.Sorted(maps.Keys(buckets)) {
-		if err := r.clearBucket(ctx, buckets[name]); err != nil {
-			return 0, err
-		}
+	r.written = newKeyFilter(uint64(horizon) * uint64(len(r.indexes)))
+	if start != 0 {
+		err = r.loadWritten(ctx)
+	} else {
+		start = 1
+		err = r.clear(ctx, buckets)
+	}
+	if err != nil {
+		return 0, err
 	}
 	qs.indexes.all = r.indexes
 
 	// Read primitives in numeric ID order so every posting remains sorted.
 	var count uint64
-	for start := uint64(1); start <= uint64(horizon); {
+	for start <= uint64(horizon) {
 		if err := ctx.Err(); err != nil {
 			return count, err
 		}
@@ -109,18 +134,87 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 			return count, err
 		}
 		start += length
+		if r.progress != nil {
+			r.progress(start, uint64(horizon))
+		}
 	}
 
 	// Publish the completed layout and restore graph access in one commit.
-	data, err := encodeQuadIndexes(r.indexes)
-	if err != nil {
-		return count, err
-	}
 	return count, kv.Update(ctx, r.db, func(tx kv.Tx) error {
-		if err := tx.Put(ctx, kv.Key{keyMetaIndexes}, data); err != nil {
+		if err := tx.Put(ctx, kv.Key{keyMetaIndexes}, r.layout); err != nil {
 			return err
 		}
 		return tx.Del(ctx, keyIndexRebuild)
+	})
+}
+
+// readResume returns the next primitive ID recorded by an interrupted rebuild
+// of this layout, or zero when the postings must be cleared first.
+func (r *IndexRebuilder) readResume(ctx context.Context) (uint64, error) {
+	var start uint64
+	err := kv.View(ctx, r.db, func(tx kv.Tx) error {
+		// An absent marker records a completed rebuild.
+		val, err := tx.Get(ctx, keyIndexRebuild)
+		if err == kv.ErrNotFound {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		// Resume only the layout this rebuilder writes.
+		if len(val) > 8 && bytes.Equal(val[8:], r.layout) {
+			start = binary.BigEndian.Uint64(val)
+		}
+		return nil
+	})
+	return start, err
+}
+
+// marker encodes the rebuild marker naming the next primitive ID to index.
+// Zero records that the clear has not finished.
+func (r *IndexRebuilder) marker(next uint64) []byte {
+	return append(binary.BigEndian.AppendUint64(nil, next), r.layout...)
+}
+
+// clear marks postings unavailable, removes every posting bucket, and
+// records that indexing starts at the first primitive.
+func (r *IndexRebuilder) clear(ctx context.Context, buckets map[string]kv.Key) error {
+	// Mark postings unavailable before committing any destructive batch.
+	if err := kv.Update(ctx, r.db, func(tx kv.Tx) error {
+		return tx.Put(ctx, keyIndexRebuild, r.marker(0))
+	}); err != nil {
+		return err
+	}
+
+	// Clear postings without changing the authoritative primitive log.
+	for _, name := range slices.Sorted(maps.Keys(buckets)) {
+		if err := r.clearBucket(ctx, buckets[name]); err != nil {
+			return err
+		}
+	}
+	return kv.Update(ctx, r.db, func(tx kv.Tx) error {
+		return tx.Put(ctx, keyIndexRebuild, r.marker(1))
+	})
+}
+
+// loadWritten records the posting keys committed before an interruption.
+func (r *IndexRebuilder) loadWritten(ctx context.Context) error {
+	return kv.View(ctx, r.db, func(tx kv.Tx) error {
+		for _, index := range r.indexes {
+			it := tx.Scan(ctx, options.WithPrefixKV(index.bucket()))
+			for it.Next(ctx) {
+				r.written.add(it.Key())
+			}
+			err := it.Err()
+			if cerr := it.Close(); err == nil {
+				err = cerr
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -147,6 +241,8 @@ func (r *IndexRebuilder) clearBucket(ctx context.Context, bucket kv.Key) error {
 			} else {
 				ok = kv.Seek(ctx, it, resume)
 			}
+
+			// Gather keys until the batch is full or the bucket ends.
 			for ok {
 				keys = append(keys, it.Key().Clone())
 				if len(keys) == indexRebuildBatchSize {
@@ -181,7 +277,9 @@ func (r *IndexRebuilder) clearBucket(ctx context.Context, bucket kv.Key) error {
 	}
 }
 
-// rebuildBatch indexes a bounded set of primitive IDs in numeric order.
+// rebuildBatch indexes a bounded set of primitive IDs in numeric order and
+// records the next ID in the rebuild marker. A posting key the rebuild has not
+// written is absent, so it is written without reading it first.
 func (r *IndexRebuilder) rebuildBatch(ctx context.Context, qs *QuadStore, ids []uint64) (uint64, error) {
 	// Read live quad primitives under the transaction that writes their postings.
 	var count uint64
@@ -198,13 +296,19 @@ func (r *IndexRebuilder) rebuildBatch(ctx context.Context, qs *QuadStore, ids []
 				continue
 			}
 			for _, index := range r.indexes {
-				if err := qs.addToMapBucket(tx, index.KeyFor(p), p.ID, false); err != nil {
+				key := index.KeyFor(p)
+				fresh := !r.written.has(key)
+				r.written.add(key)
+				if err := qs.addToMapBucket(tx, key, p.ID, fresh); err != nil {
 					return err
 				}
 			}
 			count++
 		}
-		return qs.flushMapBucket(ctx, tx)
+		if err := qs.flushMapBucket(ctx, tx); err != nil {
+			return err
+		}
+		return tx.Put(ctx, keyIndexRebuild, r.marker(ids[len(ids)-1]+1))
 	})
 	if err != nil {
 		return 0, err
