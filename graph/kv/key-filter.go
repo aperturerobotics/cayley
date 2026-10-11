@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"encoding/binary"
 	"hash/maphash"
 	"math/bits"
 
@@ -67,8 +68,10 @@ func (f *keyFilter) hash(key kv.Key) (uint64, uint64) {
 	// Hash every part under this filter's seed.
 	var h maphash.Hash
 	h.SetSeed(f.seed)
+	var size [8]byte
 	for _, part := range key {
-		maphash.WriteComparable(&h, len(part))
+		binary.LittleEndian.PutUint64(size[:], uint64(len(part)))
+		_, _ = h.Write(size[:])
 		_, _ = h.Write(part)
 	}
 
