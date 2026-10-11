@@ -143,6 +143,7 @@ func TestApplyDeltas(t *testing.T) {
 	defer qs.Close()
 
 	expect(Ops{
+		{opGet, hkv.Key{[]byte("m"), []byte("reindex")}, nil, hkv.ErrNotFound},
 		{opGet, hkv.Key{[]byte("i")}, nil, hkv.ErrNotFound},
 		// {opGet, key(bMeta, []byte("size")), nil, hkv.ErrNotFound},
 	})

@@ -26,18 +26,10 @@ type IndexRebuilder struct {
 
 // NewIndexRebuilder validates and copies the desired posting layout.
 func NewIndexRebuilder(db kv.KV, indexes []QuadIndex) (*IndexRebuilder, error) {
-	// Require a valid layout before removing any stored posting.
-	if len(indexes) == 0 {
-		return nil, errors.New("index rebuild requires at least one quad index")
-	}
-	if _, err := encodeQuadIndexes(indexes); err != nil {
+	// Require an independent, valid layout before removing any stored posting.
+	indexes, err := cloneQuadIndexes(indexes)
+	if err != nil {
 		return nil, err
-	}
-
-	// Detach the layout from the caller's mutable direction slices.
-	indexes = slices.Clone(indexes)
-	for i := range indexes {
-		indexes[i].Dirs = slices.Clone(indexes[i].Dirs)
 	}
 	return &IndexRebuilder{db: db, indexes: indexes}, nil
 }
@@ -57,6 +49,10 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	old, err = cloneQuadIndexes(old)
+	if err != nil {
+		return 0, errors.Wrap(err, "invalid stored quad indexes")
+	}
 	buckets := make(map[string]kv.Key, len(old)+len(r.indexes))
 	for _, index := range slices.Concat(old, r.indexes) {
 		key := index.bucket()
@@ -65,11 +61,27 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 
 	// Require a usable primitive horizon before changing any posting.
 	horizon, err := qs.getMetaInt(ctx, "horizon")
+	if err == ErrNoBucket {
+		nonempty, logErr := qs.hasPrimitiveLog(ctx)
+		if logErr != nil {
+			return 0, logErr
+		}
+		if nonempty {
+			return 0, errors.New("missing primitive horizon for nonempty log")
+		}
+	}
 	if err != nil && err != ErrNoBucket {
 		return 0, err
 	}
 	if horizon < 0 {
 		return 0, errors.New("invalid negative primitive horizon")
+	}
+
+	// Mark postings unavailable before committing any destructive batch.
+	if err := kv.Update(ctx, r.db, func(tx kv.Tx) error {
+		return tx.Put(ctx, keyIndexRebuild, []byte{1})
+	}); err != nil {
+		return 0, err
 	}
 
 	// Clear postings without changing the authoritative primitive log.
@@ -98,7 +110,18 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 		}
 		start += length
 	}
-	return count, qs.writeIndexesMeta(ctx)
+
+	// Publish the completed layout and restore graph access in one commit.
+	data, err := encodeQuadIndexes(r.indexes)
+	if err != nil {
+		return count, err
+	}
+	return count, kv.Update(ctx, r.db, func(tx kv.Tx) error {
+		if err := tx.Put(ctx, kv.Key{keyMetaIndexes}, data); err != nil {
+			return err
+		}
+		return tx.Del(ctx, keyIndexRebuild)
+	})
 }
 
 // clearBucket removes posting keys in bounded transactions.

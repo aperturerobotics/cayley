@@ -35,6 +35,9 @@ import (
 type QuadStore struct {
 	// db stores the graph's primitive log, nodes, counters, and postings.
 	db kv.KV
+	// indexMeta records a newly selected layout with each mutation transaction.
+	// It is immutable after opening and nil when stored metadata already matches.
+	indexMeta []byte
 
 	// indexes guards the active layout and cached duplicate-lookup indexes.
 	indexes struct {
@@ -71,29 +74,34 @@ const (
 	// OptAssumeDefaultIdx skips loading index metadata when the caller guarantees
 	// that the stored graph uses DefaultQuadIndexes.
 	OptAssumeDefaultIdx = "assume_default_idx"
-	// OptQuadIndexes supplies an explicit []QuadIndex layout without loading
-	// metadata. The caller must create or rebuild postings with this layout
-	// before opening the graph. It takes precedence over OptAssumeDefaultIdx.
+	// OptQuadIndexes requests a []QuadIndex layout, checked against stored metadata.
+	// A different nonempty layout requires offline reindexing before opening.
+	// Empty stores take the requested layout. It overrides OptAssumeDefaultIdx.
 	OptQuadIndexes = "quad_indexes"
 )
 
 // New opens a graph with stored, default, or explicitly supplied quad indexes.
 func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, error) {
-	// Select explicit indexes before consulting the stored layout.
+	// Refuse graph access until an interrupted rebuild has completed.
 	qs := newQuadStore(kv)
+	if err := qs.checkIndexRebuild(ctx, opt); err != nil {
+		return nil, err
+	}
+
+	// Select indexes only after checking the stored layout.
 	assumeDefaultIdx, _ := opt.BoolKey(OptAssumeDefaultIdx, false)
 	switch {
 	case opt[OptQuadIndexes] != nil:
 		indexes, ok := opt[OptQuadIndexes].([]QuadIndex)
-		if !ok || len(indexes) == 0 {
-			return nil, errors.New("quad_indexes requires a nonempty []QuadIndex")
+		if !ok {
+			return nil, errors.New("quad_indexes requires a []QuadIndex")
 		}
-		if _, err := encodeQuadIndexes(indexes); err != nil {
+		indexes, err := cloneQuadIndexes(indexes)
+		if err != nil {
 			return nil, err
 		}
-		qs.indexes.all = slices.Clone(indexes)
-		for i := range qs.indexes.all {
-			qs.indexes.all[i].Dirs = slices.Clone(indexes[i].Dirs)
+		if err := qs.selectQuadIndexes(ctx, indexes); err != nil {
+			return nil, err
 		}
 	case assumeDefaultIdx:
 		qs.indexes.all = DefaultQuadIndexes
@@ -109,6 +117,33 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 	qs.valueLRU = lru.New(2000)
 	qs.quadExists = make(map[refs.QuadHash]struct{})
 	return qs, nil
+}
+
+// flushMetaCache records the selected layout and changed counters with the graph mutation.
+func (qs *QuadStore) flushMetaCache(ctx context.Context, tx kv.Tx, cache *metaCache) error {
+	// Keep first-write index metadata atomic with the primitives and postings it describes.
+	if len(qs.indexMeta) != 0 {
+		if err := tx.Put(ctx, kv.Key{keyMetaIndexes}, qs.indexMeta); err != nil {
+			return err
+		}
+	}
+	if cache == nil || len(cache.dirty) == 0 {
+		return nil
+	}
+
+	// Flush changed counters in deterministic key order.
+	keys := make([]string, 0, len(cache.dirty))
+	for key := range cache.dirty {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
+		if err := qs.putMetaInt(ctx, tx, key, cache.vals[key]); err != nil {
+			return err
+		}
+	}
+	clear(cache.dirty)
+	return nil
 }
 
 // getMetaInt reads one signed metadata counter.
