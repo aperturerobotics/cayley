@@ -34,7 +34,10 @@ func (opt PrefixFlat) ApplyKV(it kv.Iterator) kv.Iterator {
 	return &prefixIteratorKV{base: it, pref: pref}
 }
 
-var _ flat.PrefixIterator = &prefixIteratorFlat{}
+var (
+	_ flat.PrefixIterator = &prefixIteratorFlat{}
+	_ flat.Seeker         = &prefixIteratorFlat{}
+)
 
 type prefixIteratorFlat struct {
 	base flat.Iterator
@@ -86,6 +89,17 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 	// keys are sorted, and we reached the end of the prefix
 	it.done = true
 	return false
+}
+
+// Seek positions the iterator at the first key at or after key within the
+// prefix.
+func (it *prefixIteratorFlat) Seek(ctx context.Context, key flat.Key) bool {
+	if bytes.Compare(key, it.pref) < 0 {
+		key = it.pref
+	}
+	it.seek = true
+	it.done = !flat.Seek(ctx, it.base, key) || !bytes.HasPrefix(it.base.Key(), it.pref)
+	return !it.done
 }
 
 func (it *prefixIteratorFlat) Err() error {
