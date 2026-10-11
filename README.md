@@ -2,9 +2,8 @@
   <h3>Cayley: graph storage and query for Go</h3>
 
   <p>
-    Store linked data as quads, traverse relationships from Go, and serve graph
-    queries through CLI or HTTP endpoints without committing to one storage
-    backend.
+    Store linked data as quads, walk relationships from Go, and serve graph
+    queries from the command line or over HTTP, on the storage backend you choose.
   </p>
 
   <p>
@@ -19,41 +18,39 @@
 
 ## Overview
 
-**Cayley** is a Go graph database and query layer for
-[Linked Data](https://www.w3.org/standards/semanticweb/data). It stores facts as
-quads: subject, predicate, object, and optional label. That shape can represent
-RDF-style datasets, application relationship graphs, metadata indexes, and other
-small facts that need graph traversal instead of only key lookup.
+**Cayley** is a Go graph database for
+[Linked Data](https://www.w3.org/standards/semanticweb/data). It stores each fact
+as a quad: a subject, a predicate, an object, and an optional label. Quads hold
+RDF datasets, the relationships in an application, metadata indexes, and any
+other facts you want to traverse as a graph.
 
-Use Cayley when your Go program needs a graph store it can embed, swap across
-backends, query from code, or expose through operational tools. The core package
-provides a small handle API for opening stores, adding quads, and walking paths.
-The lower-level packages expose storage interfaces, iterators, query sessions,
-quad formats, import/export flows, and HTTP handlers.
+A Go program can embed Cayley, move it between storage backends, query it from
+code, and serve it over HTTP. The top-level package opens stores, adds quads,
+and walks paths. The packages below it hold the storage interfaces, iterators,
+query languages, quad formats, import and export, and HTTP handlers.
 
 This is Aperture's Apache-2.0 fork of the
 [upstream Cayley project](https://github.com/cayleygraph/cayley).
 
-## Current Surface
+## Features
 
 ### Graph Model
 
 - Quads with subject, predicate, object, and optional label fields
 - Typed quad values for IRIs, blank nodes, strings, numbers, booleans, and time
-- Directional indexes over quad fields for traversal-heavy workloads
-- Transactions and batch writers for atomic graph updates
-- Path traversal API for expressing graph walks directly from Go
+- Indexes over quad directions for fast traversal
+- Transactions and batch writers for atomic updates
+- A path API for graph walks written in Go
 
 ### Storage Backends
 
-Cayley separates the graph layer from the storage engine. Available backends
-include:
+The graph layer runs on any of these storage engines:
 
-- **In-memory store** for tests, examples, and ephemeral graphs
-- **Key-value stores** through the graph/KV adapter:
+- **In-memory store** for tests, examples, and short-lived graphs
+- **Key-value stores** through the `graph/kv` adapter:
   - [BoltDB/bbolt](https://github.com/etcd-io/bbolt)
   - [Badger](https://github.com/dgraph-io/badger)
-  - in-memory B-tree through the flat KV path
+  - an in-memory B-tree
 - **SQL stores**:
   - [CockroachDB](https://github.com/cockroachdb/cockroach)
   - [PostgreSQL](https://www.postgresql.org/)
@@ -62,15 +59,12 @@ include:
 
 ### Query and Data Formats
 
-Cayley can be used as a library, command-line tool, or HTTP service:
+Cayley runs as a Go library, a command-line tool, or an HTTP service:
 
-- Go path API through `github.com/aperturerobotics/cayley/query/path`
-- Query sessions for Gizmo, GraphQL, MQL, S-expression queries, and package-level
-  extension points
-- CLI commands for init, load, dump, upgrade, query, REPL, HTTP serving, format
-  conversion, deduplication, health checks, and schema work
-- Quad readers and writers for common graph formats, including N-Quads, JSON-LD,
-  GraphML, GML, DOT, and packed quads
+- The Go path API in `github.com/aperturerobotics/cayley/query/path`
+- Query languages: Gizmo, GraphQL, MQL, and S-expressions
+- Commands to init, load, dump, upgrade, query, convert, and serve a graph
+- Quad formats: N-Quads, JSON-LD, GraphML, GML, DOT, and packed quads
 
 ## Getting Started
 
@@ -139,29 +133,30 @@ cayley http --db bolt --dbpath ./graph.db --host 127.0.0.1:64210
 
 ## Path API
 
-The Go path API in `github.com/aperturerobotics/cayley/query/path` (re-exported
-as `cayley.Path`) is the main way to walk an application graph directly from Go.
-A path starts at one or more nodes and chains traversal steps; nothing runs
-until you build an iterator, so a path can be composed, passed around, and
-extended by callers before it executes.
+The path API in `github.com/aperturerobotics/cayley/query/path`, re-exported
+as `cayley.Path`, walks a graph from Go. A path starts at one or more nodes and
+chains traversal steps. Nothing runs until you build an iterator, so callers can
+compose, pass around, and extend a path before it executes.
 
 ### Concepts
 
-- **Path** is the builder you chain steps onto. Each step (`Out`, `Has`, `Tag`,
-  ...) returns a new `*Path`, so paths are immutable values you can branch and
-  reuse. A path bound to a `QuadStore` (via `StartPath`) can execute; a path
-  with no store is a **morphism**, a reusable step sequence you bind to a store
-  later with `Follow`, `Has`, or `BuildIteratorOn`. `StartMorphism` builds one
-  directly, which is how you factor a shared traversal out for many callers.
-- **Shape** is the declarative query tree a path compiles to (`p.Shape()`). It
-  describes *what* to match, independent of any backend, and carries an
-  `Optimize` pass the store uses to push work into indexes before execution.
-  Most code never touches shapes directly; the path builder produces them.
-- **Iterator** is the executable scanner a shape builds against a store
-  (`p.BuildIterator(ctx)`). Iteration yields `graph.Ref` handles; resolve a ref
-  back to its `quad.Value` with `store.NameOf`. The `p.Iterate(ctx)` chain
-  wraps this with helpers (`EachValue`, `TagValues`, `AllValues`, `Count`) so
-  most code never drives the scanner by hand.
+A **path** is the builder you chain steps onto. Each step, such as `Out`, `Has`
+or `Tag`, returns a new `*Path`, so you can branch and reuse a path freely.
+`StartPath` binds a path to a `QuadStore` so it can execute. A path with no
+store is a **morphism**: a step sequence that `Follow`, `Has`, or
+`BuildIteratorOn` later applies to a store. `StartMorphism` builds one, so many
+callers can share one traversal.
+
+A **shape** is the query tree a path compiles to, returned by `p.Shape()`. It
+describes what to match on any backend. Its `Optimize` pass lets the store push
+work into its indexes before execution. The path builder produces shapes, so
+most code never handles them.
+
+An **iterator** scans a store for the matches of a shape, and
+`p.BuildIterator(ctx)` returns one. It yields `graph.Ref` handles, and
+`store.NameOf` resolves each to its `quad.Value`. `p.Iterate(ctx)` wraps the
+iterator with `EachValue`, `TagValues`, `AllValues`, and `Count`, so most code
+never drives it by hand.
 
 Build a path with `cayley.StartPath`, then chain steps and iterate:
 
@@ -187,11 +182,9 @@ p := cayley.StartPath(store, quad.String("bob")).In(quad.String("knows"))
 // yields: alice
 ```
 
-`Has` keeps only nodes that have a matching outbound edge, which is how you
-filter a set down to nodes of a given type or property. This is the shape
-Spacewave uses to list graph objects of a known type reachable from a keypair:
-walk the inbound links, then keep the nodes tagged with a recognized type
-predicate.
+`Has` keeps only the nodes with a matching outbound edge, which filters a set
+down to nodes of a given type or property. This example walks inbound links
+from a keypair, then keeps the nodes whose type is one of the wanted values.
 
 ```go
 // Keep only nodes that link to one of the wanted type values.
@@ -200,9 +193,8 @@ p := cayley.StartPath(store, quad.String("keypair-1")).
 	Has(quad.String("type"), quad.String("cluster"), quad.String("task"))
 ```
 
-`Tag` records the node at a step under a name so a single iteration can return
-several bound values at once; read them from the result map instead of
-`EachValue`:
+`Tag` saves the node at a step under a name, so one iteration returns several
+values at once. `TagValues` passes them to your callback as a map:
 
 ```go
 p := cayley.StartPath(store, quad.String("alice")).
@@ -215,9 +207,9 @@ p.Iterate(ctx).TagValues(ctx, nil, func(tags map[string]quad.Value) error {
 })
 ```
 
-`FollowRecursive` walks one predicate transitively to reach every node
-reachable through a chain of edges, with an optional depth tag reporting how
-many hops each result took:
+`FollowRecursive` follows one predicate repeatedly to reach every node at the
+end of a chain of edges. An optional depth tag records how many hops each result
+took:
 
 ```go
 store.AddQuad(ctx, cayley.Quad("a", "ref", "b", nil))
@@ -228,55 +220,50 @@ p := cayley.StartPath(store, quad.String("a")).
 	FollowRecursive(quad.String("ref"), -1, []string{"depth"})
 ```
 
-`LabelContext` scopes the following steps to quads carrying a given label, so
-the same predicate can mean different things in different subgraphs. For direct
-control over iteration, call `p.BuildIterator(ctx)` and drive the scanner
-yourself, resolving each result ref back to a value with `store.NameOf`.
+`LabelContext` limits the steps after it to quads with a given label, so one
+predicate can mean different things in different subgraphs. To drive iteration
+yourself, call `p.BuildIterator(ctx)` and resolve each result with
+`store.NameOf`.
 
 ### More operations
 
 Traversal directions:
 
-- `Both(pred)` follows `pred` inbound and outbound at once, yielding neighbors
-  in either direction.
-- `Reverse()` returns the mirror of a whole path, turning a forward walk into
-  the backward one without rewriting each step.
-- `InPredicates()` / `OutPredicates()` yield the predicates on a node instead
-  of its neighbors, so you can discover which edges exist before following them.
+- `Both(pred)` follows `pred` in both directions and yields every neighbor.
+- `Reverse()` mirrors a whole path, turning a forward walk into a backward one.
+- `InPredicates()` and `OutPredicates()` yield the predicates on a node, so you
+  can see which edges exist before following them.
 
-Set combinators take another path and act as graph joins:
+Set operations take another path and join it with this one:
 
-- `And(other)` (intersection) keeps only nodes that both paths reach; `Or(other)`
-  (union) keeps nodes either reaches; `Except(other)` subtracts one path's nodes
-  from another.
-- `Has(pred, nodes...)` keeps nodes with an outbound `pred` edge to a known
-  node; `HasReverse(pred, nodes...)` keeps nodes a known node links to inbound;
-  `HasPath(sub)` keeps nodes for which an entire subpath exists. These are
-  existence filters: they prune the current set without moving to the linked
-  node.
-- `Follow(morphism)` splices a morphism onto the current nodes, the way you
-  reuse a named traversal defined once with `StartMorphism`.
+- `And(other)` keeps the nodes both paths reach, `Or(other)` keeps the nodes
+  either reaches, and `Except(other)` removes the other path's nodes.
+- `Has(pred, nodes...)` keeps nodes with an outbound `pred` edge to one of
+  `nodes`. `HasReverse(pred, nodes...)` keeps nodes with an inbound `pred` edge
+  from one of them. `HasPath(sub)` keeps nodes from which `sub` matches. These
+  filter the current set and leave the path on the same nodes.
+- `Follow(morphism)` applies a morphism, built once with `StartMorphism`, to the
+  current nodes.
 
-Binding named values along the walk:
+Saving values along the walk:
 
-- `Save(pred, tag)` records the node one hop across `pred` under `tag` without
-  moving the path there, so one iteration returns several related fields;
-  `SaveReverse`, `SaveOptional`, and `SaveOptionalReverse` cover the inbound and
-  may-be-absent variants.
-- `Tag(name)` marks the current node (as shown above); `Back(name)` returns
-  traversal to an earlier tagged point while keeping the constraints gathered
-  after it, which is how you filter a node by a downstream property yet still
-  return the node itself.
+- `Save(pred, tag)` saves the node one hop across `pred` under `tag` and leaves
+  the path where it is, so one iteration returns several related fields.
+  `SaveReverse`, `SaveOptional`, and `SaveOptionalReverse` follow the edge
+  inbound or allow it to be missing.
+- `Tag(name)` saves the current node. `Back(name)` returns to an earlier tagged
+  node and keeps the constraints added after it, so you can filter a node by a
+  property further along the walk and still return the node.
 
 Filtering and shaping results:
 
-- `Is(nodes...)` restricts the current set to specific nodes; `Filter`/`Filters`
-  compare values (`iterator.Operator` like `<`, `>=`); `Regex` matches string
-  values against a pattern.
-- `Unique()` removes duplicate nodes; `Skip(n)` / `Limit(n)` page results;
-  `Count()` turns the result set into its own size.
+- `Is(nodes...)` keeps only the given nodes. `Filter` and `Filters` compare
+  values with an `iterator.Operator` such as `<` or `>=`, and `Regex` matches
+  strings against a pattern.
+- `Unique()` removes duplicates, `Skip(n)` and `Limit(n)` page the results, and
+  `Count()` replaces the results with their count.
 
-A composed example, using several of these together:
+This example combines several of them:
 
 ```go
 // Ancestors of "alice" through "parent" who are tagged as "person",
@@ -290,13 +277,12 @@ p := cayley.StartPath(store, quad.String("alice")).
 
 ### Reference
 
-The full method set, with per-step semantics, lives in the package
-documentation:
-[pkg.go.dev/github.com/aperturerobotics/cayley/query/path](https://pkg.go.dev/github.com/aperturerobotics/cayley/query/path).
+The [package documentation](https://pkg.go.dev/github.com/aperturerobotics/cayley/query/path)
+describes every step.
 
 ## Development
 
-Build and development commands are available through `make`, which wraps the
+`make` runs the build and development commands through the
 [Aperture build tool](https://github.com/aperturerobotics/common):
 
 | Command          | Description                                 |
@@ -313,15 +299,15 @@ Build and development commands are available through `make`, which wraps the
 | `make clean`     | Remove generated files and cache            |
 | `make release`   | Run goreleaser                              |
 
-Useful source entry points:
+Where to start reading:
 
 - [`cayley.go`](./cayley.go): top-level Go API
-- [`graph/`](./graph): quad store, writer, transaction, iterator, and backend interfaces
-- [`query/`](./query): query sessions and traversal packages
+- [`graph/`](./graph): quad store, writer, transaction, iterator, and backend APIs
+- [`query/`](./query): query languages and the path API
 - [`quad/`](./quad): quad value model and import/export formats
-- [`cmd/cayley/`](./cmd/cayley): CLI and HTTP command surface
+- [`cmd/cayley/`](./cmd/cayley): the command-line tool and HTTP server
 - [`examples/`](./examples): small embedded graph examples
 
 ## License
 
-Cayley is licensed under the permissive Apache-2.0 license.
+Cayley is licensed under [Apache-2.0](./LICENSE).
