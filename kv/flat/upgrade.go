@@ -170,3 +170,9 @@ func (it *prefIter) Val() kv.Value {
 func (it *prefIter) Key() kv.Key {
 	return KeyUnescape(it.Iterator.Key())
 }
+
+// Seek positions the iterator at the first key at or after key, seeking the
+// flat iterator directly when it supports seeking.
+func (it *prefIter) Seek(ctx context.Context, key kv.Key) bool {
+	return Seek(ctx, it.Iterator, KeyEscape(key))
+}

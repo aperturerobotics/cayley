@@ -124,21 +124,35 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 	})
 }
 
-// clearBucket removes posting keys in bounded transactions.
+// clearBucket removes posting keys in bounded transactions. Each batch seeks
+// to the last key the previous batch deleted instead of rescanning the bucket,
+// because stores that keep deletions until compaction would otherwise walk
+// every earlier deletion again, making the clear quadratic in the bucket size.
 func (r *IndexRebuilder) clearBucket(ctx context.Context, bucket kv.Key) error {
+	var resume kv.Key
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 
 		// Collect and remove one batch after closing its scan.
-		var count int
+		var keys []kv.Key
 		err := kv.Update(ctx, r.db, func(tx kv.Tx) error {
 			// Retain a bounded set of posting keys before closing the scan.
 			it := tx.Scan(ctx, options.WithPrefixKV(bucket))
-			keys := make([]kv.Key, 0, indexRebuildBatchSize)
-			for len(keys) < indexRebuildBatchSize && it.Next(ctx) {
+			keys = make([]kv.Key, 0, indexRebuildBatchSize)
+			var ok bool
+			if resume == nil {
+				ok = it.Next(ctx)
+			} else {
+				ok = kv.Seek(ctx, it, resume)
+			}
+			for ok {
 				keys = append(keys, it.Key().Clone())
+				if len(keys) == indexRebuildBatchSize {
+					break
+				}
+				ok = it.Next(ctx)
 			}
 			err := it.Err()
 			closeErr := it.Close()
@@ -150,7 +164,6 @@ func (r *IndexRebuilder) clearBucket(ctx context.Context, bucket kv.Key) error {
 			}
 
 			// Delete only the keys gathered from this posting bucket.
-			count = len(keys)
 			for _, key := range keys {
 				if err := tx.Del(ctx, key); err != nil {
 					return err
@@ -161,9 +174,10 @@ func (r *IndexRebuilder) clearBucket(ctx context.Context, bucket kv.Key) error {
 		if err != nil {
 			return err
 		}
-		if count < indexRebuildBatchSize {
+		if len(keys) < indexRebuildBatchSize {
 			return nil
 		}
+		resume = keys[len(keys)-1]
 	}
 }
 

@@ -225,6 +225,16 @@ func seek(t testing.TB, db kv.KV) {
 	// regular reset still works
 	it.Reset()
 	td.ExpectIt(it, all)
+
+	// seek within a prefix scan, and past the end of the prefix
+	pit := tx.Scan(ctx, options.WithPrefixKV(kv.Key{[]byte("b")}))
+	defer pit.Close()
+	ok := kv.Seek(ctx, pit, all[2].Key)
+	require.True(t, ok)
+	require.Equal(t, all[2].Key, pit.Key())
+	require.Equal(t, all[2].Val, pit.Val())
+	td.ExpectIt(pit, all[3:5])
+	require.False(t, kv.Seek(ctx, pit, all[5].Key))
 }
 
 func increment(t testing.TB, db kv.KV) {
