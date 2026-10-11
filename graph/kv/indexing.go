@@ -334,24 +334,6 @@ func (qs *QuadStore) putMetaInt(ctx context.Context, tx kv.Tx, key string, v int
 	return nil
 }
 
-func (qs *QuadStore) flushMetaCache(ctx context.Context, tx kv.Tx, cache *metaCache) error {
-	if cache == nil || len(cache.dirty) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(cache.dirty))
-	for key := range cache.dirty {
-		keys = append(keys, key)
-	}
-	slices.Sort(keys)
-	for _, key := range keys {
-		if err := qs.putMetaInt(ctx, tx, key, cache.vals[key]); err != nil {
-			return err
-		}
-	}
-	clear(cache.dirty)
-	return nil
-}
-
 func (qs *QuadStore) genIDs(ctx context.Context, tx kv.Tx, cache *metaCache, n int) (uint64, error) {
 	if n == 0 {
 		return 0, nil

@@ -106,7 +106,7 @@ func TestIndexRebuilder(t *testing.T) {
 	if !maps.EqualFunc(before, after, bytes.Equal) {
 		t.Fatal("rebuild changed primitive log, nodes, or counters")
 	}
-	var forward int
+	var forward, shared int
 	err = kv.View(ctx, db, func(tx kv.Tx) error {
 		// Check that bounded forward postings replaced the obsolete layout.
 		it := tx.Scan(ctx)
@@ -118,6 +118,7 @@ func TestIndexRebuilder(t *testing.T) {
 				break
 			}
 			if string(key[0]) == "p" {
+				shared++
 				ids, err := decodeIndex(it.Val())
 				if err != nil {
 					postingErr = err
@@ -150,8 +151,8 @@ func TestIndexRebuilder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if forward != len(deltas)-1 {
-		t.Fatalf("forward postings = %d", forward)
+	if forward != len(deltas)-1 || shared != 1 {
+		t.Fatalf("forward/shared postings = %d/%d", forward, shared)
 	}
 
 	// Resolve the subject through the reopened graph.
@@ -178,6 +179,165 @@ func TestIndexRebuilder(t *testing.T) {
 
 	// Delete a surviving quad through the rebuilt graph's write path.
 	if err := qs.ApplyDeltas(ctx, []graph.Delta{{Quad: deltas[1].Quad, Action: graph.Delete}}, graph.IgnoreOpts{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestIndexRebuilderRejectsEmptyDirections prevents empty prefixes from erasing graph data.
+func TestIndexRebuilderRejectsEmptyDirections(t *testing.T) {
+	// Reject an empty desired index before it can become a scan prefix.
+	ctx := t.Context()
+	db := btree.New()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := NewIndexRebuilder(db, []QuadIndex{{}}); err == nil {
+		t.Fatal("accepted an index with no directions")
+	}
+
+	// Store one quad and invalid old metadata without changing its postings.
+	g, err := New(ctx, db, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	qs := g.(*QuadStore)
+	if err := qs.ApplyDeltas(ctx, []graph.Delta{{
+		Quad: quad.MakeIRI("subject", "predicate", "object", ""), Action: graph.Add,
+	}}, graph.IgnoreOpts{}); err != nil {
+		t.Fatal(err)
+	}
+	qs.indexes.all = []QuadIndex{{}}
+	if err := qs.writeIndexesMeta(ctx); err != nil {
+		t.Fatal(err)
+	}
+	before := indexRebuildProtectedValues(t, db)
+
+	// Refuse the unsafe old layout before deleting any authoritative values.
+	r, err := NewIndexRebuilder(db, DefaultQuadIndexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Rebuild(ctx); err == nil {
+		t.Fatal("rebuilt an index with an empty stored prefix")
+	}
+	if !maps.EqualFunc(before, indexRebuildProtectedValues(t, db), bytes.Equal) {
+		t.Fatal("invalid stored indexes changed authoritative values")
+	}
+}
+
+// TestIndexRebuilderMissingHorizon preserves postings when a nonempty log has no horizon.
+func TestIndexRebuilderMissingHorizon(t *testing.T) {
+	// Create a graph with a live primitive and its posting.
+	ctx := t.Context()
+	db := btree.New()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g, err := New(ctx, db, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ApplyDeltas(ctx, []graph.Delta{{
+		Quad: quad.MakeIRI("subject", "predicate", "object", ""), Action: graph.Add,
+	}}, graph.IgnoreOpts{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove the horizon and require validation before any destructive work.
+	if err := kv.Update(ctx, db, func(tx kv.Tx) error {
+		return tx.Del(ctx, metaBucket.AppendBytes([]byte("horizon")))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	before := indexRebuildProtectedValues(t, db)
+	r, err := NewIndexRebuilder(db, DefaultQuadIndexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := r.Rebuild(ctx)
+	if err == nil || err.Error() != "missing primitive horizon for nonempty log" || n != 0 {
+		t.Fatalf("rebuild = %d, %v", n, err)
+	}
+	if !maps.EqualFunc(before, indexRebuildProtectedValues(t, db), bytes.Equal) {
+		t.Fatal("missing horizon changed authoritative values")
+	}
+
+	// Require the original forward posting to remain readable.
+	ref, err := g.ValueOf(ctx, quad.IRI("subject"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	it := g.QuadIterator(ctx, quad.Subject, ref).Iterate(ctx)
+	if !it.Next(ctx) {
+		t.Fatal("missing horizon removed the live posting")
+	}
+	if err := it.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestIndexRebuilderInterrupted blocks every open mode until a same-layout rebuild succeeds.
+func TestIndexRebuilderInterrupted(t *testing.T) {
+	// Populate a graph whose layout already matches the rebuild target.
+	ctx := t.Context()
+	db := btree.New()
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	g, err := New(ctx, db, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := g.ApplyDeltas(ctx, []graph.Delta{{
+		Quad: quad.MakeIRI("subject", "predicate", "object", ""), Action: graph.Add,
+	}}, graph.IgnoreOpts{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Force the rebuild to fail after its posting-clearing commits.
+	key := logIndex.AppendBytes(uint64KeyBytesBase10(1))
+	var saved []byte
+	if err := kv.Update(ctx, db, func(tx kv.Tx) error {
+		val, err := tx.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		saved = bytes.Clone(val)
+		return tx.Put(ctx, key, []byte{0xff})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	r, err := NewIndexRebuilder(db, DefaultQuadIndexes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Rebuild(ctx); err == nil {
+		t.Fatal("rebuilt a corrupt primitive")
+	}
+
+	// Reject metadata, default, and explicit opens while postings are incomplete.
+	for _, opts := range []graph.Options{nil, {OptAssumeDefaultIdx: true}, {OptQuadIndexes: DefaultQuadIndexes}} {
+		if _, err := New(ctx, db, opts); err == nil {
+			t.Fatalf("opened an incomplete rebuild with options %v", opts)
+		}
+	}
+
+	// Restore the primitive and require rerunning to publish a usable layout.
+	if err := kv.Update(ctx, db, func(tx kv.Tx) error {
+		return tx.Put(ctx, key, saved)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := r.Rebuild(ctx); err != nil || n != 1 {
+		t.Fatalf("rerun = %d, %v", n, err)
+	}
+	if _, err := New(ctx, db, graph.Options{OptQuadIndexes: DefaultQuadIndexes}); err != nil {
 		t.Fatal(err)
 	}
 }
