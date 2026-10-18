@@ -19,95 +19,49 @@
 import { Quad, Value } from '../../quad/pquads/quads.pb.js'
 import type { MessageType } from '@aptre/protobuf-es-lite/message'
 import { createMessageType } from '@aptre/protobuf-es-lite/message'
-import { ScalarType } from '@aptre/protobuf-es-lite/scalar'
-import type { PartialFieldInfo } from '@aptre/protobuf-es-lite/field'
-
-export const protobufPackage = 'proto'
 
 /**
  * @generated from message proto.LogDelta
  */
 export interface LogDelta {
-  /**
-   * @generated from field: uint64 ID = 1;
-   */
   ID?: bigint
-  /**
-   * @generated from field: pquads.Quad Quad = 2;
-   */
   Quad?: Quad
-  /**
-   * @generated from field: int32 Action = 3;
-   */
   Action?: number
-  /**
-   * @generated from field: int64 Timestamp = 4;
-   */
   Timestamp?: bigint
 }
 
 export const LogDelta: MessageType<LogDelta> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'proto.LogDelta',
-    fields: [
-      { no: 1, name: 'ID', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 2, name: 'Quad', kind: 'message', T: () => Quad },
-      { no: 3, name: 'Action', kind: 'scalar', T: ScalarType.INT32 },
-      { no: 4, name: 'Timestamp', kind: 'scalar', T: ScalarType.INT64 },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<LogDelta>('proto.LogDelta', () => [
+    [1, 'ID', 4],
+    [2, 'Quad', 11, 0, Quad.codec],
+    [3, 'Action', 5],
+    [4, 'Timestamp', 3],
+  ])
 
 /**
  * @generated from message proto.HistoryEntry
  */
 export interface HistoryEntry {
-  /**
-   * @generated from field: repeated uint64 History = 1;
-   */
   History?: bigint[]
 }
 
 export const HistoryEntry: MessageType<HistoryEntry> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'proto.HistoryEntry',
-    fields: [
-      {
-        no: 1,
-        name: 'History',
-        kind: 'scalar',
-        T: ScalarType.UINT64,
-        repeated: true,
-      },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<HistoryEntry>('proto.HistoryEntry', () => [
+    [1, 'History', 4, 3],
+  ])
 
 /**
  * @generated from message proto.NodeData
  */
 export interface NodeData {
-  /**
-   * @generated from field: string Name = 1;
-   */
   Name?: string
-  /**
-   * @generated from field: int64 Size = 2;
-   */
   Size?: bigint
-  /**
-   * @generated from field: pquads.Value value = 3;
-   */
   value?: Value
 }
 
 export const NodeData: MessageType<NodeData> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'proto.NodeData',
-    fields: [
-      { no: 1, name: 'Name', kind: 'scalar', T: ScalarType.STRING },
-      { no: 2, name: 'Size', kind: 'scalar', T: ScalarType.INT64 },
-      { no: 3, name: 'value', kind: 'message', T: () => Value },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<NodeData>('proto.NodeData', () => [
+    [1, 'Name', 9],
+    [2, 'Size', 3],
+    [3, 'value', 11, 0, Value.codec],
+  ])

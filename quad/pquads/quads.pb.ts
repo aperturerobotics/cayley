@@ -18,231 +18,6 @@
 
 import type { MessageType } from '@aptre/protobuf-es-lite/message'
 import { createMessageType } from '@aptre/protobuf-es-lite/message'
-import { ScalarType } from '@aptre/protobuf-es-lite/scalar'
-import type { PartialFieldInfo } from '@aptre/protobuf-es-lite/field'
-
-export const protobufPackage = 'pquads'
-
-/**
- * @generated from message pquads.Value.TypedString
- */
-export interface Value_TypedString {
-  /**
-   * @generated from field: string value = 1;
-   */
-  value?: string
-  /**
-   * @generated from field: string type = 2;
-   */
-  type?: string
-}
-
-export const Value_TypedString: MessageType<Value_TypedString> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.Value.TypedString',
-    fields: [
-      { no: 1, name: 'value', kind: 'scalar', T: ScalarType.STRING },
-      { no: 2, name: 'type', kind: 'scalar', T: ScalarType.STRING },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
-
-/**
- * @generated from message pquads.Value.LangString
- */
-export interface Value_LangString {
-  /**
-   * @generated from field: string value = 1;
-   */
-  value?: string
-  /**
-   * @generated from field: string lang = 2;
-   */
-  lang?: string
-}
-
-export const Value_LangString: MessageType<Value_LangString> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.Value.LangString',
-    fields: [
-      { no: 1, name: 'value', kind: 'scalar', T: ScalarType.STRING },
-      { no: 2, name: 'lang', kind: 'scalar', T: ScalarType.STRING },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
-
-/**
- * @generated from message pquads.Value.Timestamp
- */
-export interface Value_Timestamp {
-  /**
-   * @generated from field: int64 seconds = 1;
-   */
-  seconds?: bigint
-  /**
-   * @generated from field: int32 nanos = 2;
-   */
-  nanos?: number
-}
-
-export const Value_Timestamp: MessageType<Value_Timestamp> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.Value.Timestamp',
-    fields: [
-      { no: 1, name: 'seconds', kind: 'scalar', T: ScalarType.INT64 },
-      { no: 2, name: 'nanos', kind: 'scalar', T: ScalarType.INT32 },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
-
-/**
- * @generated from message pquads.Value
- */
-export interface Value {
-  /**
-   * @generated from oneof pquads.Value.value
-   */
-  value?:
-    | {
-        value?: undefined
-        case: undefined
-      }
-    | {
-        /**
-         * @generated from field: bytes raw = 1;
-         */
-        value: Uint8Array
-        case: 'raw'
-      }
-    | {
-        /**
-         * @generated from field: string str = 2;
-         */
-        value: string
-        case: 'str'
-      }
-    | {
-        /**
-         * @generated from field: string iri = 3;
-         */
-        value: string
-        case: 'iri'
-      }
-    | {
-        /**
-         * @generated from field: string bnode = 4;
-         */
-        value: string
-        case: 'bnode'
-      }
-    | {
-        /**
-         * @generated from field: pquads.Value.TypedString typed_str = 5;
-         */
-        value: Value_TypedString
-        case: 'typedStr'
-      }
-    | {
-        /**
-         * @generated from field: pquads.Value.LangString lang_str = 6;
-         */
-        value: Value_LangString
-        case: 'langStr'
-      }
-    | {
-        /**
-         * @generated from field: int64 int = 7;
-         */
-        value: bigint
-        case: 'int'
-      }
-    | {
-        /**
-         * @generated from field: double float = 8;
-         */
-        value: number
-        case: 'float'
-      }
-    | {
-        /**
-         * @generated from field: bool boolean = 9;
-         */
-        value: boolean
-        case: 'boolean'
-      }
-    | {
-        /**
-         * @generated from field: pquads.Value.Timestamp time = 10;
-         */
-        value: Value_Timestamp
-        case: 'time'
-      }
-}
-
-export const Value: MessageType<Value> = /* @__PURE__ */ createMessageType({
-  typeName: 'pquads.Value',
-  fields: [
-    { no: 1, name: 'raw', kind: 'scalar', T: ScalarType.BYTES, oneof: 'value' },
-    {
-      no: 2,
-      name: 'str',
-      kind: 'scalar',
-      T: ScalarType.STRING,
-      oneof: 'value',
-    },
-    {
-      no: 3,
-      name: 'iri',
-      kind: 'scalar',
-      T: ScalarType.STRING,
-      oneof: 'value',
-    },
-    {
-      no: 4,
-      name: 'bnode',
-      kind: 'scalar',
-      T: ScalarType.STRING,
-      oneof: 'value',
-    },
-    {
-      no: 5,
-      name: 'typed_str',
-      kind: 'message',
-      T: () => Value_TypedString,
-      oneof: 'value',
-    },
-    {
-      no: 6,
-      name: 'lang_str',
-      kind: 'message',
-      T: () => Value_LangString,
-      oneof: 'value',
-    },
-    { no: 7, name: 'int', kind: 'scalar', T: ScalarType.INT64, oneof: 'value' },
-    {
-      no: 8,
-      name: 'float',
-      kind: 'scalar',
-      T: ScalarType.DOUBLE,
-      oneof: 'value',
-    },
-    {
-      no: 9,
-      name: 'boolean',
-      kind: 'scalar',
-      T: ScalarType.BOOL,
-      oneof: 'value',
-    },
-    {
-      no: 10,
-      name: 'time',
-      kind: 'message',
-      T: () => Value_Timestamp,
-      oneof: 'value',
-    },
-  ] satisfies readonly PartialFieldInfo[],
-  packedByDefault: true,
-})
 
 /**
  * Quad is in internal representation of quad used by Cayley.
@@ -252,54 +27,29 @@ export const Value: MessageType<Value> = /* @__PURE__ */ createMessageType({
  * @generated from message pquads.Quad
  */
 export interface Quad {
-  /**
-   * @generated from field: string subject = 1;
-   */
   subject?: string
-  /**
-   * @generated from field: string predicate = 2;
-   */
   predicate?: string
-  /**
-   * @generated from field: string object = 3;
-   */
   object?: string
-  /**
-   * @generated from field: string label = 4;
-   */
   label?: string
-  /**
-   * @generated from field: pquads.Value subject_value = 5;
-   */
   subjectValue?: Value
-  /**
-   * @generated from field: pquads.Value predicate_value = 6;
-   */
   predicateValue?: Value
-  /**
-   * @generated from field: pquads.Value object_value = 7;
-   */
   objectValue?: Value
-  /**
-   * @generated from field: pquads.Value label_value = 8;
-   */
   labelValue?: Value
 }
 
-export const Quad: MessageType<Quad> = /* @__PURE__ */ createMessageType({
-  typeName: 'pquads.Quad',
-  fields: [
-    { no: 1, name: 'subject', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'predicate', kind: 'scalar', T: ScalarType.STRING },
-    { no: 3, name: 'object', kind: 'scalar', T: ScalarType.STRING },
-    { no: 4, name: 'label', kind: 'scalar', T: ScalarType.STRING },
-    { no: 5, name: 'subject_value', kind: 'message', T: () => Value },
-    { no: 6, name: 'predicate_value', kind: 'message', T: () => Value },
-    { no: 7, name: 'object_value', kind: 'message', T: () => Value },
-    { no: 8, name: 'label_value', kind: 'message', T: () => Value },
-  ] satisfies readonly PartialFieldInfo[],
-  packedByDefault: true,
-})
+export const Quad: MessageType<Quad> = /* @__PURE__ */ createMessageType<Quad>(
+  'pquads.Quad',
+  () => [
+    [1, 'subject', 9],
+    [2, 'predicate', 9],
+    [3, 'object', 9],
+    [4, 'label', 9],
+    [5, 'subject_value', 11, 0, Value.codec],
+    [6, 'predicate_value', 11, 0, Value.codec],
+    [7, 'object_value', 11, 0, Value.codec],
+    [8, 'label_value', 11, 0, Value.codec],
+  ],
+)
 
 /**
  * WireQuad is a quad that allows any value for it's directions.
@@ -307,35 +57,19 @@ export const Quad: MessageType<Quad> = /* @__PURE__ */ createMessageType({
  * @generated from message pquads.WireQuad
  */
 export interface WireQuad {
-  /**
-   * @generated from field: pquads.Value subject = 1;
-   */
   subject?: Value
-  /**
-   * @generated from field: pquads.Value predicate = 2;
-   */
   predicate?: Value
-  /**
-   * @generated from field: pquads.Value object = 3;
-   */
   object?: Value
-  /**
-   * @generated from field: pquads.Value label = 4;
-   */
   label?: Value
 }
 
 export const WireQuad: MessageType<WireQuad> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.WireQuad',
-    fields: [
-      { no: 1, name: 'subject', kind: 'message', T: () => Value },
-      { no: 2, name: 'predicate', kind: 'message', T: () => Value },
-      { no: 3, name: 'object', kind: 'message', T: () => Value },
-      { no: 4, name: 'label', kind: 'message', T: () => Value },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<WireQuad>('pquads.WireQuad', () => [
+    [1, 'subject', 11, 0, Value.codec],
+    [2, 'predicate', 11, 0, Value.codec],
+    [3, 'object', 11, 0, Value.codec],
+    [4, 'label', 11, 0, Value.codec],
+  ])
 
 /**
  * WireQuadRaw is the same as WireQuad, but doesn't decode underlying values.
@@ -343,35 +77,39 @@ export const WireQuad: MessageType<WireQuad> =
  * @generated from message pquads.WireQuadRaw
  */
 export interface WireQuadRaw {
-  /**
-   * @generated from field: bytes subject = 1;
-   */
   subject?: Uint8Array
-  /**
-   * @generated from field: bytes predicate = 2;
-   */
   predicate?: Uint8Array
-  /**
-   * @generated from field: bytes object = 3;
-   */
   object?: Uint8Array
-  /**
-   * @generated from field: bytes label = 4;
-   */
   label?: Uint8Array
 }
 
 export const WireQuadRaw: MessageType<WireQuadRaw> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.WireQuadRaw',
-    fields: [
-      { no: 1, name: 'subject', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 2, name: 'predicate', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 3, name: 'object', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 4, name: 'label', kind: 'scalar', T: ScalarType.BYTES },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<WireQuadRaw>('pquads.WireQuadRaw', () => [
+    [1, 'subject', 12],
+    [2, 'predicate', 12],
+    [3, 'object', 12],
+    [4, 'label', 12],
+  ])
+
+/**
+ * StrictQuad is a quad as described by RDF spec.
+ *
+ * @generated from message pquads.StrictQuad
+ */
+export interface StrictQuad {
+  subject?: StrictQuad_Ref
+  predicate?: StrictQuad_Ref
+  object?: Value
+  label?: StrictQuad_Ref
+}
+
+export const StrictQuad: MessageType<StrictQuad> =
+  /* @__PURE__ */ createMessageType<StrictQuad>('pquads.StrictQuad', () => [
+    [1, 'subject', 11, 0, StrictQuad_Ref.codec],
+    [2, 'predicate', 11, 0, StrictQuad_Ref.codec],
+    [3, 'object', 11, 0, Value.codec],
+    [4, 'label', 11, 0, StrictQuad_Ref.codec],
+  ])
 
 /**
  * @generated from message pquads.StrictQuad.Ref
@@ -381,83 +119,19 @@ export interface StrictQuad_Ref {
    * @generated from oneof pquads.StrictQuad.Ref.value
    */
   value?:
-    | {
-        value?: undefined
-        case: undefined
-      }
-    | {
-        /**
-         * @generated from field: string bnode_label = 2;
-         */
-        value: string
-        case: 'bnodeLabel'
-      }
-    | {
-        /**
-         * @generated from field: string iri = 3;
-         */
-        value: string
-        case: 'iri'
-      }
+    | { value?: undefined; case: undefined }
+    | { value: string; case: 'bnodeLabel' }
+    | { value: string; case: 'iri' }
 }
 
 export const StrictQuad_Ref: MessageType<StrictQuad_Ref> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.StrictQuad.Ref',
-    fields: [
-      {
-        no: 2,
-        name: 'bnode_label',
-        kind: 'scalar',
-        T: ScalarType.STRING,
-        oneof: 'value',
-      },
-      {
-        no: 3,
-        name: 'iri',
-        kind: 'scalar',
-        T: ScalarType.STRING,
-        oneof: 'value',
-      },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
-
-/**
- * StrictQuad is a quad as described by RDF spec.
- *
- * @generated from message pquads.StrictQuad
- */
-export interface StrictQuad {
-  /**
-   * @generated from field: pquads.StrictQuad.Ref subject = 1;
-   */
-  subject?: StrictQuad_Ref
-  /**
-   * @generated from field: pquads.StrictQuad.Ref predicate = 2;
-   */
-  predicate?: StrictQuad_Ref
-  /**
-   * @generated from field: pquads.Value object = 3;
-   */
-  object?: Value
-  /**
-   * @generated from field: pquads.StrictQuad.Ref label = 4;
-   */
-  label?: StrictQuad_Ref
-}
-
-export const StrictQuad: MessageType<StrictQuad> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.StrictQuad',
-    fields: [
-      { no: 1, name: 'subject', kind: 'message', T: () => StrictQuad_Ref },
-      { no: 2, name: 'predicate', kind: 'message', T: () => StrictQuad_Ref },
-      { no: 3, name: 'object', kind: 'message', T: () => Value },
-      { no: 4, name: 'label', kind: 'message', T: () => StrictQuad_Ref },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<StrictQuad_Ref>(
+    'pquads.StrictQuad.Ref',
+    () => [
+      [2, 'bnode_label', 9, 0, 0, 'value'],
+      [3, 'iri', 9, 0, 0, 'value'],
+    ],
+  )
 
 /**
  * StrictQuadRaw is the same as StrictQuad, but doesn't decode underlying values.
@@ -465,35 +139,108 @@ export const StrictQuad: MessageType<StrictQuad> =
  * @generated from message pquads.StrictQuadRaw
  */
 export interface StrictQuadRaw {
-  /**
-   * @generated from field: bytes subject = 1;
-   */
   subject?: Uint8Array
-  /**
-   * @generated from field: bytes predicate = 2;
-   */
   predicate?: Uint8Array
-  /**
-   * @generated from field: bytes object = 3;
-   */
   object?: Uint8Array
-  /**
-   * @generated from field: bytes label = 4;
-   */
   label?: Uint8Array
 }
 
 export const StrictQuadRaw: MessageType<StrictQuadRaw> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'pquads.StrictQuadRaw',
-    fields: [
-      { no: 1, name: 'subject', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 2, name: 'predicate', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 3, name: 'object', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 4, name: 'label', kind: 'scalar', T: ScalarType.BYTES },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<StrictQuadRaw>(
+    'pquads.StrictQuadRaw',
+    () => [
+      [1, 'subject', 12],
+      [2, 'predicate', 12],
+      [3, 'object', 12],
+      [4, 'label', 12],
+    ],
+  )
+
+/**
+ * @generated from message pquads.Value
+ */
+export interface Value {
+  /**
+   * @generated from oneof pquads.Value.value
+   */
+  value?:
+    | { value?: undefined; case: undefined }
+    | { value: Uint8Array; case: 'raw' }
+    | { value: string; case: 'str' }
+    | { value: string; case: 'iri' }
+    | { value: string; case: 'bnode' }
+    | { value: Value_TypedString; case: 'typedStr' }
+    | { value: Value_LangString; case: 'langStr' }
+    | { value: bigint; case: 'int' }
+    | { value: number; case: 'float' }
+    | { value: boolean; case: 'boolean' }
+    | { value: Value_Timestamp; case: 'time' }
+}
+
+export const Value: MessageType<Value> =
+  /* @__PURE__ */ createMessageType<Value>('pquads.Value', () => [
+    [1, 'raw', 12, 0, 0, 'value'],
+    [2, 'str', 9, 0, 0, 'value'],
+    [3, 'iri', 9, 0, 0, 'value'],
+    [4, 'bnode', 9, 0, 0, 'value'],
+    [5, 'typed_str', 11, 0, Value_TypedString.codec, 'value'],
+    [6, 'lang_str', 11, 0, Value_LangString.codec, 'value'],
+    [7, 'int', 3, 0, 0, 'value'],
+    [8, 'float', 1, 0, 0, 'value'],
+    [9, 'boolean', 8, 0, 0, 'value'],
+    [10, 'time', 11, 0, Value_Timestamp.codec, 'value'],
+  ])
+
+/**
+ * @generated from message pquads.Value.TypedString
+ */
+export interface Value_TypedString {
+  value?: string
+  type?: string
+}
+
+export const Value_TypedString: MessageType<Value_TypedString> =
+  /* @__PURE__ */ createMessageType<Value_TypedString>(
+    'pquads.Value.TypedString',
+    () => [
+      [1, 'value', 9],
+      [2, 'type', 9],
+    ],
+  )
+
+/**
+ * @generated from message pquads.Value.LangString
+ */
+export interface Value_LangString {
+  value?: string
+  lang?: string
+}
+
+export const Value_LangString: MessageType<Value_LangString> =
+  /* @__PURE__ */ createMessageType<Value_LangString>(
+    'pquads.Value.LangString',
+    () => [
+      [1, 'value', 9],
+      [2, 'lang', 9],
+    ],
+  )
+
+/**
+ * @generated from message pquads.Value.Timestamp
+ */
+export interface Value_Timestamp {
+  seconds?: bigint
+  nanos?: number
+}
+
+export const Value_Timestamp: MessageType<Value_Timestamp> =
+  /* @__PURE__ */ createMessageType<Value_Timestamp>(
+    'pquads.Value.Timestamp',
+    () => [
+      [1, 'seconds', 3],
+      [2, 'nanos', 5],
+    ],
+  )
 
 /**
  * @generated from message pquads.Header
@@ -502,23 +249,16 @@ export interface Header {
   /**
    * Full is set if encoder always writes every quad directions instead of
    * skipping duplicated values on each direction (except label) for subsequent quads.
-   *
-   * @generated from field: bool full = 1;
    */
   full?: boolean
   /**
    * NotStrict is set if encoder emits WireQuad instead of StrictQuad messages.
-   *
-   * @generated from field: bool not_strict = 2;
    */
   notStrict?: boolean
 }
 
-export const Header: MessageType<Header> = /* @__PURE__ */ createMessageType({
-  typeName: 'pquads.Header',
-  fields: [
-    { no: 1, name: 'full', kind: 'scalar', T: ScalarType.BOOL },
-    { no: 2, name: 'not_strict', kind: 'scalar', T: ScalarType.BOOL },
-  ] satisfies readonly PartialFieldInfo[],
-  packedByDefault: true,
-})
+export const Header: MessageType<Header> =
+  /* @__PURE__ */ createMessageType<Header>('pquads.Header', () => [
+    [1, 'full', 8],
+    [2, 'not_strict', 8],
+  ])

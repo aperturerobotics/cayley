@@ -19,63 +19,20 @@
 import { createEnumType } from '@aptre/protobuf-es-lite/enum'
 import type { MessageType } from '@aptre/protobuf-es-lite/message'
 import { createMessageType } from '@aptre/protobuf-es-lite/message'
-import { ScalarType } from '@aptre/protobuf-es-lite/scalar'
-import type { PartialFieldInfo } from '@aptre/protobuf-es-lite/field'
-
-export const protobufPackage = 'proto'
 
 /**
  * @generated from enum proto.PrimitiveType
  */
 export enum PrimitiveType {
-  /**
-   * @generated from enum value: LINK = 0;
-   */
   LINK = 0,
-
-  /**
-   * @generated from enum value: IRI = 1;
-   */
   IRI = 1,
-
-  /**
-   * @generated from enum value: STRING = 2;
-   */
   STRING = 2,
-
-  /**
-   * @generated from enum value: BNODE = 3;
-   */
   BNODE = 3,
-
-  /**
-   * @generated from enum value: TYPED_STR = 4;
-   */
   TYPED_STR = 4,
-
-  /**
-   * @generated from enum value: LANG_STR = 5;
-   */
   LANG_STR = 5,
-
-  /**
-   * @generated from enum value: INT = 6;
-   */
   INT = 6,
-
-  /**
-   * @generated from enum value: FLOAT = 7;
-   */
   FLOAT = 7,
-
-  /**
-   * @generated from enum value: BOOL = 8;
-   */
   BOOL = 8,
-
-  /**
-   * @generated from enum value: TIMESTAMP = 9;
-   */
   TIMESTAMP = 9,
 }
 
@@ -99,52 +56,24 @@ export const PrimitiveType_Enum = /* @__PURE__ */ createEnumType(
  * @generated from message proto.Primitive
  */
 export interface Primitive {
-  /**
-   * @generated from field: uint64 ID = 1;
-   */
   ID?: bigint
-  /**
-   * @generated from field: uint64 Subject = 2;
-   */
   Subject?: bigint
-  /**
-   * @generated from field: uint64 Predicate = 3;
-   */
   Predicate?: bigint
-  /**
-   * @generated from field: uint64 Object = 4;
-   */
   Object?: bigint
-  /**
-   * @generated from field: uint64 Label = 5;
-   */
   Label?: bigint
-  /**
-   * @generated from field: uint64 Replaces = 6;
-   */
   Replaces?: bigint
-  /**
-   * @generated from field: bytes Value = 8;
-   */
   Value?: Uint8Array
-  /**
-   * @generated from field: bool Deleted = 9;
-   */
   Deleted?: boolean
 }
 
 export const Primitive: MessageType<Primitive> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'proto.Primitive',
-    fields: [
-      { no: 1, name: 'ID', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 2, name: 'Subject', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 3, name: 'Predicate', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 4, name: 'Object', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 5, name: 'Label', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 6, name: 'Replaces', kind: 'scalar', T: ScalarType.UINT64 },
-      { no: 8, name: 'Value', kind: 'scalar', T: ScalarType.BYTES },
-      { no: 9, name: 'Deleted', kind: 'scalar', T: ScalarType.BOOL },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<Primitive>('proto.Primitive', () => [
+    [1, 'ID', 4],
+    [2, 'Subject', 4],
+    [3, 'Predicate', 4],
+    [4, 'Object', 4],
+    [5, 'Label', 4],
+    [6, 'Replaces', 4],
+    [8, 'Value', 12],
+    [9, 'Deleted', 8],
+  ])
