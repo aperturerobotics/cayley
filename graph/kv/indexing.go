@@ -224,13 +224,19 @@ func encodeQuadIndexes(indexes []QuadIndex) ([]byte, error) {
 
 // encodeIndexLayout encodes the layout and its cursor.
 func encodeIndexLayout(layout *indexLayout) ([]byte, error) {
-	// Validate and convert each index into the record.
-	list := &QuadIndexList{
-		Indexes:   make([]*QuadIndexMeta, len(layout.indexes)),
-		CursorKey: layout.cursorKey,
-		CursorId:  layout.cursorID,
+	metas, err := QuadIndexMetas(layout.indexes)
+	if err != nil {
+		return nil, err
 	}
-	for i, index := range layout.indexes {
+	list := &QuadIndexList{Indexes: metas, CursorKey: layout.cursorKey, CursorId: layout.cursorID}
+	return list.MarshalVT()
+}
+
+// QuadIndexMetas converts indexes into their stored records, validating each
+// state and direction.
+func QuadIndexMetas(indexes []QuadIndex) ([]*QuadIndexMeta, error) {
+	metas := make([]*QuadIndexMeta, len(indexes))
+	for i, index := range indexes {
 		if _, ok := QuadIndexState_name[int32(index.State)]; !ok {
 			return nil, errors.Errorf("invalid quad index state %d", index.State)
 		}
@@ -245,9 +251,9 @@ func encodeIndexLayout(layout *indexLayout) ([]byte, error) {
 			}
 			meta.Dirs[j] = uint32(dir)
 		}
-		list.Indexes[i] = meta
+		metas[i] = meta
 	}
-	return list.MarshalVT()
+	return metas, nil
 }
 
 func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
@@ -258,9 +264,7 @@ func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
 	return layout.indexes, nil
 }
 
-// decodeIndexLayout decodes the layout and its cursor. A state this build
-// does not know is an error, so an older build never maintains a layout it
-// cannot.
+// decodeIndexLayout decodes the layout and its cursor.
 func decodeIndexLayout(data []byte) (*indexLayout, error) {
 	// Decode the record.
 	list := &QuadIndexList{}
@@ -269,8 +273,19 @@ func decodeIndexLayout(data []byte) (*indexLayout, error) {
 	}
 
 	// Validate and convert each index.
-	indexes := make([]QuadIndex, len(list.GetIndexes()))
-	for i, meta := range list.GetIndexes() {
+	indexes, err := QuadIndexesFromMetas(list.GetIndexes())
+	if err != nil {
+		return nil, err
+	}
+	return &indexLayout{indexes: indexes, cursorKey: list.GetCursorKey(), cursorID: list.GetCursorId()}, nil
+}
+
+// QuadIndexesFromMetas converts stored records into indexes. A state this
+// build does not know is an error, so an older build never maintains a layout
+// it cannot.
+func QuadIndexesFromMetas(metas []*QuadIndexMeta) ([]QuadIndex, error) {
+	indexes := make([]QuadIndex, len(metas))
+	for i, meta := range metas {
 		if _, ok := QuadIndexState_name[int32(meta.GetState())]; !ok {
 			return nil, errors.Errorf("unknown quad index state %d", meta.GetState())
 		}
@@ -285,7 +300,7 @@ func decodeIndexLayout(data []byte) (*indexLayout, error) {
 			indexes[i].Dirs[j] = dir
 		}
 	}
-	return &indexLayout{indexes: indexes, cursorKey: list.GetCursorKey(), cursorID: list.GetCursorId()}, nil
+	return indexes, nil
 }
 
 func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []graphlog.NodeUpdate, fnc func(i int, id uint64)) error {
