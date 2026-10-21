@@ -255,22 +255,22 @@ func (qs *QuadStore) collectQuadFilterScanGroup(
 	return it.Err()
 }
 
+// collectAllQuadsForBatchFilter collects the quads of a filter no index
+// prefix serves, in primitive ID order. A filter with a value in a direction
+// some index holds reads the IDs from that index's postings; any other filter
+// walks every ID in the log.
 func (qs *QuadStore) collectAllQuadsForBatchFilter(ctx context.Context, tx kv.Tx, filter resolvedQuadBatchFilter, results *[]quad.Quad, limit uint32) error {
-	horizon, err := qs.getMetaIntTx(ctx, tx, "horizon")
-	if err == kv.ErrNotFound {
-		return nil
-	} else if err != nil {
+	// Find the candidate IDs.
+	next, err := qs.unindexedFilterIDs(ctx, tx, filter)
+	if err != nil {
 		return err
 	}
-	var id uint64
-	for id < uint64(horizon) {
-		ids := make([]uint64, 0, nextBatch)
-		for range nextBatch {
-			id++
-			if id > uint64(horizon) {
-				break
-			}
-			ids = append(ids, id)
+
+	// Match their primitives in batches until the limit fills.
+	for {
+		ids := next()
+		if len(ids) == 0 {
+			return nil
 		}
 		prims, err := qs.getPrimitivesFromLog(ctx, tx, ids)
 		if err != nil {
@@ -294,7 +294,42 @@ func (qs *QuadStore) collectAllQuadsForBatchFilter(ctx context.Context, tx kv.Tx
 			}
 		}
 	}
-	return nil
+}
+
+// unindexedFilterIDs returns a function yielding the next batch of candidate
+// IDs for filter in ascending order, empty once none remain: the IDs posted
+// under its values when an index holds one of its directions, otherwise every
+// ID up to the horizon.
+func (qs *QuadStore) unindexedFilterIDs(ctx context.Context, tx kv.Tx, filter resolvedQuadBatchFilter) (func() []uint64, error) {
+	// Read the posted IDs when an index holds a filtered direction.
+	if ind, ok := qs.postingScanIndex(filter.all); ok {
+		ids, err := qs.postingLinkIDs(ctx, tx, ind, filter.all)
+		if err != nil {
+			return nil, err
+		}
+		return func() []uint64 {
+			batch := ids[:min(len(ids), nextBatch)]
+			ids = ids[len(batch):]
+			return batch
+		}, nil
+	}
+
+	// Otherwise walk every ID the log allocated.
+	horizon, err := qs.getMetaIntTx(ctx, tx, "horizon")
+	if err == kv.ErrNotFound {
+		horizon = 0
+	} else if err != nil {
+		return nil, err
+	}
+	var id uint64
+	return func() []uint64 {
+		ids := make([]uint64, 0, nextBatch)
+		for len(ids) < nextBatch && id < uint64(horizon) {
+			id++
+			ids = append(ids, id)
+		}
+		return ids
+	}, nil
 }
 
 func primitiveMatchesQuadFilter(prim *proto.Primitive, filter resolvedQuadBatchFilter) bool {

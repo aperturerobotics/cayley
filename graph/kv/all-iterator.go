@@ -91,6 +91,8 @@ type allIteratorNext struct {
 	qs      *QuadStore
 	err     error
 	cons    *constraint
+	// next yields the next batch of IDs to read, set at the first Next.
+	next func() []uint64
 }
 
 func (qs *QuadStore) newAllIteratorNext(nodes bool, cons *constraint) *allIteratorNext {
@@ -141,17 +143,12 @@ func (it *allIteratorNext) Next(ctx context.Context) bool {
 	}
 	for {
 		if len(it.buf) == 0 {
-			if it.id+1 > uint64(it.horizon) {
-				return false
-			}
-			ids := make([]uint64, 0, nextBatch)
-			for range nextBatch {
-				it.id++
-				if it.id > uint64(it.horizon) {
-					break
+			if it.next == nil {
+				if it.next, it.err = it.batches(ctx); it.err != nil {
+					return false
 				}
-				ids = append(ids, it.id)
 			}
+			ids := it.next()
 			if len(ids) == 0 {
 				return false
 			}
@@ -182,6 +179,43 @@ func (it *allIteratorNext) Next(ctx context.Context) bool {
 			}
 		}
 	}
+}
+
+// batches returns a function yielding the next batch of IDs to read in
+// ascending order, empty once none remain. A constraint on a direction some
+// index holds reads the IDs posted under its value; otherwise every ID up to
+// the horizon is read.
+func (it *allIteratorNext) batches(ctx context.Context) (func() []uint64, error) {
+	// Read the posted IDs when an index holds the constrained direction.
+	if it.cons != nil {
+		values := map[quad.Direction]uint64{it.cons.dir: uint64(it.cons.val)}
+		if ind, ok := it.qs.postingScanIndex(values); ok {
+			tx, err := it.qs.db.Tx(ctx, false)
+			if err != nil {
+				return nil, err
+			}
+			defer tx.Close()
+			ids, err := it.qs.postingLinkIDs(ctx, tx, ind, values)
+			if err != nil {
+				return nil, err
+			}
+			return func() []uint64 {
+				batch := ids[:min(len(ids), nextBatch)]
+				ids = ids[len(batch):]
+				return batch
+			}, nil
+		}
+	}
+
+	// Otherwise walk every ID the log allocated.
+	return func() []uint64 {
+		ids := make([]uint64, 0, nextBatch)
+		for len(ids) < nextBatch && it.id < uint64(it.horizon) {
+			it.id++
+			ids = append(ids, it.id)
+		}
+		return ids
+	}, nil
 }
 
 func (it *allIteratorNext) NextPath(ctx context.Context) bool {
