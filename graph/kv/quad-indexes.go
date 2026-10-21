@@ -76,7 +76,7 @@ func (qs *QuadStore) selectQuadIndexes(ctx context.Context, indexes []QuadIndex)
 		return err
 	}
 	if CompareQuadIndexes(stored, indexes) {
-		qs.indexes.all = indexes
+		qs.setLayout(indexes)
 		return nil
 	}
 
@@ -94,8 +94,86 @@ func (qs *QuadStore) selectQuadIndexes(ctx context.Context, indexes []QuadIndex)
 	if err != nil {
 		return err
 	}
-	qs.indexes.all = indexes
+	qs.setLayout(indexes)
 	return nil
+}
+
+// trustQuadIndexes takes the caller's copy of the stored layout without
+// reading the store. A non-default layout is recorded by the first write, so
+// an empty store holds it from its first primitive.
+func (qs *QuadStore) trustQuadIndexes(indexes []QuadIndex) error {
+	// Validate the layout and keep a private copy.
+	indexes, err := cloneQuadIndexes(indexes)
+	if err != nil {
+		return err
+	}
+
+	// The default layout is what an absent record means.
+	if !CompareQuadIndexes(indexes, DefaultQuadIndexes) {
+		qs.indexMeta, err = encodeQuadIndexes(indexes)
+		if err != nil {
+			return err
+		}
+	}
+	qs.setLayout(indexes)
+	return nil
+}
+
+// requireCompleteIndexes refuses a requested layout holding an index that is
+// building or dropping; only a layout change records those states.
+func requireCompleteIndexes(indexes []QuadIndex) error {
+	for _, index := range indexes {
+		if index.State != QuadIndexState_COMPLETE {
+			return errors.Errorf("requested quad index %s is %s; request complete indexes", index.bucket()[0], index.State)
+		}
+	}
+	return nil
+}
+
+// setLayout replaces the active layout and the views derived from it.
+func (qs *QuadStore) setLayout(layout []QuadIndex) {
+	// Split the layout into the indexes that serve and those writes maintain.
+	var all, building []QuadIndex
+	for _, index := range layout {
+		switch index.State {
+		case QuadIndexState_COMPLETE:
+			all = append(all, index)
+		case QuadIndexState_BUILDING:
+			building = append(building, index)
+		}
+	}
+
+	// Publish the views and drop the cached exact lookup indexes.
+	qs.indexes.Lock()
+	qs.indexes.layout = layout
+	qs.indexes.all = all
+	qs.indexes.building = building
+	qs.indexes.exists = nil
+	qs.indexes.Unlock()
+}
+
+// Layout returns a copy of every index in the active layout with its state.
+func (qs *QuadStore) Layout() []QuadIndex {
+	// Copy the layout and its direction slices, which the caller may change.
+	qs.indexes.RLock()
+	layout := qs.indexes.layout
+	qs.indexes.RUnlock()
+	out := slices.Clone(layout)
+	for i := range out {
+		out[i].Dirs = slices.Clone(out[i].Dirs)
+	}
+	return out
+}
+
+// maintainedIndexes returns the indexes writes keep current: the complete
+// indexes and those being built.
+func (qs *QuadStore) maintainedIndexes() []QuadIndex {
+	qs.indexes.RLock()
+	defer qs.indexes.RUnlock()
+	if len(qs.indexes.building) == 0 {
+		return qs.indexes.all
+	}
+	return slices.Concat(qs.indexes.all, qs.indexes.building)
 }
 
 // hasPrimitiveLog checks one log entry without walking the graph.
@@ -124,6 +202,9 @@ func quadIndexLayout(indexes []QuadIndex) string {
 		buckets[i] = string(index.bucket()[0])
 		if index.Unique {
 			buckets[i] += " (unique)"
+		}
+		if index.State != QuadIndexState_COMPLETE {
+			buckets[i] += " (" + strings.ToLower(index.State.String()) + ")"
 		}
 	}
 	return strings.Join(buckets, ",")

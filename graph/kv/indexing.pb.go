@@ -5,6 +5,7 @@
 package kv
 
 import (
+	base64 "encoding/base64"
 	fmt "fmt"
 	io "io"
 	slices "slices"
@@ -15,11 +16,57 @@ import (
 	json "github.com/aperturerobotics/protobuf-go-lite/json"
 )
 
+// QuadIndexState is the lifecycle state of a quad index.
+type QuadIndexState int32
+
+const (
+	// COMPLETE indexes serve lookups and are maintained by writes.
+	QuadIndexState_COMPLETE QuadIndexState = 0
+	// BUILDING indexes are maintained by writes and never serve lookups.
+	QuadIndexState_BUILDING QuadIndexState = 1
+	// DROPPING indexes are neither maintained nor served; their postings are
+	// being deleted.
+	QuadIndexState_DROPPING QuadIndexState = 2
+)
+
+// Enum value maps for QuadIndexState.
+var (
+	QuadIndexState_name = map[int32]string{
+		0: "COMPLETE",
+		1: "BUILDING",
+		2: "DROPPING",
+	}
+	QuadIndexState_value = map[string]int32{
+		"COMPLETE": 0,
+		"BUILDING": 1,
+		"DROPPING": 2,
+	}
+)
+
+func (x QuadIndexState) Enum() *QuadIndexState {
+	p := new(QuadIndexState)
+	*p = x
+	return p
+}
+
+func (x QuadIndexState) String() string {
+	name, valid := QuadIndexState_name[int32(x)]
+	if valid {
+		return name
+	}
+	return strconv.Itoa(int(x))
+}
+
 // QuadIndexList stores the configured quad indexes.
 type QuadIndexList struct {
 	unknownFields []byte
 	// Indexes are the quad indexes in priority order.
 	Indexes []*QuadIndexMeta `protobuf:"bytes,1,rep,name=indexes,proto3" json:"indexes,omitempty"`
+	// CursorKey is the last source posting key a layout change step read.
+	// Empty when no build has started.
+	CursorKey []byte `protobuf:"bytes,2,opt,name=cursor_key,json=cursorKey,proto3" json:"cursorKey,omitempty"`
+	// CursorId is the last link ID of CursorKey's posting a step indexed.
+	CursorId uint64 `protobuf:"varint,3,opt,name=cursor_id,json=cursorId,proto3" json:"cursorId,omitempty"`
 }
 
 func (x *QuadIndexList) Reset() {
@@ -35,6 +82,20 @@ func (x *QuadIndexList) GetIndexes() []*QuadIndexMeta {
 	return nil
 }
 
+func (x *QuadIndexList) GetCursorKey() []byte {
+	if x != nil {
+		return x.CursorKey
+	}
+	return nil
+}
+
+func (x *QuadIndexList) GetCursorId() uint64 {
+	if x != nil {
+		return x.CursorId
+	}
+	return 0
+}
+
 // QuadIndexMeta stores a single quad index definition.
 type QuadIndexMeta struct {
 	unknownFields []byte
@@ -42,6 +103,8 @@ type QuadIndexMeta struct {
 	Dirs []uint32 `protobuf:"varint,1,rep,packed,name=dirs,proto3" json:"dirs,omitempty"`
 	// Unique indicates the index is unique.
 	Unique bool `protobuf:"varint,2,opt,name=unique,proto3" json:"unique,omitempty"`
+	// State is the index's lifecycle state.
+	State QuadIndexState `protobuf:"varint,3,opt,name=state,proto3" json:"state,omitempty"`
 }
 
 func (x *QuadIndexMeta) Reset() {
@@ -64,16 +127,27 @@ func (x *QuadIndexMeta) GetUnique() bool {
 	return false
 }
 
+func (x *QuadIndexMeta) GetState() QuadIndexState {
+	if x != nil {
+		return x.State
+	}
+	return QuadIndexState_COMPLETE
+}
+
 func (m *QuadIndexList) CloneVT() *QuadIndexList {
 	if m == nil {
 		return (*QuadIndexList)(nil)
 	}
 	r := new(QuadIndexList)
+	r.CursorId = m.CursorId
 	if rhs := m.Indexes; rhs != nil {
 		r.Indexes = make([]*QuadIndexMeta, len(rhs))
 		for k, v := range rhs {
 			r.Indexes[k] = v.CloneVT()
 		}
+	}
+	if rhs := m.CursorKey; rhs != nil {
+		r.CursorKey = slices.Clone(rhs)
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = slices.Clone(m.unknownFields)
@@ -91,6 +165,7 @@ func (m *QuadIndexMeta) CloneVT() *QuadIndexMeta {
 	}
 	r := new(QuadIndexMeta)
 	r.Unique = m.Unique
+	r.State = m.State
 	if rhs := m.Dirs; rhs != nil {
 		r.Dirs = slices.Clone(rhs)
 	}
@@ -127,6 +202,12 @@ func (this *QuadIndexList) EqualVT(that *QuadIndexList) bool {
 			}
 		}
 	}
+	if string(this.CursorKey) != string(that.CursorKey) {
+		return false
+	}
+	if this.CursorId != that.CursorId {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -156,6 +237,9 @@ func (this *QuadIndexMeta) EqualVT(that *QuadIndexMeta) bool {
 	if this.Unique != that.Unique {
 		return false
 	}
+	if this.State != that.State {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -165,6 +249,46 @@ func (this *QuadIndexMeta) EqualMessageVT(thatMsg any) bool {
 		return false
 	}
 	return this.EqualVT(that)
+}
+
+// MarshalProtoJSON marshals the QuadIndexState to JSON.
+func (x QuadIndexState) MarshalProtoJSON(s *json.MarshalState) {
+	s.WriteEnum(int32(x), QuadIndexState_name)
+}
+
+// MarshalText marshals the QuadIndexState to text.
+func (x QuadIndexState) MarshalText() ([]byte, error) {
+	return []byte(json.GetEnumString(int32(x), QuadIndexState_name)), nil
+}
+
+// MarshalJSON marshals the QuadIndexState to JSON.
+func (x QuadIndexState) MarshalJSON() ([]byte, error) {
+	return json.DefaultMarshalerConfig.Marshal(x)
+}
+
+// UnmarshalProtoJSON unmarshals the QuadIndexState from JSON.
+func (x *QuadIndexState) UnmarshalProtoJSON(s *json.UnmarshalState) {
+	v := s.ReadEnum(QuadIndexState_value)
+	if err := s.Err(); err != nil {
+		s.SetErrorf("could not read QuadIndexState enum: %v", err)
+		return
+	}
+	*x = QuadIndexState(v)
+}
+
+// UnmarshalText unmarshals the QuadIndexState from text.
+func (x *QuadIndexState) UnmarshalText(b []byte) error {
+	i, err := json.ParseEnumString(string(b), QuadIndexState_value)
+	if err != nil {
+		return err
+	}
+	*x = QuadIndexState(i)
+	return nil
+}
+
+// UnmarshalJSON unmarshals the QuadIndexState from JSON.
+func (x *QuadIndexState) UnmarshalJSON(b []byte) error {
+	return json.DefaultUnmarshalerConfig.Unmarshal(b, x)
 }
 
 // MarshalProtoJSON marshals the QuadIndexList message to JSON.
@@ -185,6 +309,16 @@ func (x *QuadIndexList) MarshalProtoJSON(s *json.MarshalState) {
 			element.MarshalProtoJSON(s.WithField("indexes"))
 		}
 		s.WriteArrayEnd()
+	}
+	if len(x.CursorKey) > 0 || s.HasField("cursorKey") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("cursorKey")
+		s.WriteBytes(x.CursorKey)
+	}
+	if x.CursorId != 0 || s.HasField("cursorId") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("cursorId")
+		s.WriteUint64(x.CursorId)
 	}
 	s.WriteObjectEnd()
 }
@@ -221,6 +355,12 @@ func (x *QuadIndexList) UnmarshalProtoJSON(s *json.UnmarshalState) {
 				}
 				x.Indexes = append(x.Indexes, v)
 			})
+		case "cursor_key", "cursorKey":
+			s.AddField("cursor_key")
+			x.CursorKey = s.ReadBytes()
+		case "cursor_id", "cursorId":
+			s.AddField("cursor_id")
+			x.CursorId = s.ReadUint64()
 		}
 	})
 }
@@ -247,6 +387,11 @@ func (x *QuadIndexMeta) MarshalProtoJSON(s *json.MarshalState) {
 		s.WriteMoreIf(&wroteField)
 		s.WriteObjectField("unique")
 		s.WriteBool(x.Unique)
+	}
+	if x.State != 0 || s.HasField("state") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("state")
+		x.State.MarshalProtoJSON(s)
 	}
 	s.WriteObjectEnd()
 }
@@ -275,6 +420,9 @@ func (x *QuadIndexMeta) UnmarshalProtoJSON(s *json.UnmarshalState) {
 		case "unique":
 			s.AddField("unique")
 			x.Unique = s.ReadBool()
+		case "state":
+			s.AddField("state")
+			x.State.UnmarshalProtoJSON(s)
 		}
 	})
 }
@@ -313,6 +461,18 @@ func (m *QuadIndexList) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.CursorId != 0 {
+		i = protobuf_go_lite.EncodeVarint(dAtA, i, uint64(m.CursorId))
+		i--
+		dAtA[i] = 0x18
+	}
+	if len(m.CursorKey) > 0 {
+		i -= len(m.CursorKey)
+		copy(dAtA[i:], m.CursorKey)
+		i = protobuf_go_lite.EncodeVarint(dAtA, i, uint64(len(m.CursorKey)))
+		i--
+		dAtA[i] = 0x12
 	}
 	if len(m.Indexes) > 0 {
 		for iNdEx := len(m.Indexes) - 1; iNdEx >= 0; iNdEx-- {
@@ -359,6 +519,11 @@ func (m *QuadIndexMeta) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.State != 0 {
+		i = protobuf_go_lite.EncodeVarint(dAtA, i, uint64(m.State))
+		i--
+		dAtA[i] = 0x18
+	}
 	if m.Unique {
 		i--
 		if m.Unique {
@@ -404,6 +569,13 @@ func (m *QuadIndexList) SizeVT() (n int) {
 			n += 1 + l + protobuf_go_lite.SizeOfVarint(uint64(l))
 		}
 	}
+	l = len(m.CursorKey)
+	if l > 0 {
+		n += 1 + l + protobuf_go_lite.SizeOfVarint(uint64(l))
+	}
+	if m.CursorId != 0 {
+		n += 1 + protobuf_go_lite.SizeOfVarint(uint64(m.CursorId))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -424,8 +596,15 @@ func (m *QuadIndexMeta) SizeVT() (n int) {
 	if m.Unique {
 		n += 2
 	}
+	if m.State != 0 {
+		n += 1 + protobuf_go_lite.SizeOfVarint(uint64(m.State))
+	}
 	n += len(m.unknownFields)
 	return n
+}
+
+func (x QuadIndexState) MarshalProtoText() string {
+	return x.String()
 }
 
 func (x *QuadIndexList) MarshalProtoText() string {
@@ -447,6 +626,22 @@ func (x *QuadIndexList) MarshalProtoText() string {
 			}
 		}
 		sb.WriteString("]")
+	}
+	if len(x.CursorKey) != 0 {
+		if sb.Len() > 15 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString("cursor_key: ")
+		sb.WriteString("\"")
+		sb.WriteString(base64.StdEncoding.EncodeToString(x.CursorKey))
+		sb.WriteString("\"")
+	}
+	if x.CursorId != 0 {
+		if sb.Len() > 15 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString("cursor_id: ")
+		sb.WriteString(strconv.FormatUint(uint64(x.CursorId), 10))
 	}
 	sb.WriteString("}")
 	return sb.String()
@@ -478,6 +673,15 @@ func (x *QuadIndexMeta) MarshalProtoText() string {
 		}
 		sb.WriteString("unique: ")
 		sb.WriteString(strconv.FormatBool(x.Unique))
+	}
+	if x.State != 0 {
+		if sb.Len() > 15 {
+			sb.WriteString(" ")
+		}
+		sb.WriteString("state: ")
+		sb.WriteString("\"")
+		sb.WriteString(QuadIndexState(x.State).String())
+		sb.WriteString("\"")
 	}
 	sb.WriteString("}")
 	return sb.String()
@@ -533,6 +737,41 @@ func (m *QuadIndexList) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CursorKey", wireType)
+			}
+			var byteLen int
+			var _v uint64
+			_v, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+			byteLen = int(_v)
+			if err != nil {
+				return err
+			}
+			if byteLen < 0 {
+				return protobuf_go_lite.ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return protobuf_go_lite.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CursorKey = append(m.CursorKey[:0], dAtA[iNdEx:postIndex]...)
+			if m.CursorKey == nil {
+				m.CursorKey = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CursorId", wireType)
+			}
+			m.CursorId = 0
+			m.CursorId, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+			if err != nil {
+				return err
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protobuf_go_lite.Skip(dAtA[iNdEx:])
@@ -636,6 +875,17 @@ func (m *QuadIndexMeta) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			m.Unique = bool(v != 0)
+		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field State", wireType)
+			}
+			m.State = 0
+			var _v uint64
+			_v, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+			m.State = QuadIndexState(_v)
+			if err != nil {
+				return err
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := protobuf_go_lite.Skip(dAtA[iNdEx:])

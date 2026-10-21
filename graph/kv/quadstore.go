@@ -35,16 +35,21 @@ import (
 type QuadStore struct {
 	// db stores the graph's primitive log, nodes, counters, and postings.
 	db kv.KV
-	// indexMeta records a newly selected layout with each mutation transaction.
-	// It is immutable after opening and nil when stored metadata already matches.
+	// indexMeta records a layout the store may not hold yet with the
+	// transaction that allocates its first IDs. It is immutable after opening
+	// and nil when stored metadata already matches.
 	indexMeta []byte
 
 	// indexes guards the active layout and cached duplicate-lookup indexes.
 	indexes struct {
-		// RWMutex guards all and exists.
+		// RWMutex guards layout, all, building, and exists.
 		sync.RWMutex
-		// all is the complete active posting layout.
+		// layout is every index with its state, in priority order.
+		layout []QuadIndex
+		// all are the complete indexes, which serve lookups.
 		all []QuadIndex
+		// building are the indexes writes maintain that do not serve yet.
+		building []QuadIndex
 		// exists caches the indexes used for exact quad lookup.
 		exists []QuadIndex
 	}
@@ -78,6 +83,11 @@ const (
 	// A different nonempty layout requires offline reindexing before opening.
 	// Empty stores take the requested layout. It overrides OptAssumeDefaultIdx.
 	OptQuadIndexes = "quad_indexes"
+	// OptTrustQuadIndexes supplies the stored []QuadIndex layout, with each
+	// index's state, from a copy the caller keeps beside the store. The open
+	// reads nothing. An empty store records a non-default layout with its first
+	// write. It overrides OptQuadIndexes and OptAssumeDefaultIdx.
+	OptTrustQuadIndexes = "trust_quad_indexes"
 )
 
 // New opens a graph with stored, default, or explicitly supplied quad indexes.
@@ -91,6 +101,14 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 	// Select indexes only after checking the stored layout.
 	assumeDefaultIdx, _ := opt.BoolKey(OptAssumeDefaultIdx, false)
 	switch {
+	case opt[OptTrustQuadIndexes] != nil:
+		indexes, ok := opt[OptTrustQuadIndexes].([]QuadIndex)
+		if !ok {
+			return nil, errors.New("trust_quad_indexes requires a []QuadIndex")
+		}
+		if err := qs.trustQuadIndexes(indexes); err != nil {
+			return nil, err
+		}
 	case opt[OptQuadIndexes] != nil:
 		indexes, ok := opt[OptQuadIndexes].([]QuadIndex)
 		if !ok {
@@ -100,17 +118,20 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 		if err != nil {
 			return nil, err
 		}
+		if err := requireCompleteIndexes(indexes); err != nil {
+			return nil, err
+		}
 		if err := qs.selectQuadIndexes(ctx, indexes); err != nil {
 			return nil, err
 		}
 	case assumeDefaultIdx:
-		qs.indexes.all = DefaultQuadIndexes
+		qs.setLayout(DefaultQuadIndexes)
 	default:
 		list, err := qs.readIndexesMeta(ctx)
 		if err != nil {
 			return nil, err
 		}
-		qs.indexes.all = list
+		qs.setLayout(list)
 	}
 
 	// Keep node and exact-quad caches local to this graph handle.
@@ -122,7 +143,7 @@ func New(ctx context.Context, kv kv.KV, opt graph.Options) (graph.QuadStore, err
 // flushMetaCache records the selected layout and changed counters with the graph mutation.
 func (qs *QuadStore) flushMetaCache(ctx context.Context, tx kv.Tx, cache *metaCache) error {
 	// Keep first-write index metadata atomic with the primitives and postings it describes.
-	if len(qs.indexMeta) != 0 {
+	if len(qs.indexMeta) != 0 && cache != nil && cache.first {
 		if err := tx.Put(ctx, kv.Key{keyMetaIndexes}, qs.indexMeta); err != nil {
 			return err
 		}

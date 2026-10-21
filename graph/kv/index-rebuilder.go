@@ -41,6 +41,9 @@ func NewIndexRebuilder(db kv.KV, indexes []QuadIndex) (*IndexRebuilder, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := requireCompleteIndexes(indexes); err != nil {
+		return nil, err
+	}
 	layout, err := encodeQuadIndexes(indexes)
 	if err != nil {
 		return nil, err
@@ -115,7 +118,7 @@ func (r *IndexRebuilder) Rebuild(ctx context.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	qs.indexes.all = r.indexes
+	qs.setLayout(r.indexes)
 
 	// Read primitives in numeric ID order so every posting remains sorted.
 	var count uint64

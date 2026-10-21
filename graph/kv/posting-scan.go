@@ -13,16 +13,19 @@ import (
 
 // postingScanIndex returns the index whose postings a lookup that no index
 // prefix serves scans, such as one by predicate alone, or false when no index
-// holds any direction in values. It prefers the index with the fewest
-// directions, whose keys group the most links each.
+// holds any direction in values. It prefers the index whose leading directions
+// values pins most, whose prefix holds only matching postings, and then the
+// index with the fewest directions, whose keys group the most links each.
 func (qs *QuadStore) postingScanIndex(values map[quad.Direction]uint64) (QuadIndex, bool) {
-	// Pick the narrowest index holding a filtered direction.
+	// Pick the longest pinned prefix, then the narrowest index holding a
+	// filtered direction.
 	qs.indexes.RLock()
 	all := qs.indexes.all
 	qs.indexes.RUnlock()
 	var (
-		best  QuadIndex
-		found bool
+		best       QuadIndex
+		bestPrefix int
+		found      bool
 	)
 	for _, ind := range all {
 		if !slices.ContainsFunc(ind.Dirs, func(d quad.Direction) bool {
@@ -31,11 +34,26 @@ func (qs *QuadStore) postingScanIndex(values map[quad.Direction]uint64) (QuadInd
 		}) {
 			continue
 		}
-		if !found || len(ind.Dirs) < len(best.Dirs) {
-			best, found = ind, true
+		prefix := len(pinnedPrefix(ind, values))
+		if !found || prefix > bestPrefix || (prefix == bestPrefix && len(ind.Dirs) < len(best.Dirs)) {
+			best, bestPrefix, found = ind, prefix, true
 		}
 	}
 	return best, found
+}
+
+// pinnedPrefix returns the values of ind's leading directions that values
+// pins, stopping at the first it does not.
+func pinnedPrefix(ind QuadIndex, values map[quad.Direction]uint64) []uint64 {
+	var prefix []uint64
+	for _, d := range ind.Dirs {
+		v, ok := values[d]
+		if !ok {
+			break
+		}
+		prefix = append(prefix, v)
+	}
+	return prefix
 }
 
 // postingLinkIDs returns, in ascending order, the IDs whose posting keys in
@@ -53,8 +71,13 @@ func (qs *QuadStore) postingLinkIDs(ctx context.Context, tx kv.Tx, ind QuadIndex
 		}
 	}
 
-	// Gather the postings whose key parts match.
-	it := tx.Scan(ctx, options.WithPrefixKV(ind.bucket()))
+	// Gather the postings whose key parts match, reading only the pinned
+	// prefix when the lookup pins ind's leading directions.
+	scan := ind.bucket()
+	if prefix := pinnedPrefix(ind, values); len(prefix) != 0 {
+		scan = ind.Key(prefix)
+	}
+	it := tx.Scan(ctx, options.WithPrefixKV(scan))
 	defer it.Close()
 	var ids []uint64
 	for it.Next(ctx) {

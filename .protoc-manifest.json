@@ -4,7 +4,7 @@
   "toolVersions": "protoc=embedded,protobuf-go-lite=v0.14.0,starpc=v0.49.18,protobuf-es-lite=1.1.1",
   "packages": {
     "github.com/aperturerobotics/cayley/graph/kv": {
-      "hash": "ed8d71065f11b8a01b0e9fde7484d4640943d14af017ca11c67d83483bd662d4",
+      "hash": "2bca2615bf42a15685ae6b287c0b0fec8ccd67e943aceddbe7d193a7c9aa9718",
       "generatedFiles": [
         "graph/kv/indexing.pb.cc",
         "graph/kv/indexing.pb.go",

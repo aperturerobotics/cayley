@@ -58,6 +58,8 @@ var (
 type QuadIndex struct {
 	Dirs   []quad.Direction
 	Unique bool
+	// State is the index's lifecycle state. The zero value is complete.
+	State QuadIndexState
 }
 
 // CompareQuadDirections compares two slices of quad directions for equality.
@@ -87,7 +89,7 @@ func CompareQuadIndexes(a, b []QuadIndex) bool {
 }
 
 func (ind QuadIndex) Equal(ot QuadIndex) bool {
-	if ind.Unique != ot.Unique {
+	if ind.Unique != ot.Unique || ind.State != ot.State {
 		return false
 	}
 	if !CompareQuadDirections(ind.Dirs, ot.Dirs) {
@@ -147,6 +149,8 @@ type metaCache struct {
 	vals   map[string]int64
 	loaded map[string]struct{}
 	dirty  map[string]struct{}
+	// first is set when the transaction allocates the store's first IDs.
+	first bool
 }
 
 func newMetaCache() *metaCache {
@@ -160,7 +164,7 @@ func newMetaCache() *metaCache {
 // writeIndexesMeta writes metadata about current indexes to the KV database,
 // so we can read this information back later.
 func (qs *QuadStore) writeIndexesMeta(ctx context.Context) error {
-	data, err := encodeQuadIndexes(qs.indexes.all)
+	data, err := encodeQuadIndexes(qs.Layout())
 	if err != nil {
 		return err
 	}
@@ -172,34 +176,68 @@ func (qs *QuadStore) writeIndexesMeta(ctx context.Context) error {
 // readIndexesMeta read metadata about current indexes from the KV database.
 // If no indexes are set, it returns a list of legacy indexes to preserve backward compatibility.
 func (qs *QuadStore) readIndexesMeta(ctx context.Context) ([]QuadIndex, error) {
+	// Read the layout in its own read transaction.
 	tx, err := qs.db.Tx(ctx, false)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Close()
+	layout, err := readIndexLayout(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	return layout.indexes, nil
+}
+
+// indexLayout is the stored index layout with its layout change cursor.
+type indexLayout struct {
+	// indexes are the quad indexes in priority order, with their states.
+	indexes []QuadIndex
+	// cursorKey is the last source posting key a build step read.
+	cursorKey []byte
+	// cursorID is the last link ID of cursorKey's posting a build step indexed.
+	cursorID uint64
+}
+
+// readIndexLayout reads the stored layout under tx. An absent or empty layout
+// is the legacy default.
+func readIndexLayout(ctx context.Context, tx kv.Tx) (*indexLayout, error) {
+	// Decode the record, defaulting when it is absent or empty.
 	val, err := tx.Get(ctx, kv.Key{keyMetaIndexes})
 	if err == kv.ErrNotFound {
-		return DefaultQuadIndexes, nil
+		return &indexLayout{indexes: DefaultQuadIndexes}, nil
 	} else if err != nil {
 		return nil, err
 	}
-	out, err := decodeQuadIndexes(val)
+	layout, err := decodeIndexLayout(val)
 	if err != nil {
 		return nil, errors.Errorf("cannot decode indexes: %v", err)
-	} else if len(out) == 0 {
-		return DefaultQuadIndexes, nil
+	} else if len(layout.indexes) == 0 {
+		return &indexLayout{indexes: DefaultQuadIndexes}, nil
 	}
-	return out, nil
+	return layout, nil
 }
 
 func encodeQuadIndexes(indexes []QuadIndex) ([]byte, error) {
+	return encodeIndexLayout(&indexLayout{indexes: indexes})
+}
+
+// encodeIndexLayout encodes the layout and its cursor.
+func encodeIndexLayout(layout *indexLayout) ([]byte, error) {
+	// Validate and convert each index into the record.
 	list := &QuadIndexList{
-		Indexes: make([]*QuadIndexMeta, len(indexes)),
+		Indexes:   make([]*QuadIndexMeta, len(layout.indexes)),
+		CursorKey: layout.cursorKey,
+		CursorId:  layout.cursorID,
 	}
-	for i, index := range indexes {
+	for i, index := range layout.indexes {
+		if _, ok := QuadIndexState_name[int32(index.State)]; !ok {
+			return nil, errors.Errorf("invalid quad index state %d", index.State)
+		}
 		meta := &QuadIndexMeta{
 			Dirs:   make([]uint32, len(index.Dirs)),
 			Unique: index.Unique,
+			State:  index.State,
 		}
 		for j, dir := range index.Dirs {
 			if dir == quad.Any || dir.Prefix() == 0 {
@@ -213,13 +251,31 @@ func encodeQuadIndexes(indexes []QuadIndex) ([]byte, error) {
 }
 
 func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
+	layout, err := decodeIndexLayout(data)
+	if err != nil {
+		return nil, err
+	}
+	return layout.indexes, nil
+}
+
+// decodeIndexLayout decodes the layout and its cursor. A state this build
+// does not know is an error, so an older build never maintains a layout it
+// cannot.
+func decodeIndexLayout(data []byte) (*indexLayout, error) {
+	// Decode the record.
 	list := &QuadIndexList{}
 	if err := list.UnmarshalVT(data); err != nil {
 		return nil, err
 	}
+
+	// Validate and convert each index.
 	indexes := make([]QuadIndex, len(list.GetIndexes()))
 	for i, meta := range list.GetIndexes() {
+		if _, ok := QuadIndexState_name[int32(meta.GetState())]; !ok {
+			return nil, errors.Errorf("unknown quad index state %d", meta.GetState())
+		}
 		indexes[i].Unique = meta.GetUnique()
+		indexes[i].State = meta.GetState()
 		indexes[i].Dirs = make([]quad.Direction, len(meta.GetDirs()))
 		for j, raw := range meta.GetDirs() {
 			dir := quad.Direction(raw)
@@ -229,7 +285,7 @@ func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
 			indexes[i].Dirs[j] = dir
 		}
 	}
-	return indexes, nil
+	return &indexLayout{indexes: indexes, cursorKey: list.GetCursorKey(), cursorID: list.GetCursorId()}, nil
 }
 
 func (qs *QuadStore) resolveValDeltas(ctx context.Context, tx kv.Tx, deltas []graphlog.NodeUpdate, fnc func(i int, id uint64)) error {
@@ -341,6 +397,9 @@ func (qs *QuadStore) genIDs(ctx context.Context, tx kv.Tx, cache *metaCache, n i
 	start, err := qs.incMetaInt(ctx, tx, cache, "horizon", int64(n))
 	if err != nil {
 		return 0, err
+	}
+	if start == 0 && cache != nil {
+		cache.first = true
 	}
 	return uint64(start + 1), nil
 }
@@ -1111,10 +1170,7 @@ func (qs *QuadStore) indexLinks(ctx context.Context, tx kv.Tx, cache *metaCache,
 
 func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive, newIDs map[uint64]struct{}) error {
 	var err error
-	qs.indexes.RLock()
-	all := qs.indexes.all
-	qs.indexes.RUnlock()
-	for _, ind := range all {
+	for _, ind := range qs.maintainedIndexes() {
 		// A posting list is empty on disk when any of its index-key directions
 		// resolves to a node minted in this transaction: no prior quad could
 		// reference that node, so the flush can blind-write without a read.
@@ -1138,12 +1194,9 @@ func (qs *QuadStore) indexLink(ctx context.Context, tx kv.Tx, p *proto.Primitive
 }
 
 func (qs *QuadStore) markLinksDead(ctx context.Context, tx kv.Tx, cache *metaCache, links []*proto.Primitive) error {
-	qs.indexes.RLock()
-	all := qs.indexes.all
-	qs.indexes.RUnlock()
 	// Reclaim each posting once. Temporary owners can hold millions of links;
 	// rewriting their shared posting for every deleted link is quadratic.
-	for _, ind := range all {
+	for _, ind := range qs.maintainedIndexes() {
 		postings := make(map[string][]uint64)
 		for _, p := range links {
 			key := string(ind.KeyFor(p)[1])
@@ -1264,7 +1317,14 @@ func hasDir(dirs []quad.Direction, d quad.Direction) bool {
 	return slices.Contains(dirs, d)
 }
 
+// bestIndexes returns the complete index whose key prefix serves a lookup by
+// dirs. A lookup pinning neither subject nor object gets none: the posting
+// scan serves it in ID order, through the prefix of an index leading with its
+// directions when one exists, so its order does not depend on the layout.
 func (qs *QuadStore) bestIndexes(dirs []quad.Direction) []QuadIndex {
+	if !hasDir(dirs, quad.Subject) && !hasDir(dirs, quad.Object) {
+		return nil
+	}
 	qs.indexes.RLock()
 	all := qs.indexes.all
 	qs.indexes.RUnlock()

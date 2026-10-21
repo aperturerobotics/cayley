@@ -2,8 +2,41 @@
 // @generated from file github.com/aperturerobotics/cayley/graph/kv/indexing.proto (package kv, syntax proto3)
 /* eslint-disable */
 
+import { createEnumType } from '@aptre/protobuf-es-lite/enum'
 import type { MessageType } from '@aptre/protobuf-es-lite/message'
 import { createMessageType } from '@aptre/protobuf-es-lite/message'
+
+/**
+ * QuadIndexState is the lifecycle state of a quad index.
+ *
+ * @generated from enum kv.QuadIndexState
+ */
+export enum QuadIndexState {
+  /**
+   * COMPLETE indexes serve lookups and are maintained by writes.
+   */
+  COMPLETE = 0,
+
+  /**
+   * BUILDING indexes are maintained by writes and never serve lookups.
+   */
+  BUILDING = 1,
+
+  /**
+   * DROPPING indexes are neither maintained nor served; their postings are
+   * being deleted.
+   */
+  DROPPING = 2,
+}
+
+export const QuadIndexState_Enum = /* @__PURE__ */ createEnumType(
+  'kv.QuadIndexState',
+  [
+    [0, 'COMPLETE'],
+    [1, 'BUILDING'],
+    [2, 'DROPPING'],
+  ],
+)
 
 /**
  * QuadIndexList stores the configured quad indexes.
@@ -15,11 +48,22 @@ export interface QuadIndexList {
    * Indexes are the quad indexes in priority order.
    */
   indexes?: QuadIndexMeta[]
+  /**
+   * CursorKey is the last source posting key a layout change step read.
+   * Empty when no build has started.
+   */
+  cursorKey?: Uint8Array
+  /**
+   * CursorId is the last link ID of CursorKey's posting a step indexed.
+   */
+  cursorId?: bigint
 }
 
 export const QuadIndexList: MessageType<QuadIndexList> =
   /* @__PURE__ */ createMessageType<QuadIndexList>('kv.QuadIndexList', () => [
     [1, 'indexes', 11, 1, QuadIndexMeta.codec],
+    [2, 'cursor_key', 12],
+    [3, 'cursor_id', 4],
   ])
 
 /**
@@ -36,10 +80,15 @@ export interface QuadIndexMeta {
    * Unique indicates the index is unique.
    */
   unique?: boolean
+  /**
+   * State is the index's lifecycle state.
+   */
+  state?: QuadIndexState
 }
 
 export const QuadIndexMeta: MessageType<QuadIndexMeta> =
   /* @__PURE__ */ createMessageType<QuadIndexMeta>('kv.QuadIndexMeta', () => [
     [1, 'dirs', 13, 3],
     [2, 'unique', 8],
+    [3, 'state', 14, 0, QuadIndexState_Enum],
   ])

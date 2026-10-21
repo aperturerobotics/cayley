@@ -5,6 +5,22 @@ package kv;
 message QuadIndexList {
   // Indexes are the quad indexes in priority order.
   repeated QuadIndexMeta indexes = 1;
+  // CursorKey is the last source posting key a layout change step read.
+  // Empty when no build has started.
+  bytes cursor_key = 2;
+  // CursorId is the last link ID of CursorKey's posting a step indexed.
+  uint64 cursor_id = 3;
+}
+
+// QuadIndexState is the lifecycle state of a quad index.
+enum QuadIndexState {
+  // COMPLETE indexes serve lookups and are maintained by writes.
+  COMPLETE = 0;
+  // BUILDING indexes are maintained by writes and never serve lookups.
+  BUILDING = 1;
+  // DROPPING indexes are neither maintained nor served; their postings are
+  // being deleted.
+  DROPPING = 2;
 }
 
 // QuadIndexMeta stores a single quad index definition.
@@ -13,4 +29,6 @@ message QuadIndexMeta {
   repeated uint32 dirs = 1;
   // Unique indicates the index is unique.
   bool unique = 2;
+  // State is the index's lifecycle state.
+  QuadIndexState state = 3;
 }

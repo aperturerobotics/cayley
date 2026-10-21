@@ -208,7 +208,7 @@ func TestIndexRebuilderRejectsEmptyDirections(t *testing.T) {
 	}}, graph.IgnoreOpts{}); err != nil {
 		t.Fatal(err)
 	}
-	qs.indexes.all = []QuadIndex{{}}
+	qs.setLayout([]QuadIndex{{}})
 	if err := qs.writeIndexesMeta(ctx); err != nil {
 		t.Fatal(err)
 	}
