@@ -256,14 +256,6 @@ func QuadIndexMetas(indexes []QuadIndex) ([]*QuadIndexMeta, error) {
 	return metas, nil
 }
 
-func decodeQuadIndexes(data []byte) ([]QuadIndex, error) {
-	layout, err := decodeIndexLayout(data)
-	if err != nil {
-		return nil, err
-	}
-	return layout.indexes, nil
-}
-
 // decodeIndexLayout decodes the layout and its cursor.
 func decodeIndexLayout(data []byte) (*indexLayout, error) {
 	// Decode the record.

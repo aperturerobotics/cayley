@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	_ kv.IteratorOption   = (IteratorOption)(nil)
-	_ flat.IteratorOption = (IteratorOption)(nil)
+	_ kv.IteratorOption   = IteratorOption(nil)
+	_ flat.IteratorOption = IteratorOption(nil)
 )
 
 // IteratorOption is an additional option that affects iterator behaviour.

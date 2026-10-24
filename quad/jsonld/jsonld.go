@@ -4,7 +4,6 @@ package jsonld
 import (
 	"context"
 	"encoding/json"
-
 	"io"
 	"slices"
 

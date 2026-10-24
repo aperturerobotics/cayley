@@ -104,10 +104,10 @@ func selectValueQuery(v quad.Value, op CmpOp) ([]Where, []Value, bool) {
 	if op == OpEqual {
 		// we can use hash to check equality
 		return []Where{
-				{Field: "hash", Op: op, Value: Placeholder{}},
-			}, []Value{
-				HashOf(v),
-			}, true
+			{Field: "hash", Op: op, Value: Placeholder{}},
+		}, []Value{
+			HashOf(v),
+		}, true
 	}
 	var (
 		where  []Where
@@ -240,10 +240,10 @@ func (opt *Optimizer) optimizeFilter(from shape.Shape, f shape.ValueFilter) ([]W
 			return nil, nil, false
 		}
 		return []Where{
-				{Field: "value_string", Op: opt.regexpOp, Value: Placeholder{}},
-			}, []Value{
-				StringVal(convRegexp(f.Regexp())),
-			}, true
+			{Field: "value_string", Op: opt.regexpOp, Value: Placeholder{}},
+		}, []Value{
+			StringVal(convRegexp(f.Regexp())),
+		}, true
 	case shape.Regexp:
 		if opt.regexpOp == "" {
 			return nil, nil, false

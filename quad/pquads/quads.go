@@ -2,7 +2,6 @@ package pquads
 
 import (
 	"context"
-
 	"time"
 
 	"github.com/pkg/errors"

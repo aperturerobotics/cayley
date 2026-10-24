@@ -2,7 +2,6 @@ package quad
 
 import (
 	"context"
-
 	"io"
 
 	"github.com/pkg/errors"
