@@ -383,6 +383,6 @@ type failCommitTx struct {
 
 // Commit discards the transaction and fails.
 func (f failCommitTx) Commit(ctx context.Context) error {
-	f.Tx.Close()
+	f.Close()
 	return errCommitFailed
 }

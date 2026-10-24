@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-
 	"io"
 
 	"github.com/pkg/errors"

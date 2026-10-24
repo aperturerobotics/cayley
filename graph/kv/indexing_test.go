@@ -55,7 +55,6 @@ func TestPartialKeyPrefix(t *testing.T) {
 	if other.HasPrefix(partial) {
 		t.Fatal("full key (32,2) should not have partial prefix (3)")
 	}
-
 }
 
 func TestIndexlist(t *testing.T) {
