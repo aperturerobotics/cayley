@@ -183,6 +183,10 @@ func (qs *QuadStore) resolveQuadValuesForBatch(ctx context.Context, tx kv.Tx, re
 	return qs.resolveQuadValues(ctx, tx, vals)
 }
 
+// collectQuadFilterScanGroup collects the quads of the filters that share one
+// index prefix. Each index entry under the prefix posts the IDs of one key,
+// usually a single quad, so the scan gathers IDs across entries and fetches
+// their primitives and values nextBatch at a time.
 func (qs *QuadStore) collectQuadFilterScanGroup(
 	ctx context.Context,
 	tx kv.Tx,
@@ -199,60 +203,81 @@ func (qs *QuadStore) collectQuadFilterScanGroup(
 	if limit != 0 {
 		remaining = len(group.filterIndexes)
 	}
+
+	// flush matches the gathered IDs against the filters and appends their
+	// quads. It reports whether every filter reached the limit.
+	flush := func(ids []uint64) (bool, error) {
+		prims, err := qs.getPrimitivesFromLog(ctx, tx, ids)
+		if err != nil {
+			return false, err
+		}
+		var matches []quadBatchPrimitiveMatch
+		for _, prim := range prims {
+			if prim == nil || prim.Deleted {
+				continue
+			}
+			match := quadBatchPrimitiveMatch{prim: prim}
+			for _, filterIdx := range group.filterIndexes {
+				if filled[filterIdx] || !primitiveMatchesQuadFilter(prim, filters[filterIdx]) {
+					continue
+				}
+				match.filterIndexes = append(match.filterIndexes, filterIdx)
+			}
+			if len(match.filterIndexes) != 0 {
+				matches = append(matches, match)
+			}
+		}
+		quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, matches)
+		if err != nil {
+			return false, err
+		}
+		for matchIdx, match := range matches {
+			q := quads[matchIdx]
+			for _, filterIdx := range match.filterIndexes {
+				if filled[filterIdx] {
+					continue
+				}
+				results[filterIdx] = append(results[filterIdx], q)
+				if limit != 0 && uint32(len(results[filterIdx])) >= limit {
+					filled[filterIdx] = true
+					remaining--
+				}
+			}
+			if limit != 0 && remaining == 0 {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	// Gather IDs across index entries and flush each full batch.
+	pending := make([]uint64, 0, nextBatch)
 	for it.Next(ctx) {
 		ids, err := decodeIndex(it.Val())
 		if err != nil {
 			return err
 		}
 		for len(ids) > 0 {
-			batch := ids
-			if len(batch) > nextBatch {
-				batch = batch[:nextBatch]
+			n := min(len(ids), nextBatch-len(pending))
+			pending, ids = append(pending, ids[:n]...), ids[n:]
+			if len(pending) < nextBatch {
+				continue
 			}
-			prims, err := qs.getPrimitivesFromLog(ctx, tx, batch)
-			if err != nil {
+			done, err := flush(pending)
+			if err != nil || done {
 				return err
 			}
-			var matches []quadBatchPrimitiveMatch
-			for _, prim := range prims {
-				if prim == nil || prim.Deleted {
-					continue
-				}
-				match := quadBatchPrimitiveMatch{prim: prim}
-				for _, filterIdx := range group.filterIndexes {
-					if filled[filterIdx] || !primitiveMatchesQuadFilter(prim, filters[filterIdx]) {
-						continue
-					}
-					match.filterIndexes = append(match.filterIndexes, filterIdx)
-				}
-				if len(match.filterIndexes) != 0 {
-					matches = append(matches, match)
-				}
-			}
-			quads, err := qs.quadBatchPrimitiveMatchesToQuads(ctx, tx, matches)
-			if err != nil {
-				return err
-			}
-			for matchIdx, match := range matches {
-				q := quads[matchIdx]
-				for _, filterIdx := range match.filterIndexes {
-					if filled[filterIdx] {
-						continue
-					}
-					results[filterIdx] = append(results[filterIdx], q)
-					if limit != 0 && uint32(len(results[filterIdx])) >= limit {
-						filled[filterIdx] = true
-						remaining--
-					}
-				}
-				if limit != 0 && remaining == 0 {
-					return nil
-				}
-			}
-			ids = ids[len(batch):]
+			pending = pending[:0]
 		}
 	}
-	return it.Err()
+	if err := it.Err(); err != nil {
+		return err
+	}
+	if len(pending) != 0 {
+		_, err := flush(pending)
+		return err
+	}
+	return nil
 }
 
 // collectAllQuadsForBatchFilter collects the quads of a filter no index
