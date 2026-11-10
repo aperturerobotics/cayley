@@ -7,6 +7,7 @@ import (
 
 	"github.com/aperturerobotics/cayley/graph"
 	"github.com/aperturerobotics/cayley/graph/proto"
+	"github.com/aperturerobotics/cayley/kv"
 	"github.com/aperturerobotics/cayley/quad"
 	"github.com/aperturerobotics/cayley/quad/pquads"
 	"github.com/stretchr/testify/require"
@@ -60,4 +61,23 @@ func TestWalkLogYieldsLiveGraph(t *testing.T) {
 		want[i] = q.String()
 	}
 	require.ElementsMatch(t, want, got)
+
+	// ReadLog returns the walked entries by ID and nil for a removed one, and
+	// LogKeyID parses the keys under LogPrefix.
+	ids := []uint64{links[0].ID, 1 << 40}
+	err = kv.View(ctx, db, func(tx kv.Tx) error {
+		got, err := ReadLog(ctx, tx, ids)
+		if err != nil {
+			return err
+		}
+		require.True(t, got[0].EqualVT(links[0]))
+		require.Nil(t, got[1])
+		return nil
+	})
+	require.NoError(t, err)
+	id, ok := LogKeyID(LogPrefix().AppendBytes([]byte("12")))
+	require.True(t, ok)
+	require.Equal(t, uint64(12), id)
+	_, ok = LogKeyID(kv.Key{[]byte("m"), []byte("12")})
+	require.False(t, ok)
 }
