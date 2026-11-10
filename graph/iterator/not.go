@@ -52,7 +52,7 @@ func (it *Not) Stats(ctx context.Context) (Costs, error) {
 		err = err2
 	}
 	return Costs{
-		NextCost:     allStats.NextCost + primaryStats.ContainsCost,
+		NextCost:     SatAdd(allStats.NextCost, primaryStats.ContainsCost),
 		ContainsCost: primaryStats.ContainsCost,
 		Size: refs.Size{
 			Value: allStats.Size.Value - primaryStats.Size.Value,

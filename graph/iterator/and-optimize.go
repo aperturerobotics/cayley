@@ -124,7 +124,7 @@ func optimizeReplacement(its []Shape) Shape {
 func optimizeOrder(ctx context.Context, its []Shape) []Shape {
 	var (
 		best     Shape
-		bestCost = int64(1 << 62)
+		bestCost int64
 	)
 
 	// Find the iterator with the projected "best" total cost.
@@ -144,13 +144,13 @@ func optimizeOrder(ctx context.Context, its []Shape) []Shape {
 				continue
 			}
 			stats := costs[j]
-			cost += stats.ContainsCost * (1 + (rootStats.Size.Value / (stats.Size.Value + 1)))
+			cost = SatAdd(cost, containsPerNext(stats.ContainsCost, rootStats.Size.Value, stats.Size.Value))
 		}
-		cost *= rootStats.Size.Value
+		cost = SatMul(cost, rootStats.Size.Value)
 		if clog.V(3) {
 			clog.Infof("And: Root: %p Total Cost: %v Best: %v", root, cost, bestCost)
 		}
-		if cost < bestCost {
+		if best == nil || cost < bestCost {
 			best = root
 			bestCost = cost
 		}
@@ -250,7 +250,7 @@ func materializeIts(ctx context.Context, its []Shape) ([]Shape, error) {
 	out = append(out, its[0])
 	for i, it := range its[1:] {
 		st := stats[i+1]
-		if st.Size.Value*st.NextCost < (st.ContainsCost * (1 + (st.Size.Value / (allStats.Size.Value + 1)))) {
+		if SatMul(st.Size.Value, st.NextCost) < containsPerNext(st.ContainsCost, st.Size.Value, allStats.Size.Value) {
 			if Height(it, func(it Shape) bool {
 				_, ok := it.(*Materialize)
 				return !ok
@@ -286,8 +286,8 @@ func getStatsForSlice(ctx context.Context, its, opt []Shape) (Costs, []Costs, er
 			last = err
 		}
 		arr = append(arr, stats)
-		nextCost += stats.ContainsCost * (1 + (primaryStats.Size.Value / (stats.Size.Value + 1)))
-		containsCost += stats.ContainsCost
+		nextCost = SatAdd(nextCost, containsPerNext(stats.ContainsCost, primaryStats.Size.Value, stats.Size.Value))
+		containsCost = SatAdd(containsCost, stats.ContainsCost)
 		if size > stats.Size.Value {
 			size = stats.Size.Value
 			exact = stats.Size.Exact
@@ -295,8 +295,8 @@ func getStatsForSlice(ctx context.Context, its, opt []Shape) (Costs, []Costs, er
 	}
 	for _, sub := range opt {
 		stats, _ := sub.Stats(ctx)
-		nextCost += stats.ContainsCost * (1 + (primaryStats.Size.Value / (stats.Size.Value + 1)))
-		containsCost += stats.ContainsCost
+		nextCost = SatAdd(nextCost, containsPerNext(stats.ContainsCost, primaryStats.Size.Value, stats.Size.Value))
+		containsCost = SatAdd(containsCost, stats.ContainsCost)
 	}
 	return Costs{
 		ContainsCost: containsCost,
@@ -316,7 +316,13 @@ func getStatsForSlice(ctx context.Context, its, opt []Shape) (Costs, []Costs, er
 // with an intersection, we know that the largest we can be is the size of the
 // smallest iterator. This is the heuristic we shall follow. Better heuristics
 // welcome.
+//
+// The planner asks an And for its stats once per enclosing candidate order, so
+// the And computes them once and keeps them until a subiterator is added.
 func (it *And) Stats(ctx context.Context) (Costs, error) {
-	stats, _, err := getStatsForSlice(ctx, it.sub, it.opt)
-	return stats, err
+	if !it.statsOK {
+		it.stats, _, it.statsErr = getStatsForSlice(ctx, it.sub, it.opt)
+		it.statsOK = true
+	}
+	return it.stats, it.statsErr
 }

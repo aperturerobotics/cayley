@@ -113,10 +113,10 @@ func (it *HasA) Stats(ctx context.Context) (iterator.Costs, error) {
 	nextConstant := int64(2)
 	quadConstant := int64(1)
 	return iterator.Costs{
-		NextCost:     quadConstant + subitStats.NextCost,
-		ContainsCost: (fanoutFactor * nextConstant) * subitStats.ContainsCost,
+		NextCost:     iterator.SatAdd(quadConstant, subitStats.NextCost),
+		ContainsCost: iterator.SatMul(fanoutFactor*nextConstant, subitStats.ContainsCost),
 		Size: refs.Size{
-			Value: faninFactor * subitStats.Size.Value,
+			Value: iterator.SatMul(faninFactor, subitStats.Size.Value),
 			Exact: false,
 		},
 	}, err

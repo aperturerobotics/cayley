@@ -77,10 +77,14 @@ func (it *Recursive) Stats(ctx context.Context) (Costs, error) {
 	if err2 != nil {
 		return Costs{}, err2
 	}
-	size := int64(math.Pow(float64(subitStats.Size.Value*fanoutStats.Size.Value), 5))
+	size := int64(math.MaxInt64)
+	if f := math.Pow(float64(SatMul(subitStats.Size.Value, fanoutStats.Size.Value)), 5); f < math.MaxInt64 {
+		size = int64(f)
+	}
+	nextCost := SatAdd(subitStats.NextCost, fanoutStats.NextCost)
 	return Costs{
-		NextCost:     subitStats.NextCost + fanoutStats.NextCost,
-		ContainsCost: (subitStats.NextCost+fanoutStats.NextCost)*(size/10) + subitStats.ContainsCost,
+		NextCost:     nextCost,
+		ContainsCost: SatAdd(SatMul(nextCost, size/10), subitStats.ContainsCost),
 		Size: refs.Size{
 			Value: size,
 			Exact: false,

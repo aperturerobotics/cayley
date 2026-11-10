@@ -89,8 +89,8 @@ func (it *Materialize) Stats(ctx context.Context) (Costs, error) {
 		size = subitStats.Size
 	}
 	return Costs{
-		ContainsCost: overhead * subitStats.NextCost,
-		NextCost:     overhead * subitStats.NextCost,
+		ContainsCost: SatMul(overhead, subitStats.NextCost),
+		NextCost:     SatMul(overhead, subitStats.NextCost),
 		Size:         size,
 	}, err
 }

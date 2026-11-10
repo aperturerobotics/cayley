@@ -100,8 +100,8 @@ func (it *LinksTo) Stats(ctx context.Context) (iterator.Costs, error) {
 	checkConstant := int64(1)
 	nextConstant := int64(2)
 	return iterator.Costs{
-		NextCost:     nextConstant + subitStats.NextCost,
-		ContainsCost: checkConstant + subitStats.ContainsCost,
+		NextCost:     iterator.SatAdd(nextConstant, subitStats.NextCost),
+		ContainsCost: iterator.SatAdd(checkConstant, subitStats.ContainsCost),
 		Size:         it.getSize(ctx),
 	}, err
 }
@@ -119,7 +119,7 @@ func (it *LinksTo) getSize(ctx context.Context) refs.Size {
 		for _, v := range fixed.Values() {
 			sit := it.qs.QuadIterator(ctx, it.dir, v)
 			st, _ := sit.Stats(ctx)
-			sz += st.Size.Value
+			sz = iterator.SatAdd(sz, st.Size.Value)
 			exact = exact && st.Size.Exact
 		}
 		it.size.Value, it.size.Exact = sz, exact
@@ -130,7 +130,7 @@ func (it *LinksTo) getSize(ctx context.Context) refs.Size {
 	// TODO(barakmich): It should really come from the quadstore itself
 	const fanoutFactor = 20
 	st, _ := it.primary.Stats(ctx)
-	value := min(st.Size.Value*fanoutFactor, maxSize)
+	value := min(iterator.SatMul(st.Size.Value, fanoutFactor), maxSize)
 	it.size.Value, it.size.Exact = value, false
 	return it.size
 }

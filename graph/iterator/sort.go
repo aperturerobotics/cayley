@@ -48,7 +48,7 @@ func (it *Sort) Stats(ctx context.Context) (Costs, error) {
 	subStats, err := it.subIt.Stats(ctx)
 	return Costs{
 		// TODO(dennwc): better cost calculation; we probably need an InitCost defined in Costs
-		NextCost:     subStats.NextCost * 2,
+		NextCost:     SatMul(subStats.NextCost, 2),
 		ContainsCost: subStats.ContainsCost,
 		Size: refs.Size{
 			Value: subStats.Size.Value,

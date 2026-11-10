@@ -118,14 +118,14 @@ func (it *Or) Stats(ctx context.Context) (Costs, error) {
 		if err != nil {
 			last = err
 		}
-		NextCost += stats.NextCost
-		ContainsCost += stats.ContainsCost
+		NextCost = SatAdd(NextCost, stats.NextCost)
+		ContainsCost = SatAdd(ContainsCost, stats.ContainsCost)
 		if it.isShortCircuiting {
 			if Size.Value < stats.Size.Value {
 				Size = stats.Size
 			}
 		} else {
-			Size.Value += stats.Size.Value
+			Size.Value = SatAdd(Size.Value, stats.Size.Value)
 			Size.Exact = Size.Exact && stats.Size.Exact
 		}
 	}

@@ -47,7 +47,7 @@ const uniquenessFactor = 2
 func (it *Unique) Stats(ctx context.Context) (Costs, error) {
 	subStats, err := it.subIt.Stats(ctx)
 	return Costs{
-		NextCost:     subStats.NextCost * uniquenessFactor,
+		NextCost:     SatMul(subStats.NextCost, uniquenessFactor),
 		ContainsCost: subStats.ContainsCost,
 		Size: refs.Size{
 			Value: subStats.Size.Value / uniquenessFactor,

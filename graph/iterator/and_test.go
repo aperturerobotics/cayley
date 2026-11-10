@@ -147,3 +147,103 @@ func TestAndIteratorErr(t *testing.T) {
 	require.False(t, and.Next(ctx))
 	require.Equal(t, wantErr, and.Err())
 }
+
+// multiPath is a shape holding one value reachable by n paths, each tagging
+// its path number.
+type multiPath struct {
+	val  refs.Ref
+	tag  string
+	n    int
+	size int64
+}
+
+func (s *multiPath) String() string                      { return "multiPath" }
+func (s *multiPath) Iterate(ctx context.Context) Scanner { return &multiPathIt{s: s, path: -1} }
+func (s *multiPath) Lookup(ctx context.Context) Index    { return &multiPathIt{s: s, path: -1} }
+func (s *multiPath) Stats(ctx context.Context) (Costs, error) {
+	size := max(s.size, 1)
+	return Costs{NextCost: 1, ContainsCost: 1, Size: refs.Size{Value: size, Exact: s.size == 0}}, nil
+}
+func (s *multiPath) Optimize(ctx context.Context) (Shape, bool, error) { return s, false, nil }
+func (s *multiPath) SubIterators() []Shape                             { return nil }
+
+type multiPathIt struct {
+	s    *multiPath
+	path int
+	done bool
+}
+
+func (it *multiPathIt) String() string { return "multiPath" }
+func (it *multiPathIt) TagResults(ctx context.Context, dst map[string]refs.Ref) error {
+	dst[it.s.tag] = Int64Node(it.path)
+	return nil
+}
+func (it *multiPathIt) Result(ctx context.Context) (refs.Ref, error) { return it.s.val, nil }
+func (it *multiPathIt) Next(ctx context.Context) bool {
+	if it.done {
+		return false
+	}
+	it.done, it.path = true, 0
+	return true
+}
+func (it *multiPathIt) Contains(ctx context.Context, v refs.Ref) (bool, error) {
+	if v != it.s.val {
+		return false, nil
+	}
+	it.path = 0
+	return true, nil
+}
+func (it *multiPathIt) NextPath(ctx context.Context) bool {
+	if it.path+1 >= it.s.n {
+		return false
+	}
+	it.path++
+	return true
+}
+func (it *multiPathIt) Err() error   { return nil }
+func (it *multiPathIt) Close() error { return nil }
+
+// An And yields the product of its sides' paths, whichever side is primary.
+func TestAndNextPathProduct(t *testing.T) {
+	ctx := context.Background()
+	v := Int64Node(7)
+	for _, order := range [][]int{{0, 1, 2}, {2, 1, 0}, {1, 0, 2}} {
+		subs := []Shape{
+			&multiPath{val: v, tag: "a", n: 2},
+			&multiPath{val: v, tag: "b", n: 3},
+			&multiPath{val: v, tag: "c", n: 4},
+		}
+		and := NewAnd()
+		for _, i := range order {
+			and.AddSubIterator(subs[i])
+		}
+		it := and.Iterate(ctx)
+		seen := make(map[[3]refs.Ref]bool)
+		for it.Next(ctx) {
+			for {
+				tags := make(map[string]refs.Ref)
+				require.NoError(t, it.TagResults(ctx, tags))
+				seen[[3]refs.Ref{tags["a"], tags["b"], tags["c"]}] = true
+				if !it.NextPath(ctx) {
+					break
+				}
+			}
+		}
+		require.NoError(t, it.Err())
+		require.Len(t, seen, 2*3*4, "order %v", order)
+	}
+}
+
+// An And picks its small side as primary even when the other side's size
+// estimate makes the cost product overflow int64.
+func TestAndOptimizeHugeEstimate(t *testing.T) {
+	ctx := context.Background()
+	v := Int64Node(7)
+	small := &multiPath{val: v, tag: "small", n: 1, size: 10}
+	for _, huge := range []int64{1 << 40, 1 << 62} {
+		big := &multiPath{val: v, tag: "big", n: 1, size: huge}
+		opt, _, err := NewAnd(big, small).Optimize(ctx)
+		require.NoError(t, err)
+		require.Same(t, Shape(small), opt.SubIterators()[0], "size %d", huge)
+	}
+}

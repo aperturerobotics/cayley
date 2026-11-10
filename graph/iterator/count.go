@@ -52,7 +52,7 @@ func (it *Count) Stats(ctx context.Context) (Costs, error) {
 		},
 	}
 	if sub, err := it.it.Stats(ctx); err == nil && !sub.Size.Exact {
-		stats.NextCost = sub.NextCost * sub.Size.Value
+		stats.NextCost = SatMul(sub.NextCost, sub.Size.Value)
 	}
 	stats.ContainsCost = stats.NextCost
 	return stats, nil

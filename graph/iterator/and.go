@@ -27,6 +27,11 @@ type And struct {
 	sub       []Shape
 	checkList []Shape // special order for Contains
 	opt       []Shape
+
+	// stats caches Stats until a subiterator is added.
+	stats    Costs
+	statsErr error
+	statsOK  bool
 }
 
 // NewAnd creates an And iterator. `qs` is only required when needing a handle
@@ -98,12 +103,14 @@ func (it *And) AddSubIterator(sub Shape) {
 		panic("nil iterator")
 	}
 	it.sub = append(it.sub, sub)
+	it.statsOK = false
 }
 
 // AddOptionalIterator adds an iterator that will only be Contain'ed and will not affect iteration results.
 // Only tags will be propagated from this iterator.
 func (it *And) AddOptionalIterator(sub Shape) *And {
 	it.opt = append(it.opt, sub)
+	it.statsOK = false
 	return it
 }
 
@@ -185,21 +192,27 @@ func (it *andNext) Result(ctx context.Context) (refs.Ref, error) {
 	return it.result, it.err
 }
 
-// An And has no NextPath of its own -- that is, there are no other values
-// which satisfy our previous result that are not the result itself. Our
-// subiterators might, however, so just pass the call recursively.
+// NextPath moves to the next path of the current result. The primary and the
+// secondary are the digits of an odometer: the secondary moves first, and when
+// it runs out the primary moves and the secondary restarts at its first path,
+// so a result yields the product of the two sides' paths. Restarting costs one
+// Contains per carry; a caller that never calls NextPath pays nothing.
 func (it *andNext) NextPath(ctx context.Context) bool {
-	if it.primary.NextPath(ctx) {
-		return true
-	} else if err := it.primary.Err(); err != nil {
-		return false
-	}
 	if it.secondary.NextPath(ctx) {
 		return true
-	} else if err := it.secondary.Err(); err != nil {
+	}
+	if it.err = it.secondary.Err(); it.err != nil {
 		return false
 	}
-	return false
+	if !it.primary.NextPath(ctx) {
+		it.err = it.primary.Err()
+		return false
+	}
+	if _, err := it.secondary.Contains(ctx, it.result); err != nil {
+		it.err = err
+		return false
+	}
+	return true
 }
 
 // Close this iterator, and, by extension, close the subiterators.
@@ -327,30 +340,53 @@ func (it *andContains) Contains(ctx context.Context, val refs.Ref) (bool, error)
 	return true, nil
 }
 
-// An And has no NextPath of its own -- that is, there are no other values
-// which satisfy our previous result that are not the result itself. Our
-// subiterators might, however, so just pass the call recursively.
+// NextPath moves to the next path of the current result. The subiterators,
+// then the optional iterators that matched, are the digits of an odometer: the
+// last digit moves first, and when a digit runs out the one before it moves
+// and every later digit restarts at its first path, so a result yields the
+// product of its digits' paths. Restarting costs one Contains per digit per
+// carry; a caller that never calls NextPath pays nothing.
 func (it *andContains) NextPath(ctx context.Context) bool {
-	for _, sub := range it.sub {
-		if sub.NextPath(ctx) {
-			return true
-		} else if err := sub.Err(); err != nil {
-			it.err = err
-			return false
-		}
-	}
-	for i, sub := range it.opt {
-		if !it.optCheck[i] {
+	for i := len(it.sub) + len(it.opt) - 1; i >= 0; i-- {
+		d, ok := it.digit(i)
+		if !ok {
 			continue
 		}
-		if sub.NextPath(ctx) {
-			return true
-		} else if err := sub.Err(); err != nil {
+		if d.NextPath(ctx) {
+			return it.restartFrom(ctx, i+1)
+		}
+		if err := d.Err(); err != nil {
 			it.err = err
 			return false
 		}
 	}
 	return false
+}
+
+// digit returns the i-th odometer digit and whether it takes part: every
+// subiterator does, and an optional iterator only when it matched.
+func (it *andContains) digit(i int) (Index, bool) {
+	if i < len(it.sub) {
+		return it.sub[i], true
+	}
+	i -= len(it.sub)
+	return it.opt[i], it.optCheck[i]
+}
+
+// restartFrom restarts the digits from i on at their first path for the
+// current result, which each of them already contains.
+func (it *andContains) restartFrom(ctx context.Context, i int) bool {
+	for ; i < len(it.sub)+len(it.opt); i++ {
+		d, ok := it.digit(i)
+		if !ok {
+			continue
+		}
+		if _, err := d.Contains(ctx, it.result); err != nil {
+			it.err = err
+			return false
+		}
+	}
+	return true
 }
 
 // Close this iterator, and, by extension, close the subiterators.
