@@ -8,6 +8,6 @@
     ]
   },
   "devDependencies": {
-    "@aptre/protobuf-es-lite": "1.2.4"
+    "@aptre/protobuf-es-lite": "1.2.6"
   }
 }
