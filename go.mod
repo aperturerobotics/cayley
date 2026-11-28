@@ -3,23 +3,23 @@ module github.com/aperturerobotics/cayley
 go 1.27.0
 
 require (
-	github.com/aperturerobotics/bbolt v0.0.0-20261006081945-09141165d72c
-	github.com/aperturerobotics/common v0.36.5
-	github.com/aperturerobotics/fastjson v0.1.2-0.20260705010846-94f343f5bb34
-	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261018054529-f60c4d2691ea
+	github.com/aperturerobotics/bbolt v0.0.0-20261127210914-22f96c60c0f3
+	github.com/aperturerobotics/common v0.38.4
+	github.com/aperturerobotics/fastjson v0.1.2-0.20261024220211-b654d1d5b5aa
+	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261120061248-f1c7d6295149
 	github.com/badgerodon/peg v0.0.0-20130729175151-9e5f7f4d07ca
 	github.com/cznic/mathutil v0.0.0-20181122101859-297441e03548
 	github.com/dennwc/graphql v0.4.19-0.20180603144102-12cfed44bc5d
 	github.com/dgraph-io/badger/v4 v4.9.6
-	github.com/dop251/goja v0.0.0-20261024144015-2a9269b6b6de
+	github.com/dop251/goja v0.0.0-20261127213540-516d13cfa287
 	github.com/fsouza/go-dockerclient v1.13.3
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.11.0
 	github.com/golang/glog v1.2.5
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.12.3
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/mr-tron/base58 v1.3.0
+	github.com/mr-tron/base58 v1.3.1
 	github.com/peterh/liner v1.2.3
 	github.com/piprate/json-gold v0.9.1
 	github.com/pkg/errors v0.9.1
@@ -35,9 +35,9 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // indirect
 	github.com/aperturerobotics/cli v1.1.0 // indirect
-	github.com/aperturerobotics/fsnotify v1.9.1-0.20260506231828-931cb4bf1761 // indirect
-	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261003014807-d46d22154f35 // indirect
-	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260808023521-7b1595380c3f // indirect
+	github.com/aperturerobotics/fsnotify v1.9.1-0.20261007093243-45a75ed654f0 // indirect
+	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261024221648-a1c7ae9a2bb8 // indirect
+	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20261024220153-869f5fcfca4f // indirect
 	github.com/aperturerobotics/go-websocket v1.8.15-0.20260619192713-a096778f08c1 // indirect
 	github.com/aperturerobotics/json-iterator-lite v1.1.0 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect
@@ -49,7 +49,7 @@ require (
 	github.com/cockroachdb/apd v1.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
-	github.com/dlclark/regexp2/v2 v2.8.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.11.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -62,7 +62,7 @@ require (
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-yamux/v5 v5.1.0 // indirect
 	github.com/mattn/go-runewidth v0.0.31 // indirect
@@ -94,8 +94,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.41.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/mod v0.42.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
